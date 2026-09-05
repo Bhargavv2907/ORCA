@@ -1,26 +1,205 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* ---- ORCA Maritime Color System ---- */
+  --color-navy-950: #020617;
+  --color-navy-900: #0a1628;
+  --color-navy-800: #0f2035;
+  --color-navy-700: #162d4a;
+  --color-navy-600: #1e3a5f;
+  --color-ocean-500: #1565c0;
+  --color-ocean-400: #2196f3;
+  --color-teal-500: #0d9488;
+  --color-teal-400: #2dd4bf;
+  --color-teal-300: #5eead4;
+  --color-cyan-400: #22d3ee;
+  --color-cyan-300: #67e8f9;
+  --color-safe: #10b981;
+  --color-safe-dim: #10b98133;
+  --color-warning: #f59e0b;
+  --color-warning-dim: #f59e0b33;
+  --color-danger: #ef4444;
+  --color-danger-dim: #ef444433;
+  --color-critical: #dc2626;
+
+  /* ---- Background ---- */
+  --color-background: var(--color-navy-950);
+  --color-foreground: #f1f5f9;
+  --color-card: #0f1d32;
+  --color-card-hover: #162d4a;
+  --color-card-border: #1e3a5f40;
+  --color-surface: #0a1628;
+  --color-surface-bright: #162d4a;
+  --color-muted: #94a3b8;
+  --color-muted-foreground: #64748b;
+
+  /* ---- Fonts ---- */
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ---- Base ---- */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #1e3a5f #0a1628;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-navy-950);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ---- Scrollbar ---- */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0a1628;
+}
+::-webkit-scrollbar-thumb {
+  background: #1e3a5f;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #2563eb;
+}
+
+/* ---- Glassmorphism Utilities ---- */
+.glass {
+  background: rgba(15, 29, 50, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(30, 58, 95, 0.4);
+}
+
+.glass-light {
+  background: rgba(15, 29, 50, 0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(30, 58, 95, 0.25);
+}
+
+/* ---- Glow Effects ---- */
+.glow-teal {
+  box-shadow: 0 0 20px rgba(45, 212, 191, 0.15), 0 0 40px rgba(45, 212, 191, 0.05);
+}
+
+.glow-ocean {
+  box-shadow: 0 0 20px rgba(33, 150, 243, 0.15), 0 0 40px rgba(33, 150, 243, 0.05);
+}
+
+.glow-safe {
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.2);
+}
+
+.glow-danger {
+  box-shadow: 0 0 15px rgba(239, 68, 68, 0.2);
+}
+
+.glow-warning {
+  box-shadow: 0 0 15px rgba(245, 158, 11, 0.2);
+}
+
+/* ---- Animated Gradient ---- */
+.ocean-gradient {
+  background: linear-gradient(135deg, #020617 0%, #0a1628 25%, #0f2035 50%, #162d4a 75%, #0a1628 100%);
+}
+
+.ocean-gradient-animated {
+  background: linear-gradient(135deg, #020617, #0a1628, #162d4a, #0d4a6b, #0a1628);
+  background-size: 400% 400%;
+  animation: gradientShift 12s ease infinite;
+}
+
+@keyframes gradientShift {
+  0%, 100% { background-position: 0% 50%; }
+  25% { background-position: 100% 50%; }
+  50% { background-position: 100% 0%; }
+  75% { background-position: 0% 100%; }
+}
+
+/* ---- Wave Animation ---- */
+.wave-bg {
+  position: relative;
+  overflow: hidden;
+}
+.wave-bg::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: -50%;
+  width: 200%;
+  height: 100px;
+  background: radial-gradient(ellipse at center bottom, rgba(45, 212, 191, 0.06) 0%, transparent 70%);
+  animation: waveMove 8s ease-in-out infinite;
+}
+@keyframes waveMove {
+  0%, 100% { transform: translateX(0) translateY(0); }
+  50% { transform: translateX(2%) translateY(-5px); }
+}
+
+/* ---- Pulse ---- */
+.pulse-safe {
+  animation: pulseSafe 2s ease-in-out infinite;
+}
+@keyframes pulseSafe {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+}
+
+.pulse-danger {
+  animation: pulseDanger 1.5s ease-in-out infinite;
+}
+@keyframes pulseDanger {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+}
+
+/* ---- Demo Badge ---- */
+.demo-badge {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+/* ---- Map container ---- */
+.mapboxgl-canvas {
+  outline: none;
+}
+.mapboxgl-popup-content {
+  background: #0f1d32 !important;
+  color: #f1f5f9 !important;
+  border: 1px solid rgba(30, 58, 95, 0.4) !important;
+  border-radius: 12px !important;
+  padding: 12px !important;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5) !important;
+}
+.mapboxgl-popup-tip {
+  border-top-color: #0f1d32 !important;
+}
+
+/* ---- Selection ---- */
+::selection {
+  background: rgba(45, 212, 191, 0.3);
+  color: #f1f5f9;
+}
+
+/* ---- Focus ---- */
+*:focus-visible {
+  outline: 2px solid #2dd4bf;
+  outline-offset: 2px;
 }
