@@ -185,6 +185,17 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
   return { km: +km.toFixed(1), nm: +nm.toFixed(1), bearing };
 }
 
+export interface MapRegion {
+  id: string;
+  name: string;
+  bounds?: { minLat: number; maxLat: number; minLon: number; maxLon: number };
+  zoom?: number;
+  center?: { lat: number; lon: number };
+  state?: string;
+  type?: string;
+  description?: string;
+}
+
 interface WorldMapProps {
   onPointClick?: (lat: number, lon: number, data: MarineConditions | null) => void;
   vessels?: Vessel[];
@@ -193,6 +204,7 @@ interface WorldMapProps {
   activeLayers?: Set<string>;
   highlightCoasts?: boolean;
   mapActionPayload?: MapAction;
+  selectedRegion?: MapRegion;
 }
 
 export default function WorldMapComponent({
@@ -202,14 +214,44 @@ export default function WorldMapComponent({
   satelliteMode = 'esri_satellite',
   activeLayers = new Set(['mosdac_overlay', 'winds', 'fishing', 'vessels', 'coastal_detect']),
   highlightCoasts = true,
-  mapActionPayload
+  mapActionPayload,
+  selectedRegion,
 }: WorldMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const layerGroupRef = useRef<any>(null);
   const lineLayerRef = useRef<any>(null);
   const [isLoaded, setIsLoaded] = useState(false);
-  const [clickedPoint, setClickedPoint] = useState<{ lat: number; lon: number; data?: MarineConditions; loading: boolean } | null>(null);
+  const [clickedPoint, setClickedPoint] = useState<{ lat: number; lon: number; data?: MarineConditions; loading: boolean; label?: string } | null>(null);
+
+  const inspectPoint = React.useCallback((lat: number, lon: number, label?: string) => {
+    setClickedPoint({ lat, lon, loading: true, label });
+
+    if (lineLayerRef.current && mapInstanceRef.current) {
+      mapInstanceRef.current.removeLayer(lineLayerRef.current);
+      lineLayerRef.current = null;
+    }
+
+    fetch(`/api/marine?lat=${lat}&lon=${lon}`)
+      .then((res) => res.json())
+      .then((data) => {
+        setClickedPoint({ lat, lon, data, loading: false, label });
+        if (onPointClick) onPointClick(lat, lon, data);
+      })
+      .catch(() => {
+        setClickedPoint((prev) => (prev ? { ...prev, loading: false } : null));
+      });
+  }, [onPointClick]);
+
+  // Expose global inspector trigger for Leaflet popups
+  useEffect(() => {
+    (window as any).orcaInspectLocation = (lat: number, lon: number, label: string) => {
+      inspectPoint(lat, lon, label);
+    };
+    return () => {
+      delete (window as any).orcaInspectLocation;
+    };
+  }, [inspectPoint]);
 
   const zonesList = useMemo(() => {
     return fishingZones.length > 0 ? fishingZones : getMockFishingZones();
@@ -303,25 +345,12 @@ export default function WorldMapComponent({
       map.on('click', (e: any) => {
         const lat = +e.latlng.lat.toFixed(3);
         const lon = +e.latlng.lng.toFixed(3);
-
-        setClickedPoint({ lat, lon, loading: true });
-
-        // Remove old connecting polyline if any
-        if (lineLayerRef.current) {
-          map.removeLayer(lineLayerRef.current);
-          lineLayerRef.current = null;
-        }
-
-        fetch(`/api/marine?lat=${lat}&lon=${lon}`)
-          .then((res) => res.json())
-          .then((data) => {
-            setClickedPoint({ lat, lon, data, loading: false });
-            if (onPointClick) onPointClick(lat, lon, data);
-          })
-          .catch(() => {
-            setClickedPoint((prev) => (prev ? { ...prev, loading: false } : null));
-          });
+        inspectPoint(lat, lon, `Ocean Point (${lat}°N, ${lon}°E)`);
       });
+
+      setTimeout(() => {
+        map.invalidateSize();
+      }, 150);
 
       setIsLoaded(true);
     });
@@ -371,6 +400,45 @@ export default function WorldMapComponent({
     });
   }, [satelliteMode, isLoaded]);
 
+  // Handle selectedRegion changes from parent (fly to sector + inspect live telemetry)
+  useEffect(() => {
+    if (!mapInstanceRef.current || !isLoaded || !selectedRegion) return;
+    const map = mapInstanceRef.current;
+
+    if (selectedRegion.id === 'world') {
+      map.flyTo([20.0, 10.0], 2.5, { duration: 1.2 });
+      return;
+    }
+    if (selectedRegion.id === 'all_india') {
+      map.flyToBounds([[6.0, 68.0], [36.0, 97.0]], { padding: [50, 50], duration: 1.2 });
+      return;
+    }
+    if (selectedRegion.bounds) {
+      map.flyToBounds(
+        [[selectedRegion.bounds.minLat, selectedRegion.bounds.minLon], [selectedRegion.bounds.maxLat, selectedRegion.bounds.maxLon]],
+        { padding: [60, 60], duration: 1.2 }
+      );
+    } else if (selectedRegion.center) {
+      map.flyTo([selectedRegion.center.lat, selectedRegion.center.lon], selectedRegion.zoom || 7.5, { duration: 1.2 });
+    }
+
+    if (selectedRegion.center) {
+      inspectPoint(selectedRegion.center.lat, selectedRegion.center.lon, selectedRegion.name);
+    }
+  }, [selectedRegion, isLoaded, inspectPoint]);
+
+  // Keep Leaflet viewport sized properly
+  useEffect(() => {
+    if (!containerRef.current || !mapInstanceRef.current || !isLoaded) return;
+    const map = mapInstanceRef.current;
+    setTimeout(() => { map.invalidateSize(); }, 200);
+    const ro = new ResizeObserver(() => {
+      map.invalidateSize();
+    });
+    ro.observe(containerRef.current);
+    return () => ro.disconnect();
+  }, [isLoaded]);
+
   // Update Markers, Coastlines & Overlays
   useEffect(() => {
     if (!mapInstanceRef.current || !layerGroupRef.current || !isLoaded) return;
@@ -398,12 +466,18 @@ export default function WorldMapComponent({
             { sticky: true, className: 'leaflet-tooltip-dark' }
           );
 
+          polyline.on('click', (e: any) => {
+            const lat = +e.latlng.lat.toFixed(3);
+            const lon = +e.latlng.lng.toFixed(3);
+            inspectPoint(lat, lon, `${sector.name} Coastline`);
+          });
+
           polyline.addTo(layerGroup);
 
           // Add Pulsing Sector Center Marker
           const customIcon = L.divIcon({
             className: 'custom-coast-marker',
-            html: `<div class="relative flex items-center justify-center">
+            html: `<div class="relative flex items-center justify-center cursor-pointer">
               <span class="animate-ping absolute inline-flex h-5 w-5 rounded-full bg-teal-400 opacity-75"></span>
               <span class="relative inline-flex rounded-full h-3 w-3 bg-teal-300 border-2 border-navy-950"></span>
             </div>`,
@@ -412,14 +486,26 @@ export default function WorldMapComponent({
           });
 
           const marker = L.marker([sector.center.lat, sector.center.lon], { icon: customIcon });
+          marker.on('click', () => {
+            inspectPoint(sector.center.lat, sector.center.lon, sector.name);
+          });
           marker.bindPopup(
-            `<div class="p-2 text-xs font-sans">
-              <h4 class="font-bold text-teal-600 text-sm mb-1">🇮🇳 ${sector.name}</h4>
+            `<div class="p-2.5 text-xs font-sans">
+              <div class="flex items-center justify-between mb-1">
+                <h4 class="font-bold text-teal-600 text-sm">🇮🇳 ${sector.name}</h4>
+                <span class="text-[9px] px-1.5 py-0.5 rounded bg-teal-100 text-teal-800 font-semibold">${sector.type}</span>
+              </div>
               <p class="text-slate-600 mb-1"><strong>State/UT:</strong> ${sector.state}</p>
               <p class="text-slate-500 mb-2">${sector.description}</p>
-              <div class="text-[10px] bg-slate-100 p-1.5 rounded font-mono">
+              <div class="text-[10px] bg-slate-100 p-1.5 rounded font-mono mb-2">
                 Lat: ${sector.center.lat}°N | Lon: ${sector.center.lon}°E
               </div>
+              <button
+                onclick="window.orcaInspectLocation && window.orcaInspectLocation(${sector.center.lat}, ${sector.center.lon}, '${sector.name.replace(/'/g, "\\'")}')"
+                style="width:100%;padding:6px 10px;background:#0d9488;color:#fff;border:none;border-radius:6px;font-weight:600;cursor:pointer;font-size:11px;"
+              >
+                📊 Inspect Live Telemetry
+              </button>
             </div>`
           );
 
@@ -435,6 +521,10 @@ export default function WorldMapComponent({
             fillColor: zone.color || '#14b8a6',
             fillOpacity: 0.25,
             radius: 35000,
+          });
+
+          circle.on('click', () => {
+            inspectPoint(zone.center.lat, zone.center.lon, zone.name);
           });
 
           circle.bindPopup(
@@ -458,12 +548,15 @@ export default function WorldMapComponent({
           const color = vessel.type === 'fishing' ? '#34d399' : vessel.type === 'commercial' ? '#fbbf24' : '#38bdf8';
           const vesselIcon = L.divIcon({
             className: 'custom-vessel-marker',
-            html: `<div style="background-color: ${color}; width: 10px; height: 10px; border-radius: 50%; border: 2px solid #030712; box-shadow: 0 0 8px ${color}"></div>`,
+            html: `<div style="background-color: ${color}; width: 10px; height: 10px; border-radius: 50%; border: 2px solid #030712; box-shadow: 0 0 8px ${color}; cursor: pointer;"></div>`,
             iconSize: [12, 12],
             iconAnchor: [6, 6],
           });
 
           const marker = L.marker([vessel.position.lat, vessel.position.lon], { icon: vesselIcon });
+          marker.on('click', () => {
+            inspectPoint(vessel.position.lat, vessel.position.lon, `${vessel.name} (${vessel.type})`);
+          });
           marker.bindTooltip(
             `<div class="px-2 py-1 bg-navy-900 text-white text-xs font-medium rounded shadow">
               🚢 ${vessel.name} (${vessel.type}) — ${vessel.speed} kts
@@ -615,6 +708,16 @@ export default function WorldMapComponent({
         </button>
       </div>
 
+      {/* Interactive Helper Toast */}
+      {!clickedPoint && (
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 pointer-events-none">
+          <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-navy-900/90 backdrop-blur border border-teal-500/40 text-xs font-medium text-teal-300 shadow-xl">
+            <Radio className="w-3.5 h-3.5 text-teal-400 animate-pulse" />
+            <span>Click anywhere on the map or select a sector to inspect live data</span>
+          </div>
+        </div>
+      )}
+
       {/* Point Sampling Inspection HUD */}
       <AnimatePresence>
         {clickedPoint && (
@@ -622,14 +725,14 @@ export default function WorldMapComponent({
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20 }}
-            className="absolute bottom-6 right-4 z-20 w-84 sm:w-96 rounded-2xl glass border border-teal-500/40 p-4 shadow-2xl bg-navy-950/95 max-h-[calc(100vh-120px)] overflow-y-auto"
+            className="absolute bottom-6 right-4 z-40 w-84 sm:w-96 rounded-2xl glass border border-teal-500/40 p-4 shadow-2xl bg-navy-950/95 max-h-[calc(100vh-120px)] overflow-y-auto"
           >
             <div className="flex items-center justify-between mb-2 border-b border-navy-700/40 pb-2">
               <h3 className="text-xs font-bold text-white flex items-center gap-2">
-                <Radio className="w-4 h-4 text-teal-400 animate-pulse" />
-                World Map Point Inspector
+                <Radio className="w-4 h-4 text-teal-400 animate-pulse shrink-0" />
+                <span className="truncate">{clickedPoint.label || 'Marine Point Inspector'}</span>
               </h3>
-              <button onClick={() => setClickedPoint(null)} className="text-slate-400 hover:text-white">
+              <button onClick={() => setClickedPoint(null)} className="text-slate-400 hover:text-white p-1">
                 <X className="w-4 h-4" />
               </button>
             </div>

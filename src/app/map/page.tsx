@@ -207,6 +207,10 @@ export default function MapPage() {
           activeLayers={activeLayers}
           highlightCoasts={activeLayers.has('coastal_detect')}
           mapActionPayload={mapActionPayload}
+          selectedRegion={selectedRegion}
+          onPointClick={(lat, lon, data) => {
+            if (data) setLiveConditions(data);
+          }}
         />
       </div>
 
@@ -272,9 +276,22 @@ export default function MapPage() {
                   <p className="text-[10px] text-slate-400 line-clamp-1 mb-1.5">{sector.description}</p>
                   <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono">
                     <span>{sector.state}</span>
-                    <span className="text-teal-300 group-hover:translate-x-0.5 transition-transform flex items-center gap-0.5">
-                      Inspect Sector <ChevronRight className="w-3 h-3" />
-                    </span>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedRegion({
+                          id: sector.id,
+                          name: sector.name,
+                          bounds: sector.bounds,
+                          zoom: 7.5,
+                          center: sector.center,
+                        });
+                      }}
+                      className="text-teal-300 hover:text-white px-2 py-0.5 rounded bg-teal-500/20 hover:bg-teal-500/40 border border-teal-500/30 transition-all flex items-center gap-1 font-sans font-semibold text-[10px]"
+                    >
+                      <Eye className="w-3 h-3" />
+                      Inspect Live <ChevronRight className="w-3 h-3" />
+                    </button>
                   </div>
                 </div>
               ))}
