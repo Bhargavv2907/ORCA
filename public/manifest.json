@@ -1,0 +1,18 @@
+{
+  "name": "ORCA — Ocean Helper & Marine AI",
+  "short_name": "ORCA AI",
+  "description": "Agentic AI Marine Intelligence & Ocean Decision Support Platform for ISRO MOSDAC Satellite Data",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a121e",
+  "theme_color": "#14b8a6",
+  "orientation": "any",
+  "categories": ["weather", "navigation", "productivity"],
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    }
+  ]
+}

@@ -4,6 +4,7 @@ import "./globals.css";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { AuthProvider } from "@/context/AuthContext";
+import { OfflineIndicator } from "@/components/cards";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -29,6 +30,7 @@ export const metadata: Metadata = {
     "RAG marine AI",
     "ISRO MOSDAC",
   ],
+  manifest: "/manifest.json",
 };
 
 export const viewport: Viewport = {
@@ -48,6 +50,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${inter.variable} ${jetbrainsMono.variable} antialiased bg-navy-950 text-foreground min-h-screen`}>
         <AuthProvider>
+          <OfflineIndicator />
           <Sidebar />
           <main className="lg:pl-[240px] pt-14 lg:pt-0 pb-16 lg:pb-0 min-h-screen">
             {children}
