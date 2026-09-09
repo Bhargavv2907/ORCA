@@ -154,13 +154,50 @@ export default function DashboardPage() {
                 {safety.label.toUpperCase()}
               </h2>
               <p className="text-sm text-slate-400 mt-0.5">
-                Ocean conditions are currently {safety.status === 'SAFE' ? 'favorable' : safety.status === 'MODERATE' ? 'moderate with some risks' : 'hazardous'} for maritime activities.
+                Ocean conditions are currently {safety.status === 'SAFE' ? 'favorable' : safety.status === 'MODERATE' ? 'moderate with some risks' : 'hazardous'} for maritime activities. Data source: {dataSource}.
               </p>
             </div>
           </div>
           <RiskScore score={safety.overall} size="md" />
         </motion.div>
       )}
+
+      {/* Embedded Marine AI Chat Widget */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.15 }}
+        className="rounded-2xl border border-teal-500/20 bg-card p-4 sm:p-5 space-y-3"
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Bot className="w-5 h-5 text-teal-400" />
+            <h3 className="text-sm font-bold text-white uppercase tracking-wider">Ask ORCA Intelligence</h3>
+          </div>
+          <Link href="/assistant" className="text-xs text-teal-400 hover:underline flex items-center gap-1">
+            Full Chat Mode <ArrowRight className="w-3 h-3" />
+          </Link>
+        </div>
+        <div className="flex items-center gap-2">
+          <input
+            type="text"
+            placeholder="Ask about fishing safety, nearest PFZ, weather, routes, or what-if leave at 5 AM..."
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && (e.target as HTMLInputElement).value.trim()) {
+                const q = (e.target as HTMLInputElement).value.trim();
+                window.location.href = `/assistant?q=${encodeURIComponent(q)}`;
+              }
+            }}
+            className="flex-1 px-4 py-2.5 rounded-xl bg-navy-800/50 border border-navy-700/30 text-sm text-white placeholder-slate-500 outline-none focus:border-teal-500/40 transition-colors"
+          />
+          <Link
+            href="/assistant"
+            className="px-4 py-2.5 bg-gradient-to-r from-teal-500 to-cyan-500 text-navy-950 font-bold rounded-xl text-sm hover:shadow-lg hover:shadow-teal-500/25 transition-all"
+          >
+            Ask
+          </Link>
+        </div>
+      </motion.div>
 
       {/* Metrics Grid */}
       <div>

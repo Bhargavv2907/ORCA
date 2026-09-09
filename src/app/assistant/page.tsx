@@ -9,12 +9,14 @@ import { ChatMessage, AgentType } from '@/types/marine';
 import { DemoModeBanner } from '@/components/cards';
 
 const EXAMPLE_QUESTIONS = [
-  'Is it safe to go fishing today?',
-  'Where should I fish?',
-  'Will the waves increase tonight?',
-  'Which route is safer?',
-  'Will there be strong winds tomorrow?',
-  'Where are fishing activities high?',
+  'Where is the nearest Potential Fishing Zone (PFZ) today?',
+  'Is it safe to go fishing tomorrow morning?',
+  'What are current weather and sea conditions?',
+  'Are there any lightning or cyclone alerts?',
+  'Which route is safest to the fishing zone?',
+  'Is this area restricted or dangerous?',
+  'What if I leave at 5 AM tomorrow?',
+  'Why is Zone A recommended?',
 ];
 
 const LANGUAGES = [
@@ -36,6 +38,16 @@ export default function AssistantPage() {
   };
 
   useEffect(() => { scrollToBottom(); }, [messages]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const initialQuery = params.get('q');
+      if (initialQuery) {
+        handleSend(initialQuery);
+      }
+    }
+  }, []);
 
   const handleSend = async (question?: string) => {
     const q = question || input.trim();
