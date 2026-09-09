@@ -13,6 +13,7 @@ import { OceanMetric, FishingZone, RouteOption, Alert, Agent, DataSource } from 
 
 export { AgentTracePanel } from './AgentTracePanel';
 export { WhyEvidenceModal } from './WhyEvidenceModal';
+export { WhatIfComparisonCard } from './WhatIfComparisonCard';
 
 // ---- Icon Map ----
 const ICON_MAP: Record<string, React.ElementType> = {

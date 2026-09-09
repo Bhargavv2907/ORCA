@@ -8,6 +8,7 @@ import { getMockWeather, getMockWaves, getMockOcean, getMockFishingZones, getMoc
 import { calculateSafetyScore, calculateMarineRisk } from '@/lib/risk-engine';
 import { getMarineConditions } from '@/services/marine/unified';
 import { retrieveRelevantContext, RAGSearchResult } from '@/lib/rag-engine';
+import { getSessionContext, updateSessionContext, resolveFollowUpContext } from '@/lib/session-memory';
 import {
   OceanPFZOutputSchema,
   WeatherHazardOutputSchema,
@@ -311,22 +312,46 @@ function generateResponse(
         mapAction: gisOutput?.mapAction?.mapAction || 'show_geofence',
       },
     }),
-    whatif_query: () => ({
-      safetyStatus: safety,
-      reasoning: [
-        'Baseline Scenario (09:00 AM): Wind 22 km/h, Wave Height 1.8m, Safety Score 88/100.',
-        'Alternative Scenario (05:00 AM Departure): Wind 14 km/h, Wave Height 1.2m, Safety Score 94/100.',
-        'Leaving at 05:00 AM provides calmer sea state with 0.6m lower wave height.',
-      ],
-      recommendation: '💡 Departing at 05:00 AM is recommended. Waves are 33% lower and wind speed is calmer compared to late morning.',
-      structuredData: {
-        scenario: '05:00 AM Early Departure',
-        baselineScore: safety.overall,
-        alternativeScore: 94,
-        deltaWaveHeight: '-0.6 m',
-        mapAction: 'focus_location',
-      },
-    }),
+    whatif_query: () => {
+      const baseWave = waves.height;
+      const baseWind = weather.windSpeed;
+      const altWave = 1.2;
+      const altWind = 14;
+
+      const baseRisk = calculateMarineRisk({ waveHeight: baseWave, windSpeed: baseWind, pressure: weather.pressure, visibility: weather.visibility });
+      const altRisk = calculateMarineRisk({ waveHeight: altWave, windSpeed: altWind, pressure: weather.pressure, visibility: weather.visibility });
+
+      const scoreDelta = altRisk.score - baseRisk.score;
+      const waveDelta = +(altWave - baseWave).toFixed(1);
+
+      return {
+        safetyStatus: safety,
+        reasoning: [
+          `Baseline Departure (09:00 AM): Wind ${Math.round(baseWind)} km/h, Waves ${baseWave.toFixed(1)}m → Risk Score ${baseRisk.score}/100.`,
+          `Alternative Departure (05:00 AM): Wind ${altWind} km/h, Waves ${altWave.toFixed(1)}m → Risk Score ${altRisk.score}/100.`,
+          `Leaving at 05:00 AM provides a ${Math.abs(waveDelta)}m reduction in wave height (${scoreDelta > 0 ? `+${scoreDelta}` : scoreDelta} safety points).`,
+        ],
+        recommendation: `💡 Departing at 05:00 AM is recommended. Wave height is ${Math.abs(waveDelta)}m lower and wind speeds are calmer, yielding a higher safety score (${altRisk.score}/100 vs ${baseRisk.score}/100).`,
+        structuredData: {
+          scenario: '05:00 AM Early Departure',
+          baselineScore: baseRisk.score,
+          alternativeScore: altRisk.score,
+          deltaWaveHeight: `${waveDelta} m`,
+          mapAction: 'focus_location',
+        },
+        whatIfComparison: {
+          baselineTime: '09:00 AM',
+          alternativeTime: '05:00 AM',
+          baselineScore: baseRisk.score,
+          alternativeScore: altRisk.score,
+          baselineWaveHeight: baseWave,
+          alternativeWaveHeight: altWave,
+          baselineWindSpeed: baseWind,
+          alternativeWindSpeed: altWind,
+          recommendation: `Departing at 05:00 AM improves safety by ${scoreDelta > 0 ? `+${scoreDelta}` : scoreDelta} points with lower wave exposure.`,
+        },
+      };
+    },
     general_query: () => ({
       safetyStatus: safety,
       reasoning: [
@@ -350,6 +375,7 @@ function generateResponse(
     timestamp: new Date().toISOString(),
     confidence: 85,
     structuredData: partial.structuredData,
+    whatIfComparison: partial.whatIfComparison,
   };
 }
 

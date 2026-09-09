@@ -233,6 +233,18 @@ export interface EvidencePayload {
   warnings: string[];
 }
 
+export interface WhatIfComparisonPayload {
+  baselineTime: string;
+  alternativeTime: string;
+  baselineScore: number;
+  alternativeScore: number;
+  baselineWaveHeight: number;
+  alternativeWaveHeight: number;
+  baselineWindSpeed: number;
+  alternativeWindSpeed: number;
+  recommendation: string;
+}
+
 export interface OrcaResponse {
   query: string;
   agentsUsed: Agent[];
@@ -245,6 +257,7 @@ export interface OrcaResponse {
   structuredData?: Record<string, unknown>;
   executionTrace?: AgentTraceEvent[];
   evidence?: EvidencePayload;
+  whatIfComparison?: WhatIfComparisonPayload;
 }
 
 // ---- Chat ----
@@ -261,6 +274,7 @@ export interface ChatMessage {
   structuredData?: Record<string, unknown>;
   executionTrace?: AgentTraceEvent[];
   evidence?: EvidencePayload;
+  whatIfComparison?: WhatIfComparisonPayload;
 }
 
 // ---- Marine Conditions (Unified) ----

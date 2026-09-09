@@ -5,8 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Send, Mic, Globe, Bot, User, Shield, Lightbulb, Database, Loader2, Anchor, HelpCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { orchestrate, AgentOutput } from '@/lib/orchestrator';
-import { ChatMessage, AgentType, EvidencePayload } from '@/types/marine';
-import { DemoModeBanner, AgentTracePanel, WhyEvidenceModal } from '@/components/cards';
+import { ChatMessage, AgentType, EvidencePayload, WhatIfComparisonPayload } from '@/types/marine';
+import { DemoModeBanner, AgentTracePanel, WhyEvidenceModal, WhatIfComparisonCard } from '@/components/cards';
 
 const EXAMPLE_QUESTIONS = [
   'Where is the nearest Potential Fishing Zone (PFZ) today?',
@@ -88,6 +88,7 @@ export default function AssistantPage() {
         dataSources: response.dataSources,
         executionTrace: response.executionTrace,
         evidence: response.evidence,
+        whatIfComparison: response.whatIfComparison,
       };
       setMessages(prev => [...prev, assistantMsg]);
     } catch {
@@ -264,6 +265,11 @@ export default function AssistantPage() {
                     {/* Agent Trace Panel */}
                     {msg.executionTrace && msg.executionTrace.length > 0 && (
                       <AgentTracePanel trace={msg.executionTrace} />
+                    )}
+
+                    {/* What-If Scenario Comparison Card */}
+                    {msg.whatIfComparison && (
+                      <WhatIfComparisonCard comparison={msg.whatIfComparison} />
                     )}
 
                     {/* Structured Data */}
