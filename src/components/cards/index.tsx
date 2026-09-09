@@ -20,6 +20,7 @@ export { AudioAdvisoryPlayer } from './AudioAdvisoryPlayer';
 export { ProactiveAlertBanner } from './ProactiveAlertBanner';
 export { OfflineIndicator } from './OfflineIndicator';
 export { PitchDeckDemoModal } from './PitchDeckDemoModal';
+export { LocationBadge } from './LocationBadge';
 
 // ---- Icon Map ----
 const ICON_MAP: Record<string, React.ElementType> = {
@@ -165,7 +166,7 @@ export function RouteCard({ route, index = 0 }: { route: RouteOption; index?: nu
         </div>
       </div>
       {route.reason && (
-        <p className="text-sm text-teal-300/80 italic">"{route.reason}"</p>
+        <p className="text-sm text-teal-300/80 italic">&quot;{route.reason}&quot;</p>
       )}
       {route.risks.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-2">
@@ -247,7 +248,7 @@ export function AlertCard({ alert, index = 0 }: { alert: Alert; index?: number }
 // AgentCard
 // ============================================================
 export function AgentCard({ agent, index = 0, data }: { agent: Agent; index?: number; data?: Record<string, unknown> }) {
-  const Icon = getIcon(agent.icon);
+  const IconComponent = getIcon(agent.icon);
   const statusColors: Record<string, string> = {
     idle: 'border-slate-700/30 bg-slate-800/30',
     running: 'border-cyan-500/40 bg-cyan-500/5 glow-ocean',
@@ -267,7 +268,7 @@ export function AgentCard({ agent, index = 0, data }: { agent: Agent; index?: nu
           agent.status === 'completed' ? 'bg-emerald-500/20' :
           agent.status === 'running' ? 'bg-cyan-500/20' : 'bg-slate-700/30'
         )}>
-          <Icon className={cn('w-5 h-5',
+          <IconComponent className={cn('w-5 h-5',
             agent.status === 'completed' ? 'text-emerald-400' :
             agent.status === 'running' ? 'text-cyan-400 animate-pulse' : 'text-slate-500'
           )} />

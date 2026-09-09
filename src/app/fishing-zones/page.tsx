@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Fish, Info, MapPin, Thermometer, Droplets, Navigation, Anchor, BarChart3 } from 'lucide-react';
-import { FishingZoneCard, DemoModeBanner } from '@/components/cards';
+import { FishingZoneCard, DemoModeBanner, LocationBadge } from '@/components/cards';
 import { getMockFishingZones } from '@/data/mock-data';
 import { FishingZone } from '@/types/marine';
+import { getSelectedLocation, marineApiUrl } from '@/lib/location-store';
 
 const PARAMETERS = [
   'Sea Surface Temperature', 'Chlorophyll-a', 'Salinity', 'Ocean currents',
@@ -16,29 +17,28 @@ const PARAMETERS = [
 export default function FishingZonesPage() {
   const [zones, setZones] = useState<FishingZone[]>([]);
 
-  useEffect(() => {
-    async function loadLiveFishingZones() {
-      try {
-        const res = await fetch('/api/marine?lat=18.95&lon=72.82');
-        if (res.ok) {
-          const live = await res.json();
-          const baseZones = getMockFishingZones();
-          if (live.ocean) {
-            baseZones.forEach(z => {
-              z.sst = +live.ocean.sst.toFixed(1);
-              z.chlorophyll = +live.ocean.chlorophyll.toFixed(2);
-            });
-          }
-          setZones(baseZones);
-        } else {
-          setZones(getMockFishingZones());
+  const loadZones = useCallback(async () => {
+    try {
+      const res = await fetch(marineApiUrl(getSelectedLocation()));
+      if (res.ok) {
+        const live = await res.json();
+        const baseZones = getMockFishingZones();
+        if (live.ocean) {
+          baseZones.forEach(z => {
+            z.sst = +live.ocean.sst.toFixed(1);
+            z.chlorophyll = +live.ocean.chlorophyll.toFixed(2);
+          });
         }
-      } catch {
+        setZones(baseZones);
+      } else {
         setZones(getMockFishingZones());
       }
+    } catch {
+      setZones(getMockFishingZones());
     }
-    loadLiveFishingZones();
   }, []);
+
+  useEffect(() => { loadZones(); }, [loadZones]);
 
   return (
     <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
@@ -51,7 +51,10 @@ export default function FishingZonesPage() {
           </h1>
           <p className="text-sm text-slate-400 mt-1">AI-predicted fishing suitability based on environmental and historical indicators.</p>
         </div>
-        <DemoModeBanner />
+        <div className="flex items-center gap-3">
+          <LocationBadge onLocationChange={loadZones} />
+          <DemoModeBanner />
+        </div>
       </motion.div>
 
       {/* Map with zones */}

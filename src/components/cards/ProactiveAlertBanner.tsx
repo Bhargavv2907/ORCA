@@ -12,6 +12,7 @@ import {
   acknowledgeAlert,
 } from '@/lib/alert-engine';
 import { speakVernacularAdvisory } from '@/lib/i18n-engine';
+import { getSelectedLocation } from '@/lib/location-store';
 
 export function ProactiveAlertBanner() {
   const [alerts, setAlerts] = useState<ProactiveAlert[]>([]);
@@ -20,8 +21,9 @@ export function ProactiveAlertBanner() {
   useEffect(() => {
     async function loadAlerts() {
       try {
-        const conditions = await getMarineConditions(18.95, 72.82);
-        const geo = checkGeofenceProximity({ lat: 18.95, lon: 72.82 });
+        const loc = getSelectedLocation();
+        const conditions = await getMarineConditions(loc.lat, loc.lon);
+        const geo = checkGeofenceProximity({ lat: loc.lat, lon: loc.lon });
         const rawAlerts = evaluateProactiveAlerts(conditions, geo);
         const filtered = deduplicateAlerts(rawAlerts);
         setAlerts(filtered);

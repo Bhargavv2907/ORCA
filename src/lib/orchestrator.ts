@@ -16,7 +16,52 @@ import {
   GISNavigationOutputSchema,
   SafetyDecisionOutputSchema,
   MapAction,
-} from '@/lib/agents/schemas';
+} from '@/lib/agents/schemas';// ---- India Coastal Location Database ----
+export interface CoastalLocation {
+  name: string;
+  state: string;
+  lat: number;
+  lon: number;
+  aliases: string[];
+}
+
+export const INDIAN_COASTAL_LOCATIONS: CoastalLocation[] = [
+  { name: 'Mumbai',        state: 'Maharashtra',  lat: 18.95, lon: 72.82, aliases: ['bombay', 'mumbai'] },
+  { name: 'Kochi',         state: 'Kerala',       lat: 9.93,  lon: 76.26, aliases: ['cochin', 'kochi', 'ernakulam'] },
+  { name: 'Chennai',       state: 'Tamil Nadu',   lat: 13.08, lon: 80.27, aliases: ['chennai', 'madras'] },
+  { name: 'Visakhapatnam', state: 'Andhra Pradesh', lat: 17.68, lon: 83.22, aliases: ['vizag', 'visakhapatnam', 'vishakhapatnam'] },
+  { name: 'Kolkata',       state: 'West Bengal',  lat: 22.57, lon: 88.36, aliases: ['kolkata', 'calcutta', 'haldia'] },
+  { name: 'Goa',           state: 'Goa',          lat: 15.49, lon: 73.82, aliases: ['goa', 'panaji', 'margao', 'vasco'] },
+  { name: 'Mangalore',     state: 'Karnataka',    lat: 12.87, lon: 74.88, aliases: ['mangalore', 'mangaluru'] },
+  { name: 'Tuticorin',     state: 'Tamil Nadu',   lat: 8.80,  lon: 78.13, aliases: ['tuticorin', 'thoothukudi', 'tootukudi'] },
+  { name: 'Pondicherry',   state: 'Puducherry',   lat: 11.93, lon: 79.83, aliases: ['pondicherry', 'puducherry'] },
+  { name: 'Veraval',       state: 'Gujarat',      lat: 20.90, lon: 70.36, aliases: ['veraval', 'somnath'] },
+  { name: 'Porbandar',     state: 'Gujarat',      lat: 21.64, lon: 69.61, aliases: ['porbandar'] },
+  { name: 'Karwar',        state: 'Karnataka',    lat: 14.81, lon: 74.13, aliases: ['karwar'] },
+  { name: 'Paradip',       state: 'Odisha',       lat: 20.32, lon: 86.61, aliases: ['paradip', 'paradeep'] },
+  { name: 'Kakinada',      state: 'Andhra Pradesh', lat: 16.94, lon: 82.23, aliases: ['kakinada', 'kakinda'] },
+  { name: 'Ratnagiri',     state: 'Maharashtra',  lat: 16.99, lon: 73.30, aliases: ['ratnagiri'] },
+  { name: 'Kozhikode',     state: 'Kerala',       lat: 11.25, lon: 75.77, aliases: ['kozhikode', 'calicut'] },
+  { name: 'Kannur',        state: 'Kerala',       lat: 11.87, lon: 75.36, aliases: ['kannur', 'cannanore'] },
+  { name: 'Thiruvananthapuram', state: 'Kerala',  lat: 8.48,  lon: 76.94, aliases: ['trivandrum', 'thiruvananthapuram'] },
+  { name: 'Rameswaram',    state: 'Tamil Nadu',   lat: 9.28,  lon: 79.31, aliases: ['rameswaram', 'rameshwaram'] },
+  { name: 'Okha',          state: 'Gujarat',      lat: 22.47, lon: 69.07, aliases: ['okha', 'dwarka'] },
+  { name: 'Mandapam',      state: 'Tamil Nadu',   lat: 9.27,  lon: 79.12, aliases: ['mandapam'] },
+  { name: 'Bhatkal',       state: 'Karnataka',    lat: 13.97, lon: 74.55, aliases: ['bhatkal'] },
+];
+
+const DEFAULT_LOCATION = INDIAN_COASTAL_LOCATIONS[0]; // Mumbai fallback
+
+export function extractLocation(query: string): CoastalLocation {
+  const q = query.toLowerCase();
+  for (const loc of INDIAN_COASTAL_LOCATIONS) {
+    if (loc.aliases.some(alias => q.includes(alias))) {
+      return loc;
+    }
+  }
+  return DEFAULT_LOCATION;
+}
+
 
 // ---- Reconciled 5-Agent Query Classification ----
 export interface QueryClassification {
@@ -115,11 +160,11 @@ function normalizeAgentType(type: AgentType): AgentType {
   }
 }
 
-export async function executeAgent(agentType: AgentType): Promise<AgentOutput> {
+export async function executeAgent(agentType: AgentType, lat = 18.95, lon = 72.82): Promise<AgentOutput> {
   const normalized = normalizeAgentType(agentType);
   await new Promise(r => setTimeout(r, 200 + Math.random() * 300));
 
-  const conditions = await getMarineConditions(18.95, 72.82);
+  const conditions = await getMarineConditions(lat, lon);
   const weather = conditions.weather;
   const waves = conditions.waves;
   const ocean = conditions.ocean;
@@ -134,8 +179,8 @@ export async function executeAgent(agentType: AgentType): Promise<AgentOutput> {
   if (normalized === 'orchestrator') {
     return {
       agent: { id: 'orchestrator', name: 'Orchestrator Agent', description: 'Intent, location, language & routing', icon: 'brain', status: 'completed' },
-      data: { intent: 'intent_parsed', language: 'en', userLocation: { lat: 18.95, lon: 72.82 } },
-      summary: 'Parsed user query, location (18.95°N, 72.82°E), language English',
+      data: { intent: 'intent_parsed', language: 'en', userLocation: { lat, lon } },
+      summary: `Parsed user query, location (${lat.toFixed(2)}°N, ${lon.toFixed(2)}°E), language English`,
     };
   }
 
@@ -196,7 +241,7 @@ export async function executeAgent(agentType: AgentType): Promise<AgentOutput> {
       route: bestRoute.waypoints,
     };
     const rawData = {
-      userLocation: { lat: 18.95, lon: 72.82 },
+      userLocation: { lat, lon },
       distanceKm: zones[0].distanceFromCoast,
       isRestricted: false,
       geofenceStatus: 'CLEAR (Inside safe fishing boundaries)',
@@ -241,11 +286,15 @@ function generateResponse(
   question: string,
   classification: QueryClassification,
   outputs: AgentOutput[],
+  liveConditions?: import('@/types/marine').MarineConditions,
+  location?: CoastalLocation,
 ): OrcaResponse {
-  const weather = getMockWeather();
-  const waves = getMockWaves();
-  const ocean = getMockOcean();
-  const safety = calculateSafetyScore(weather, waves, ocean);
+  // Use live conditions if available, fall back to mock only as last resort
+  const weather = liveConditions?.weather ?? getMockWeather();
+  const waves = liveConditions?.waves ?? getMockWaves();
+  const ocean = liveConditions?.ocean ?? getMockOcean();
+  const safety = liveConditions?.safety ?? calculateSafetyScore(weather, waves, ocean);
+  const cityName = location ? `${location.name}, ${location.state}` : 'Mumbai Coast';
   const zones = getMockFishingZones();
 
   const gisOutput = outputs.find(o => normalizeAgentType(o.agent.id) === 'gis_navigation')?.data as { mapAction?: MapAction } | undefined;
@@ -253,118 +302,57 @@ function generateResponse(
   const responses: Record<string, () => Partial<OrcaResponse>> = {
     safety_assessment: () => ({
       safetyStatus: safety,
-      reasoning: [
-        `Wave height: ${waves.height.toFixed(1)} m — ${waves.height > 2.5 ? 'rough' : 'manageable'}.`,
-        `Wind speed: ${Math.round(weather.windSpeed)} km/h from ${weather.windDirection}.`,
-        `Ocean current: ${ocean.currentSpeed.toFixed(1)} knots — within operational limits.`,
-        `Visibility: ${weather.visibility.toFixed(1)} km — good visual range.`,
-      ],
       recommendation: safety.overall >= 70
-        ? 'Fishing is safe with standard caution. Return before evening as wind speeds may increase.'
-        : 'Marine conditions are hazardous. Remaining onshore or returning to harbor is advised.',
+        ? `✅ Safe to go out. Waves ${waves.height.toFixed(1)}m · Wind ${Math.round(weather.windSpeed)} km/h from ${weather.windDirection} · Visibility ${weather.visibility?.toFixed(1) ?? 'good'} km. Safety score: ${safety.overall}/100. Return before evening.`
+        : `⚠️ Do NOT go out — hazardous conditions. Waves: ${waves.height.toFixed(1)}m, Wind: ${Math.round(weather.windSpeed)} km/h from ${weather.windDirection}. Safety score: ${safety.overall}/100. Stay ashore.`,
     }),
     fishing_recommendation: () => ({
       safetyStatus: safety,
-      reasoning: [
-        `Zone A (Southwest Shelf) has highest suitability score at ${zones[0].suitabilityScore}%.`,
-        `SST is ${zones[0].sst}°C and Chlorophyll-a is ${zones[0].chlorophyll} mg/m³.`,
-        `Zone A is ${zones[0].distanceFromCoast} km offshore. Geofence checks clear.`,
-      ],
-      recommendation: `Zone A is highly recommended today (Suitability ${zones[0].suitabilityScore}%). Route B (38 km, 96% safety score) is optimal.`,
-      structuredData: {
-        bestZone: zones[0].name,
-        suitability: zones[0].suitabilityScore,
-        distanceKm: zones[0].distanceFromCoast,
-        sst: zones[0].sst,
-        safetyScore: safety.overall,
-        mapAction: gisOutput?.mapAction?.mapAction || 'highlight_pfz',
-      },
-      missionPlan: {
-        recommendedZone: zones[0].name,
-        suitabilityScore: zones[0].suitabilityScore,
-        safetyScore: safety.overall,
-        safetyLabel: safety.label,
-        recommendedTime: '05:30 AM (Tomorrow)',
-        recommendedRoute: 'Route B (Coastal Path)',
-        distanceKm: zones[0].distanceFromCoast,
-        warnings: safety.overall < 70 ? ['High wave swell warning along coastal shelf.'] : ['Verify fuel reserves before departure.'],
-        mapAction: gisOutput?.mapAction?.mapAction || 'highlight_pfz',
-      },
+      recommendation: `🐟 Best zone today: ${zones[0].name} — ${zones[0].distanceFromCoast} km offshore, suitability ${zones[0].suitabilityScore}%. Sea temp ${zones[0].sst}°C, chlorophyll ${zones[0].chlorophyll} mg/m³. Waves ${waves.height.toFixed(1)}m · Wind ${Math.round(weather.windSpeed)} km/h. Safety: ${safety.overall}/100 (${safety.label}). Take Route B (38 km, 96% safety).`,
     }),
     route_planning: () => ({
       safetyStatus: safety,
-      reasoning: [
-        'Analyzed 3 potential navigation paths to coastal shelf.',
-        'Route B (Coastal Path) recommended: 38 km distance with 96% safety rating.',
-        'Route B avoids high swell exposure and heavy traffic corridors.',
-      ],
-      recommendation: 'Route B is the safest path. It minimizes wave impact and bypasses congested shipping lanes.',
-      structuredData: {
-        recommendedRoute: 'Route B (Coastal Path)',
-        distanceKm: 38,
-        safetyScore: 96,
-        mapAction: gisOutput?.mapAction?.mapAction || 'draw_route',
-      },
+      recommendation: `🗺️ Route B (Coastal Path) recommended — 38 km, 96% safety score. Current conditions: Waves ${waves.height.toFixed(1)}m, Wind ${Math.round(weather.windSpeed)} km/h ${weather.windDirection}. Route B avoids high swell and shipping lanes. ${safety.overall < 70 ? '⚠️ Conditions are marginal — sail with caution.' : '✅ Good conditions for the trip.'}`,
     }),
     weather_query: () => ({
       safetyStatus: safety,
-      reasoning: [
-        `Wind: ${Math.round(weather.windSpeed)} km/h ${weather.windDirection}.`,
-        `Temperature: ${weather.temperature.toFixed(1)}°C | Humidity: ${weather.humidity}%.`,
-        `Pressure: ${weather.pressure.toFixed(0)} hPa (stable).`,
-      ],
-      recommendation: weather.windSpeed > 30
-        ? 'Strong wind alert in effect. Small crafts should avoid open sea.'
-        : 'Weather conditions are stable for daytime fishing operations.',
+      recommendation: `🌤️ ${cityName} right now — Wind: ${Math.round(weather.windSpeed)} km/h ${weather.windDirection} · Waves: ${waves.height.toFixed(1)}m · Temp: ${weather.temperature.toFixed(1)}°C · Humidity: ${Math.round(weather.humidity)}% · Pressure: ${Math.round(weather.pressure)} hPa · Visibility: ${weather.visibility?.toFixed(1) ?? '—'} km. ${weather.windSpeed > 30 ? '⚠️ Strong winds — small crafts should avoid open sea.' : '✅ Stable conditions for daytime fishing.'}`,
+    }),
+    wave_query: () => ({
+      safetyStatus: safety,
+      recommendation: `🌊 Current waves: ${waves.height.toFixed(1)}m height · Period ${waves.period?.toFixed(0) ?? '—'}s · Swell ${waves.swellHeight?.toFixed(1) ?? '—'}m from ${waves.swellDirection ?? '—'}. ${waves.height > 2.5 ? '⚠️ Rough sea — exercise caution.' : '✅ Sea state manageable for fishing vessels.'}`,
+    }),
+    ocean_query: () => ({
+      safetyStatus: safety,
+      recommendation: `🌡️ Ocean data: SST ${ocean.sst.toFixed(1)}°C · Chlorophyll-a ${ocean.chlorophyll.toFixed(2)} mg/m³ · Current ${ocean.currentSpeed.toFixed(1)} knots from ${ocean.currentDirection}. ${ocean.chlorophyll >= 2.0 ? '✅ High chlorophyll — good fishing nearby.' : 'Moderate phytoplankton — check PFZ advisory.'}`,
     }),
     geofence_query: () => {
-      const geoResult = checkGeofenceProximity({ lat: 18.95, lon: 72.82 });
+      const gLat = location?.lat ?? 18.95;
+      const gLon = location?.lon ?? 72.82;
+      const geoResult = checkGeofenceProximity({ lat: gLat, lon: gLon });
       return {
         safetyStatus: safety,
-        reasoning: [
-          `Position (18.95°N, 72.82°E) evaluated against Indian Maritime Boundary Line (IMBL) & MPA boundaries.`,
-          `Nearest boundary: ${geoResult.nearestZone} (${geoResult.distanceKm} km away).`,
-          `Geofence safeguard status: ${geoResult.status} — ${geoResult.advisory}`,
-        ],
-        recommendation: geoResult.advisory,
-        structuredData: {
-          geofenceStatus: geoResult.status,
-          nearestZone: geoResult.nearestZone,
-          distanceKm: geoResult.distanceKm,
-          mapAction: gisOutput?.mapAction?.mapAction || 'show_geofence',
-        },
+        recommendation: `📍 ${cityName} (${gLat.toFixed(2)}°N, ${gLon.toFixed(2)}°E): ${geoResult.status}. Nearest restricted boundary: ${geoResult.nearestZone}, ${geoResult.distanceKm} km away. ${geoResult.advisory}`,
         geofenceResult: geoResult,
       };
     },
     whatif_query: () => {
       const baseWave = waves.height;
       const baseWind = weather.windSpeed;
-      const altWave = 1.2;
-      const altWind = 14;
+      const altWave = +(baseWave * 0.65).toFixed(1);
+      const altWind = +(baseWind * 0.60).toFixed(1);
 
       const baseRisk = calculateMarineRisk({ waveHeight: baseWave, windSpeed: baseWind, pressure: weather.pressure, visibility: weather.visibility });
       const altRisk = calculateMarineRisk({ waveHeight: altWave, windSpeed: altWind, pressure: weather.pressure, visibility: weather.visibility });
 
       const scoreDelta = altRisk.score - baseRisk.score;
-      const waveDelta = +(altWave - baseWave).toFixed(1);
+      const waveDelta = +(baseWave - altWave).toFixed(1);
 
       return {
         safetyStatus: safety,
-        reasoning: [
-          `Baseline Departure (09:00 AM): Wind ${Math.round(baseWind)} km/h, Waves ${baseWave.toFixed(1)}m → Risk Score ${baseRisk.score}/100.`,
-          `Alternative Departure (05:00 AM): Wind ${altWind} km/h, Waves ${altWave.toFixed(1)}m → Risk Score ${altRisk.score}/100.`,
-          `Leaving at 05:00 AM provides a ${Math.abs(waveDelta)}m reduction in wave height (${scoreDelta > 0 ? `+${scoreDelta}` : scoreDelta} safety points).`,
-        ],
-        recommendation: `💡 Departing at 05:00 AM is recommended. Wave height is ${Math.abs(waveDelta)}m lower and wind speeds are calmer, yielding a higher safety score (${altRisk.score}/100 vs ${baseRisk.score}/100).`,
-        structuredData: {
-          scenario: '05:00 AM Early Departure',
-          baselineScore: baseRisk.score,
-          alternativeScore: altRisk.score,
-          deltaWaveHeight: `${waveDelta} m`,
-          mapAction: 'focus_location',
-        },
+        recommendation: `💡 Leaving at 5 AM vs now: Waves ~${altWave}m (${waveDelta}m calmer than current ${baseWave.toFixed(1)}m), wind ~${Math.round(altWind)} km/h vs ${Math.round(baseWind)} km/h now. Safety improves ${baseRisk.score} → ${altRisk.score}/100 (${scoreDelta > 0 ? '+' : ''}${scoreDelta} pts). ${scoreDelta > 5 ? '✅ Early departure strongly recommended.' : 'Marginal difference — conditions are similar either way.'}`,
         whatIfComparison: {
-          baselineTime: '09:00 AM',
+          baselineTime: 'Now',
           alternativeTime: '05:00 AM',
           baselineScore: baseRisk.score,
           alternativeScore: altRisk.score,
@@ -372,17 +360,13 @@ function generateResponse(
           alternativeWaveHeight: altWave,
           baselineWindSpeed: baseWind,
           alternativeWindSpeed: altWind,
-          recommendation: `Departing at 05:00 AM improves safety by ${scoreDelta > 0 ? `+${scoreDelta}` : scoreDelta} points with lower wave exposure.`,
+          recommendation: `Departing at 05:00 AM improves safety by ${scoreDelta > 0 ? `+${scoreDelta}` : scoreDelta} points.`,
         },
       };
     },
     general_query: () => ({
       safetyStatus: safety,
-      reasoning: [
-        `Live Mumbai Coast conditions: SST ${ocean.sst.toFixed(1)}°C, Wind ${Math.round(weather.windSpeed)} km/h, Waves ${waves.height.toFixed(1)}m.`,
-        `Overall safety index: ${safety.overall}/100 — ${safety.label}.`,
-      ],
-      recommendation: 'Ask specific questions regarding fishing zones, weather advisories, or navigation routes.',
+      recommendation: `📡 ${cityName} right now: Waves ${waves.height.toFixed(1)}m · Wind ${Math.round(weather.windSpeed)} km/h ${weather.windDirection} · Temp ${weather.temperature.toFixed(1)}°C · SST ${ocean.sst.toFixed(1)}°C · Safety ${safety.overall}/100 (${safety.label}). Ask me about fishing zones, routes, weather alerts, or sea conditions.`,
     }),
   };
 
@@ -412,6 +396,15 @@ export async function orchestrate(
   onAgentComplete?: (agent: AgentType, output: AgentOutput) => void,
 ): Promise<OrcaResponse> {
   const classification = classifyQuery(question);
+  const location = extractLocation(question);          // ← detect city from query
+  const { lat, lon } = location;
+
+  // Persist selected city → all other pages (dashboard, weather, ocean) pick it up
+  if (typeof window !== 'undefined') {
+    const { setSelectedLocation } = await import('@/lib/location-store');
+    setSelectedLocation(location);
+  }
+
   const outputs: AgentOutput[] = [];
   const executionTrace: any[] = [];
   const startTime = Date.now();
@@ -422,7 +415,7 @@ export async function orchestrate(
   for (const agentType of classification.agents) {
     onAgentStart?.(agentType);
     const stepStart = Date.now();
-    const output = await executeAgent(agentType);
+    const output = await executeAgent(agentType, lat, lon);  // ← pass coords
     const stepDuration = Date.now() - stepStart;
 
     outputs.push(output);
@@ -451,10 +444,13 @@ export async function orchestrate(
 
   await new Promise(r => setTimeout(r, 200));
 
-  const response = generateResponse(question, classification, outputs);
+  // Fetch live conditions ONCE for the detected location
+  const conditions = await getMarineConditions(lat, lon);
+  conditions.location = { coordinates: { lat, lon }, name: location.name, region: location.state };
+
+  const response = generateResponse(question, classification, outputs, conditions, location);
   response.executionTrace = executionTrace;
 
-  const conditions = await getMarineConditions(18.95, 72.82);
   const riskCalculated = calculateMarineRisk({
     waveHeight: conditions.waves.height,
     windSpeed: conditions.weather.windSpeed,

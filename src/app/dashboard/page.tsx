@@ -1,13 +1,15 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { MapPin, Bot, ArrowRight, Shield, Clock, Anchor } from 'lucide-react';
-import { OceanMetricCard, DemoModeBanner, RiskScore, ProactiveAlertBanner } from '@/components/cards';
-import { getMockDashboardMetrics, getMockSafety, getMockAlerts, DEFAULT_LOCATION } from '@/data/mock-data';
+import { OceanMetricCard, DemoModeBanner, RiskScore, ProactiveAlertBanner, LocationBadge } from '@/components/cards';
+import { getMockDashboardMetrics, getMockSafety, getMockAlerts } from '@/data/mock-data';
 import { getGreeting, formatCoordinate } from '@/lib/utils';
 import { OceanMetric, SafetyScore, Alert } from '@/types/marine';
+import { getSelectedLocation, marineApiUrl, DEFAULT_LOCATION } from '@/lib/location-store';
+import type { CoastalLocation } from '@/lib/orchestrator';
 
 export default function DashboardPage() {
   const [metrics, setMetrics] = useState<OceanMetric[]>([]);
@@ -16,71 +18,73 @@ export default function DashboardPage() {
   const [time, setTime] = useState('');
   const [dataSource, setDataSource] = useState<string>('Live Data Pipeline');
   const [isLive, setIsLive] = useState<boolean>(false);
+  const [location, setLocation] = useState<CoastalLocation>(DEFAULT_LOCATION);
 
-  useEffect(() => {
-    async function loadLiveMarineData() {
-      try {
-        const res = await fetch('/api/marine?lat=18.95&lon=72.82');
-        if (res.ok) {
-          const data = await res.json();
-          setSafety(data.safety);
-          setDataSource(data.source);
-          setIsLive(data.dataStatus !== 'MOCK');
+  const loadLiveMarineData = useCallback(async () => {
+    const loc = getSelectedLocation();
+    setLocation(loc);
+    try {
+      const res = await fetch(marineApiUrl(loc));
+      if (res.ok) {
+        const data = await res.json();
+        setSafety(data.safety);
+        setDataSource(data.source);
+        setIsLive(data.dataStatus !== 'MOCK');
 
-          // Derive live ocean metrics from live weather/ocean/waves
-          const liveMetrics: OceanMetric[] = [
-            {
-              id: 'wave',
-              label: 'Wave Height',
-              value: `${data.waves.height.toFixed(1)} m`,
-              unit: 'm',
-              trend: data.waves.height > 2 ? 'up' : 'stable',
-              status: data.waves.height > 2.5 ? 'danger' : data.waves.height > 1.8 ? 'warning' : 'good',
-              icon: 'waves',
-              description: `Period: ${data.waves.period}s | Swell: ${data.waves.swellHeight.toFixed(1)}m`,
-            },
-            {
-              id: 'wind',
-              label: 'Wind Speed',
-              value: `${data.weather.windSpeed.toFixed(1)} km/h`,
-              unit: 'km/h',
-              trend: data.weather.windSpeed > 25 ? 'up' : 'stable',
-              status: data.weather.windSpeed > 35 ? 'danger' : data.weather.windSpeed > 22 ? 'moderate' : 'good',
-              icon: 'wind',
-              description: `Direction: ${data.weather.windDirection} (${data.weather.windDegrees}°)`,
-            },
-            {
-              id: 'sst',
-              label: 'Sea Surface Temp (SST)',
-              value: `${data.ocean.sst.toFixed(1)} °C`,
-              unit: '°C',
-              trend: 'stable',
-              status: 'good',
-              icon: 'thermometer',
-              description: 'MOSDAC INSAT-3D / EOS-06 Satellite Observation',
-            },
-            {
-              id: 'chlorophyll',
-              label: 'Chlorophyll-a',
-              value: `${data.ocean.chlorophyll.toFixed(2)} mg/m³`,
-              unit: 'mg/m³',
-              trend: 'up',
-              status: 'good',
-              icon: 'droplets',
-              description: 'MOSDAC EOS-06 Ocean Colour Monitor (OCM)',
-            },
-          ];
-          setMetrics(liveMetrics);
-        } else {
-          setMetrics(getMockDashboardMetrics());
-          setSafety(getMockSafety());
-        }
-      } catch {
+        const liveMetrics: OceanMetric[] = [
+          {
+            id: 'wave',
+            label: 'Wave Height',
+            value: `${data.waves.height.toFixed(1)} m`,
+            unit: 'm',
+            trend: data.waves.height > 2 ? 'up' : 'stable',
+            status: data.waves.height > 2.5 ? 'danger' : data.waves.height > 1.8 ? 'warning' : 'good',
+            icon: 'waves',
+            description: `Period: ${data.waves.period}s | Swell: ${data.waves.swellHeight.toFixed(1)}m`,
+          },
+          {
+            id: 'wind',
+            label: 'Wind Speed',
+            value: `${data.weather.windSpeed.toFixed(1)} km/h`,
+            unit: 'km/h',
+            trend: data.weather.windSpeed > 25 ? 'up' : 'stable',
+            status: data.weather.windSpeed > 35 ? 'danger' : data.weather.windSpeed > 22 ? 'moderate' : 'good',
+            icon: 'wind',
+            description: `Direction: ${data.weather.windDirection} (${data.weather.windDegrees}°)`,
+          },
+          {
+            id: 'sst',
+            label: 'Sea Surface Temp (SST)',
+            value: `${data.ocean.sst.toFixed(1)} °C`,
+            unit: '°C',
+            trend: 'stable',
+            status: 'good',
+            icon: 'thermometer',
+            description: 'MOSDAC INSAT-3D / EOS-06 Satellite Observation',
+          },
+          {
+            id: 'chlorophyll',
+            label: 'Chlorophyll-a',
+            value: `${data.ocean.chlorophyll.toFixed(2)} mg/m³`,
+            unit: 'mg/m³',
+            trend: 'up',
+            status: 'good',
+            icon: 'droplets',
+            description: 'MOSDAC EOS-06 Ocean Colour Monitor (OCM)',
+          },
+        ];
+        setMetrics(liveMetrics);
+      } else {
         setMetrics(getMockDashboardMetrics());
         setSafety(getMockSafety());
       }
+    } catch {
+      setMetrics(getMockDashboardMetrics());
+      setSafety(getMockSafety());
     }
+  }, []);
 
+  useEffect(() => {
     loadLiveMarineData();
     setAlerts(getMockAlerts().filter(a => a.isActive).slice(0, 3));
     setTime(new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }));
@@ -90,9 +94,9 @@ export default function DashboardPage() {
       setTime(new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }));
     }, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [loadLiveMarineData]);
 
-  const loc = DEFAULT_LOCATION;
+  const loc = location;
   const statusColor = safety?.status === 'SAFE' ? 'bg-emerald-500' : safety?.status === 'MODERATE' ? 'bg-amber-500' : 'bg-red-500';
   const statusGlow = safety?.status === 'SAFE' ? 'pulse-safe' : safety?.status === 'MODERATE' ? '' : 'pulse-danger';
 
@@ -113,10 +117,10 @@ export default function DashboardPage() {
           <div className="flex items-center gap-3 mt-1 text-sm text-slate-400">
             <div className="flex items-center gap-1.5">
               <MapPin className="w-3.5 h-3.5 text-teal-500" />
-              <span>{formatCoordinate(loc.coordinates.lat, 'lat')}, {formatCoordinate(loc.coordinates.lon, 'lon')}</span>
+              <span suppressHydrationWarning>{formatCoordinate(loc.lat, 'lat')}, {formatCoordinate(loc.lon, 'lon')}</span>
             </div>
             <span className="text-slate-600">•</span>
-            <span>{loc.region}</span>
+            <span suppressHydrationWarning>{loc.state}</span>
             <span className="text-slate-600">•</span>
             <div className="flex items-center gap-1">
               <Clock className="w-3.5 h-3.5" />
@@ -125,6 +129,7 @@ export default function DashboardPage() {
           </div>
         </div>
         <div className="flex items-center gap-3">
+          <LocationBadge onLocationChange={loadLiveMarineData} />
           <DemoModeBanner />
           <Link
             href="/assistant"

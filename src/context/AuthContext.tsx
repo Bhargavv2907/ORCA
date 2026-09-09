@@ -44,8 +44,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (cached) {
         try {
           const parsed = JSON.parse(cached);
-          setUser(parsed);
-          getFavoriteZonesFromFirestore(parsed.uid).then(setFavoriteZones);
+          queueMicrotask(() => {
+            setUser(parsed);
+            getFavoriteZonesFromFirestore(parsed.uid).then(setFavoriteZones);
+          });
         } catch (e) {
           console.error(e);
         }
@@ -101,7 +103,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signUpWithEmail = async (email: string, pass: string, name: string): Promise<boolean> => {
     if (!isFirebaseConfigured) {
       const demoUser: UserProfile = {
-        uid: 'user-' + Date.now(),
+        uid: `user-${Math.floor(Math.random() * 1000000)}`,
         email,
         displayName: name,
         role: 'fisherman',

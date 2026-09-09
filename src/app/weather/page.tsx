@@ -1,47 +1,48 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { CloudSun, AlertTriangle, Clock, Wind, Waves, Thermometer, Droplets, Gauge } from 'lucide-react';
-import { DemoModeBanner } from '@/components/cards';
+import { DemoModeBanner, LocationBadge } from '@/components/cards';
 import { getMockForecast, getMock7DayForecast } from '@/data/mock-data';
 import { ForecastPoint, WeatherForecast } from '@/types/marine';
 import { cn } from '@/lib/utils';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts';
+import { getSelectedLocation, marineApiUrl } from '@/lib/location-store';
 
 export default function WeatherPage() {
   const [forecast, setForecast] = useState<ForecastPoint[]>([]);
   const [weekForecast, setWeekForecast] = useState<WeatherForecast[]>([]);
   const [activeChart, setActiveChart] = useState('wind');
 
-  useEffect(() => {
-    async function loadLiveWeather() {
-      try {
-        const res = await fetch('/api/marine?lat=18.95&lon=72.82');
-        if (res.ok) {
-          const live = await res.json();
-          // Update base forecast timeline with live current values for hour 0
-          const baseForecast = getMockForecast();
-          if (baseForecast.length > 0 && live.weather && live.waves) {
-            baseForecast[0].windSpeed = live.weather.windSpeed;
-            baseForecast[0].windDirection = live.weather.windDirection;
-            baseForecast[0].waveHeight = live.waves.height;
-            baseForecast[0].wavePeriod = live.waves.period;
-            baseForecast[0].temperature = live.weather.temperature;
-            baseForecast[0].pressure = live.weather.pressure;
-            baseForecast[0].rainfall = live.weather.rainfall;
-          }
-          setForecast(baseForecast);
-        } else {
-          setForecast(getMockForecast());
+  const loadLiveWeather = useCallback(async () => {
+    try {
+      const res = await fetch(marineApiUrl(getSelectedLocation()));
+      if (res.ok) {
+        const live = await res.json();
+        const baseForecast = getMockForecast();
+        if (baseForecast.length > 0 && live.weather && live.waves) {
+          baseForecast[0].windSpeed = live.weather.windSpeed;
+          baseForecast[0].windDirection = live.weather.windDirection;
+          baseForecast[0].waveHeight = live.waves.height;
+          baseForecast[0].wavePeriod = live.waves.period;
+          baseForecast[0].temperature = live.weather.temperature;
+          baseForecast[0].pressure = live.weather.pressure;
+          baseForecast[0].rainfall = live.weather.rainfall;
         }
-      } catch {
+        setForecast(baseForecast);
+      } else {
         setForecast(getMockForecast());
       }
+    } catch {
+      setForecast(getMockForecast());
     }
+  }, []);
+
+  useEffect(() => {
     loadLiveWeather();
     setWeekForecast(getMock7DayForecast());
-  }, []);
+  }, [loadLiveWeather]);
 
   const chartConfigs: Record<string, { key: string; color: string; label: string; unit: string }> = {
     wind: { key: 'windSpeed', color: '#60a5fa', label: 'Wind Speed', unit: 'km/h' },
@@ -76,7 +77,10 @@ export default function WeatherPage() {
           </h1>
           <p className="text-sm text-slate-400 mt-1">Detailed marine weather forecasts and conditions.</p>
         </div>
-        <DemoModeBanner />
+        <div className="flex items-center gap-3">
+          <LocationBadge onLocationChange={loadLiveWeather} />
+          <DemoModeBanner />
+        </div>
       </motion.div>
 
       {/* Danger alerts */}

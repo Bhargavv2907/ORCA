@@ -36,23 +36,30 @@ export default function LandingPage() {
       <section className="relative min-h-screen flex items-center justify-center ocean-gradient-animated">
         {/* Animated particles */}
         <div className="absolute inset-0 overflow-hidden">
-          {Array.from({ length: 20 }).map((_, i) => (
-            <motion.div
-              key={i}
-              className="absolute w-1 h-1 rounded-full bg-teal-400/20"
-              style={{ left: `${Math.random() * 100}%`, top: `${Math.random() * 100}%` }}
-              animate={{
-                y: [0, -30, 0],
-                opacity: [0.2, 0.6, 0.2],
-                scale: [1, 1.5, 1],
-              }}
-              transition={{
-                duration: 4 + Math.random() * 4,
-                repeat: Infinity,
-                delay: Math.random() * 3,
-              }}
-            />
-          ))}
+          {Array.from({ length: 20 }).map((_, i) => {
+            // Deterministic pseudo-random values seeded from index — same on server & client
+            const left = ((i * 37 + 11) % 97);
+            const top  = ((i * 53 + 7)  % 93);
+            const duration = 4 + (i % 5);
+            const delay    = (i * 0.3) % 3;
+            return (
+              <motion.div
+                key={i}
+                className="absolute w-1 h-1 rounded-full bg-teal-400/20"
+                style={{ left: `${left}%`, top: `${top}%` }}
+                animate={{
+                  y: [0, -30, 0],
+                  opacity: [0.2, 0.6, 0.2],
+                  scale: [1, 1.5, 1],
+                }}
+                transition={{
+                  duration,
+                  repeat: Infinity,
+                  delay,
+                }}
+              />
+            );
+          })}
         </div>
 
         {/* Wave lines */}

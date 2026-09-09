@@ -14,6 +14,7 @@ import { DemoModeBanner } from '@/components/cards';
 import { Vessel, FishingZone, MarineConditions } from '@/types/marine';
 import { MapAction } from '@/lib/agents/schemas';
 import { INDIAN_COASTAL_SECTORS } from '@/components/world-map';
+import { getSelectedLocation, marineApiUrl } from '@/lib/location-store';
 
 // Dynamic Import for Leaflet World Map (SSR Disabled)
 const WorldMap = dynamic(() => import('@/components/world-map'), {
@@ -84,7 +85,7 @@ export default function MapPage() {
     }
 
     // Fetch initial live marine snapshot from ISRO MOSDAC & Open-Meteo
-    fetch('/api/marine?lat=18.95&lon=72.82')
+    fetch(marineApiUrl(getSelectedLocation()))
       .then((res) => res.json())
       .then((data) => setLiveConditions(data))
       .catch(() => null);

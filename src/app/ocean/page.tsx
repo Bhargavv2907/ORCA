@@ -1,11 +1,13 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Waves, Clock, TrendingUp, TrendingDown, Minus } from 'lucide-react';
-import { DemoModeBanner } from '@/components/cards';
+import { DemoModeBanner, LocationBadge } from '@/components/cards';
 import { getMockOceanParameters, OceanParameter } from '@/data/mock-data';
 import { cn, getMetricStatusColor, getMetricBgColor } from '@/lib/utils';
+import { getSelectedLocation, marineApiUrl } from '@/lib/location-store';
+import type { CoastalLocation } from '@/lib/orchestrator';
 
 const TIME_OPTIONS = ['Current', '+6h', '+12h', '+24h', '+48h'];
 
@@ -13,31 +15,30 @@ export default function OceanPage() {
   const [params, setParams] = useState<OceanParameter[]>([]);
   const [selectedTime, setSelectedTime] = useState('Current');
 
-  useEffect(() => {
-    async function loadLiveOcean() {
-      try {
-        const res = await fetch('/api/marine?lat=18.95&lon=72.82');
-        if (res.ok) {
-          const live = await res.json();
-          const baseParams = getMockOceanParameters();
-          if (live.ocean) {
-            baseParams.forEach(p => {
-              if (p.id === 'sst') p.value = +live.ocean.sst.toFixed(1);
-              if (p.id === 'chlorophyll') p.value = +live.ocean.chlorophyll.toFixed(2);
-              if (p.id === 'salinity') p.value = +live.ocean.salinity.toFixed(1);
-              if (p.id === 'current_speed') p.value = +live.ocean.currentSpeed.toFixed(1);
-            });
-          }
-          setParams(baseParams);
-        } else {
-          setParams(getMockOceanParameters());
+  const loadData = useCallback(async (loc?: CoastalLocation) => {
+    try {
+      const res = await fetch(marineApiUrl(loc ?? getSelectedLocation()));
+      if (res.ok) {
+        const live = await res.json();
+        const baseParams = getMockOceanParameters();
+        if (live.ocean) {
+          baseParams.forEach(p => {
+            if (p.id === 'sst') p.value = +live.ocean.sst.toFixed(1);
+            if (p.id === 'chlorophyll') p.value = +live.ocean.chlorophyll.toFixed(2);
+            if (p.id === 'salinity') p.value = +live.ocean.salinity.toFixed(1);
+            if (p.id === 'current_speed') p.value = +live.ocean.currentSpeed.toFixed(1);
+          });
         }
-      } catch {
+        setParams(baseParams);
+      } else {
         setParams(getMockOceanParameters());
       }
+    } catch {
+      setParams(getMockOceanParameters());
     }
-    loadLiveOcean();
   }, []);
+
+  useEffect(() => { loadData(); }, [loadData]);
 
   const getTimeValue = (param: OceanParameter) => {
     if (selectedTime === 'Current') return param.value;
@@ -55,7 +56,10 @@ export default function OceanPage() {
           </h1>
           <p className="text-sm text-slate-400 mt-1">Comprehensive ocean parameter monitoring.</p>
         </div>
-        <DemoModeBanner />
+        <div className="flex items-center gap-3">
+          <LocationBadge onLocationChange={loadData} />
+          <DemoModeBanner />
+        </div>
       </motion.div>
 
       {/* Time selector */}
