@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 import { getMockVessels, getMockFishingZones, getMockRoutes } from '@/data/mock-data';
 import { DemoModeBanner } from '@/components/cards';
 import { Vessel, FishingZone, MarineConditions } from '@/types/marine';
+import { MapAction } from '@/lib/agents/schemas';
 import { INDIAN_COASTAL_SECTORS } from '@/components/world-map';
 
 // Dynamic Import for Leaflet World Map (SSR Disabled)
@@ -65,10 +66,22 @@ export default function MapPage() {
   const [vessels, setVessels] = useState<Vessel[]>([]);
   const [zones, setZones] = useState<FishingZone[]>([]);
   const [liveConditions, setLiveConditions] = useState<MarineConditions | null>(null);
+  const [mapActionPayload, setMapActionPayload] = useState<MapAction | undefined>(undefined);
 
   useEffect(() => {
     setVessels(getMockVessels());
     setZones(getMockFishingZones());
+
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const action = params.get('action');
+      if (action) {
+        setMapActionPayload({
+          mapAction: action as any,
+          selectedZone: params.get('zone') || 'Zone A',
+        });
+      }
+    }
 
     // Fetch initial live marine snapshot from ISRO MOSDAC & Open-Meteo
     fetch('/api/marine?lat=18.95&lon=72.82')
@@ -155,6 +168,35 @@ export default function MapPage() {
         </div>
       </div>
 
+      {/* AI-Controlled Map Actions Bar (Phase 6) */}
+      <div className="z-10 bg-navy-900/90 border-b border-navy-700/30 px-3 py-1.5 flex items-center gap-2 overflow-x-auto text-xs font-semibold scrollbar-none">
+        <span className="text-teal-400 font-mono text-[11px] shrink-0 uppercase tracking-wider">AI Map Actions:</span>
+        <button
+          onClick={() => setMapActionPayload({ mapAction: 'highlight_pfz', selectedZone: 'Zone A' })}
+          className="px-2.5 py-1 rounded-lg bg-teal-500/10 hover:bg-teal-500/20 text-teal-300 border border-teal-500/30 shrink-0 transition-colors"
+        >
+          🎯 Highlight PFZ (Zone A)
+        </button>
+        <button
+          onClick={() => setMapActionPayload({ mapAction: 'draw_route', selectedZone: 'Zone A' })}
+          className="px-2.5 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shrink-0 transition-colors"
+        >
+          ✨ Draw Safe Route
+        </button>
+        <button
+          onClick={() => setMapActionPayload({ mapAction: 'show_geofence' })}
+          className="px-2.5 py-1 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-300 border border-red-500/30 shrink-0 transition-colors"
+        >
+          ⚠️ Show Geofence (IMBL)
+        </button>
+        <button
+          onClick={() => setMapActionPayload({ mapAction: 'compare_routes' })}
+          className="px-2.5 py-1 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0 transition-colors"
+        >
+          ⚖️ Compare Routes (Shortest vs Safest)
+        </button>
+      </div>
+
       {/* Main Interactive World Map Viewport */}
       <div className="relative flex-1 w-full h-full overflow-hidden">
         <WorldMap
@@ -163,6 +205,7 @@ export default function MapPage() {
           satelliteMode={satelliteMode}
           activeLayers={activeLayers}
           highlightCoasts={activeLayers.has('coastal_detect')}
+          mapActionPayload={mapActionPayload}
         />
       </div>
 

@@ -268,13 +268,23 @@ export default function AssistantPage() {
 
                     {/* Structured Data */}
                     {msg.structuredData && (
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                        {Object.entries(msg.structuredData).map(([key, val]) => (
-                          <div key={key} className="px-3 py-2 rounded-lg bg-navy-800/50 border border-navy-700/20">
-                            <p className="text-[10px] text-slate-500 uppercase">{key.replace(/([A-Z])/g, ' $1').trim()}</p>
-                            <p className="text-sm font-semibold text-white">{String(val)}{typeof val === 'number' && key.includes('Score') || key.includes('suitability') ? '%' : ''}</p>
-                          </div>
-                        ))}
+                      <div className="space-y-2">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                          {Object.entries(msg.structuredData).map(([key, val]) => (
+                            <div key={key} className="px-3 py-2 rounded-lg bg-navy-800/50 border border-navy-700/20">
+                              <p className="text-[10px] text-slate-500 uppercase">{key.replace(/([A-Z])/g, ' $1').trim()}</p>
+                              <p className="text-sm font-semibold text-white">{String(val)}{typeof val === 'number' && (key.includes('Score') || key.includes('suitability')) ? '%' : ''}</p>
+                            </div>
+                          ))}
+                        </div>
+                        {Boolean((msg.structuredData as Record<string, unknown>).mapAction) && (
+                          <a
+                            href={`/map?action=${encodeURIComponent(String((msg.structuredData as Record<string, unknown>).mapAction))}`}
+                            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-teal-500/10 hover:bg-teal-500/20 text-xs font-semibold text-teal-300 border border-teal-500/30 transition-colors"
+                          >
+                            🗺️ View AI Map Action ({String((msg.structuredData as Record<string, unknown>).mapAction)})
+                          </a>
+                        )}
                       </div>
                     )}
 

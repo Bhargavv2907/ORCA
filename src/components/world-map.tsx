@@ -7,8 +7,9 @@ import {
   Droplets, RefreshCw, X, Globe, Eye, Ship, Fish, Navigation, Maximize2, Compass, ArrowUpRight
 } from 'lucide-react';
 import { MarineConditions, Vessel, FishingZone } from '@/types/marine';
+import { MapAction } from '@/lib/agents/schemas';
 import { cn } from '@/lib/utils';
-import { getMockFishingZones } from '@/data/mock-data';
+import { getMockFishingZones, getMockRoutes } from '@/data/mock-data';
 
 // Import Leaflet CSS dynamically in client component
 import 'leaflet/dist/leaflet.css';
@@ -191,6 +192,7 @@ interface WorldMapProps {
   satelliteMode?: string;
   activeLayers?: Set<string>;
   highlightCoasts?: boolean;
+  mapActionPayload?: MapAction;
 }
 
 export default function WorldMapComponent({
@@ -199,7 +201,8 @@ export default function WorldMapComponent({
   fishingZones = [],
   satelliteMode = 'esri_satellite',
   activeLayers = new Set(['mosdac_overlay', 'winds', 'fishing', 'vessels', 'coastal_detect']),
-  highlightCoasts = true
+  highlightCoasts = true,
+  mapActionPayload
 }: WorldMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
@@ -473,6 +476,102 @@ export default function WorldMapComponent({
       }
     });
   }, [highlightCoasts, activeLayers, zonesList, vessels, isLoaded]);
+
+  // Handle AI-Controlled Map Actions (Phase 6)
+  useEffect(() => {
+    if (!mapInstanceRef.current || !layerGroupRef.current || !isLoaded || !mapActionPayload) return;
+
+    import('leaflet').then((L) => {
+      const map = mapInstanceRef.current;
+      const layerGroup = layerGroupRef.current;
+      if (!map || !layerGroup) return;
+
+      const { mapAction, selectedZone, route, markers } = mapActionPayload;
+
+      // Remove old line layer if present
+      if (lineLayerRef.current) {
+        map.removeLayer(lineLayerRef.current);
+        lineLayerRef.current = null;
+      }
+
+      if (mapAction === 'highlight_pfz') {
+        const targetZone = zonesList.find(z => z.name.toLowerCase().includes(selectedZone?.toLowerCase() || 'zone a')) || zonesList[0];
+        const p: [number, number] = [targetZone.center.lat, targetZone.center.lon];
+
+        const highlightCircle = L.circle(p, {
+          color: '#2dd4bf',
+          fillColor: '#2dd4bf',
+          fillOpacity: 0.4,
+          radius: 40000,
+          weight: 4,
+        }).addTo(layerGroup);
+
+        highlightCircle.bindPopup(`
+          <div class="p-2 font-sans text-xs">
+            <h4 class="font-bold text-teal-600 text-sm mb-1">🎯 Highlighted PFZ: ${targetZone.name}</h4>
+            <p class="text-slate-600">Suitability Score: <strong>${targetZone.suitabilityScore}% Match</strong></p>
+            <p class="text-slate-500 font-mono">SST: ${targetZone.sst}°C | Chlorophyll: ${targetZone.chlorophyll} mg/m³</p>
+          </div>
+        `).openPopup();
+
+        map.flyTo(p, 8.5, { duration: 1.5 });
+      }
+
+      if (mapAction === 'draw_route' && route && route.length > 1) {
+        const coords: [number, number][] = route.map(r => [r.lat, r.lon]);
+        const polyline = L.polyline(coords, {
+          color: '#10b981',
+          weight: 5,
+          opacity: 0.9,
+        }).addTo(layerGroup);
+
+        polyline.bindTooltip('✨ AI Recommended Safe Route (96% Safety Rating)', { sticky: true });
+        lineLayerRef.current = polyline;
+        map.flyToBounds(coords, { padding: [60, 60], duration: 1.5 });
+      }
+
+      if (mapAction === 'show_geofence') {
+        const geofenceCoords: [number, number][] = [
+          [19.5, 71.5], [19.8, 72.0], [19.2, 72.5], [18.8, 72.0], [19.5, 71.5]
+        ];
+        const polygon = L.polygon(geofenceCoords, {
+          color: '#ef4444',
+          fillColor: '#ef4444',
+          fillOpacity: 0.3,
+          weight: 3,
+          dashArray: '6, 6',
+        }).addTo(layerGroup);
+
+        polygon.bindPopup(`
+          <div class="p-2 font-sans text-xs text-red-600 font-bold">
+            ⚠️ Restricted Maritime Zone / IMBL Boundary<br/>
+            <span class="text-slate-600 text-[11px] font-normal">Prohibited waters for commercial fishing without clearance.</span>
+          </div>
+        `).openPopup();
+
+        map.flyToBounds(geofenceCoords, { padding: [80, 80], duration: 1.5 });
+      }
+
+      if (mapAction === 'compare_routes') {
+        const mockRoutes = getMockRoutes();
+        const r1Coords: [number, number][] = mockRoutes[1].waypoints.map(w => [w.lat, w.lon]);
+        const r2Coords: [number, number][] = mockRoutes[2].waypoints.map(w => [w.lat, w.lon]);
+
+        const polylineSafest = L.polyline(r1Coords, { color: '#10b981', weight: 5, opacity: 0.9 }).addTo(layerGroup);
+        polylineSafest.bindTooltip('🟢 Route B (Safest - 38 km, Safety 96%)', { sticky: true });
+
+        const polylineShortest = L.polyline(r2Coords, { color: '#f59e0b', weight: 4, dashArray: '6, 8', opacity: 0.8 }).addTo(layerGroup);
+        polylineShortest.bindTooltip('🟡 Route C (Shortest - 29 km, Safety 72%, Higher Waves)', { sticky: true });
+
+        map.flyToBounds([...r1Coords, ...r2Coords], { padding: [60, 60], duration: 1.5 });
+      }
+
+      if (mapAction === 'focus_location' && markers && markers.length > 0) {
+        const m = markers[0];
+        map.flyTo([m.lat, m.lon], 9, { duration: 1.5 });
+      }
+    });
+  }, [mapActionPayload, isLoaded, zonesList]);
 
   // Quick FlyTo Region or Reset to World View
   const flyToRegion = (bounds?: { minLat: number; maxLat: number; minLon: number; maxLon: number }, center?: { lat: number; lon: number }, zoom?: number) => {
