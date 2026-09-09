@@ -713,12 +713,11 @@ export function getMockDataSources(): DataSource[] {
 // ---- Agents ----
 export function getMockAgents(): Agent[] {
   return [
-    { id: 'weather', name: 'Weather Agent', description: 'Analyzes atmospheric conditions, wind, temperature, and precipitation.', icon: 'cloud-sun', status: 'idle' },
-    { id: 'ocean', name: 'Ocean Agent', description: 'Evaluates sea surface temperature, salinity, currents, and chlorophyll.', icon: 'waves', status: 'idle' },
-    { id: 'fishing', name: 'Fish Zone Agent', description: 'Identifies areas with favorable marine conditions for fishing.', icon: 'fish', status: 'idle' },
-    { id: 'route', name: 'Route Agent', description: 'Calculates safer and more efficient navigation routes.', icon: 'map', status: 'idle' },
-    { id: 'safety', name: 'Safety Agent', description: 'Assesses overall risk and safety conditions for maritime activities.', icon: 'shield-check', status: 'idle' },
-    { id: 'language', name: 'Language Agent', description: 'Translates complex ocean data into simple, understandable language.', icon: 'languages', status: 'idle' },
+    { id: 'orchestrator', name: 'Orchestrator Agent', description: 'Decomposes queries, detects intent, delegates to specialists, and synthesizes results.', icon: 'brain', status: 'idle' },
+    { id: 'ocean_pfz', name: 'Ocean/PFZ Agent', description: 'Evaluates SST, chlorophyll, currents, and Potential Fishing Zone (PFZ) suitability.', icon: 'waves', status: 'idle' },
+    { id: 'weather_hazard', name: 'Weather/Hazard Agent', description: 'Monitors weather, wind, rainfall, lightning, cyclones, and marine advisories.', icon: 'cloud-sun', status: 'idle' },
+    { id: 'gis_navigation', name: 'GIS/Navigation Agent', description: 'Handles distance, geofencing, restricted zones, route comparison, and map actions.', icon: 'map', status: 'idle' },
+    { id: 'safety_decision', name: 'Safety/Decision Agent', description: 'Evaluates deterministic risk scores (0-100) and produces explainable safety decisions.', icon: 'shield-check', status: 'idle' },
   ];
 }
 

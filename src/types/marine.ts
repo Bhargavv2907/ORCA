@@ -173,7 +173,19 @@ export interface RiskWeights {
 }
 
 // ---- AI Orchestrator ----
-export type AgentType = 'weather' | 'ocean' | 'fishing' | 'route' | 'safety' | 'language';
+export type AgentType =
+  | 'orchestrator'
+  | 'ocean_pfz'
+  | 'weather_hazard'
+  | 'gis_navigation'
+  | 'safety_decision'
+  // Legacy aliases for backward compatibility
+  | 'weather'
+  | 'ocean'
+  | 'fishing'
+  | 'route'
+  | 'safety'
+  | 'language';
 
 export interface Agent {
   id: AgentType;

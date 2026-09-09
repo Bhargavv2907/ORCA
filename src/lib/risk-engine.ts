@@ -35,7 +35,7 @@ function scoreFromInverseThreshold(value: number, safe: number, moderate: number
   return Math.max(5, 30 * (value / dangerous));
 }
 
-export function calculateWaveRisk(waves: WaveData): RiskComponent {
+export function calculateWaveRisk(waves: Pick<WaveData, 'height'>): RiskComponent {
   const score = Math.round(scoreFromThreshold(waves.height, THRESHOLDS.wave.safe, THRESHOLDS.wave.moderate, THRESHOLDS.wave.dangerous));
   let description = 'Calm seas';
   if (score < 40) description = 'Dangerous wave conditions';
@@ -45,7 +45,7 @@ export function calculateWaveRisk(waves: WaveData): RiskComponent {
   return { name: 'Wave Risk', score, weight: DEFAULT_WEIGHTS.wave * 100, description };
 }
 
-export function calculateWindRisk(weather: WeatherData): RiskComponent {
+export function calculateWindRisk(weather: Pick<WeatherData, 'windSpeed'>): RiskComponent {
   const score = Math.round(scoreFromThreshold(weather.windSpeed, THRESHOLDS.wind.safe, THRESHOLDS.wind.moderate, THRESHOLDS.wind.dangerous));
   let description = 'Light winds';
   if (score < 40) description = 'Dangerous wind conditions';
@@ -55,7 +55,7 @@ export function calculateWindRisk(weather: WeatherData): RiskComponent {
   return { name: 'Wind Risk', score, weight: DEFAULT_WEIGHTS.wind * 100, description };
 }
 
-export function calculateCurrentRisk(ocean: OceanData): RiskComponent {
+export function calculateCurrentRisk(ocean: Pick<OceanData, 'currentSpeed'>): RiskComponent {
   const score = Math.round(scoreFromThreshold(ocean.currentSpeed, THRESHOLDS.current.safe, THRESHOLDS.current.moderate, THRESHOLDS.current.dangerous));
   let description = 'Normal current patterns';
   if (score < 40) description = 'Dangerous currents';
@@ -65,7 +65,7 @@ export function calculateCurrentRisk(ocean: OceanData): RiskComponent {
   return { name: 'Current Risk', score, weight: DEFAULT_WEIGHTS.current * 100, description };
 }
 
-export function calculateStormRisk(weather: WeatherData): RiskComponent {
+export function calculateStormRisk(weather: Pick<WeatherData, 'pressure' | 'visibility' | 'rainfall'>): RiskComponent {
   const pressureScore = scoreFromInverseThreshold(weather.pressure, THRESHOLDS.pressure.normal, THRESHOLDS.pressure.low, THRESHOLDS.pressure.veryLow);
   const visibilityScore = scoreFromInverseThreshold(weather.visibility, THRESHOLDS.visibility.safe, THRESHOLDS.visibility.moderate, THRESHOLDS.visibility.dangerous);
   const rainPenalty = weather.rainfall > 10 ? 20 : weather.rainfall > 5 ? 10 : 0;
@@ -90,9 +90,9 @@ export function calculateTrafficRisk(vesselCount: number = 15): RiskComponent {
 }
 
 export function calculateSafetyScore(
-  weather: WeatherData,
-  waves: WaveData,
-  ocean: OceanData,
+  weather: Pick<WeatherData, 'windSpeed' | 'pressure' | 'visibility' | 'rainfall'>,
+  waves: Pick<WaveData, 'height'>,
+  ocean: Pick<OceanData, 'currentSpeed'>,
   vesselCount: number = 15,
   weights: RiskWeights = DEFAULT_WEIGHTS,
 ): SafetyScore {

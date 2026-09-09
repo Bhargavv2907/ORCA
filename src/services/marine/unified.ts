@@ -49,33 +49,37 @@ export async function fetchOpenMeteoData(lat: number, lon: number): Promise<{ we
 
     if (marineRes && marineRes.ok) {
       const data = await marineRes.json();
-      result.waves = {
-        height: data.current?.wave_height ?? 1.5,
-        period: data.current?.wave_period ?? 7,
-        direction: 'NW',
-        directionDegrees: data.current?.wave_direction ?? 315,
-        swellHeight: data.current?.swell_wave_height ?? 1.0,
-        swellDirection: 'W',
-        swellPeriod: data.current?.swell_wave_period ?? 9,
-      };
+      const current = data.current as Record<string, unknown> | undefined;
+      const waves: Partial<MarineConditions['waves']> = {};
+
+      if (typeof current?.wave_height === 'number') waves.height = current.wave_height;
+      if (typeof current?.wave_period === 'number') waves.period = current.wave_period;
+      if (typeof current?.wave_direction === 'number') waves.directionDegrees = current.wave_direction;
+      if (typeof current?.swell_wave_height === 'number') waves.swellHeight = current.swell_wave_height;
+      if (typeof current?.swell_wave_period === 'number') waves.swellPeriod = current.swell_wave_period;
+
+      if (Object.keys(waves).length > 0) result.waves = waves;
     }
 
     if (weatherRes && weatherRes.ok) {
       const data = await weatherRes.json();
-      const deg = data.current?.wind_direction_10m ?? 225;
-      const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
-      const dir = dirs[Math.round(deg / 45) % 8];
+      const current = data.current as Record<string, unknown> | undefined;
+      const weather: Partial<MarineConditions['weather']> = {};
+      const windDirection = current?.wind_direction_10m;
 
-      result.weather = {
-        temperature: data.current?.temperature_2m ?? 28,
-        humidity: data.current?.relative_humidity_2m ?? 80,
-        pressure: data.current?.surface_pressure ?? 1008,
-        windSpeed: data.current?.wind_speed_10m ?? 18,
-        windDegrees: deg,
-        windDirection: dir,
-        rainfall: data.current?.rain ?? 0,
-        cloudCover: data.current?.cloud_cover ?? 50,
-      };
+      if (typeof current?.temperature_2m === 'number') weather.temperature = current.temperature_2m;
+      if (typeof current?.relative_humidity_2m === 'number') weather.humidity = current.relative_humidity_2m;
+      if (typeof current?.surface_pressure === 'number') weather.pressure = current.surface_pressure;
+      if (typeof current?.wind_speed_10m === 'number') weather.windSpeed = current.wind_speed_10m;
+      if (typeof windDirection === 'number') {
+        const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+        weather.windDegrees = windDirection;
+        weather.windDirection = dirs[Math.round(windDirection / 45) % 8];
+      }
+      if (typeof current?.rain === 'number') weather.rainfall = current.rain;
+      if (typeof current?.cloud_cover === 'number') weather.cloudCover = current.cloud_cover;
+
+      if (Object.keys(weather).length > 0) result.weather = weather;
     }
 
     return result;
@@ -86,7 +90,7 @@ export async function fetchOpenMeteoData(lat: number, lon: number): Promise<{ we
 
 // ---- Unified Interface ----
 export async function getMarineConditions(lat: number, lon: number): Promise<MarineConditions> {
-  let conditions = getMockMarineConditions();
+  const conditions = getMockMarineConditions();
   const sources: string[] = [];
 
   // ---- Layer 1: IMD Current Weather (Official Indian Met. Dept.) ----
