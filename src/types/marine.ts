@@ -258,6 +258,9 @@ export interface MissionPlannerPayload {
   evidence?: EvidencePayload;
 }
 
+import type { GeofenceResult } from '@/lib/geofence-engine';
+export type { GeofenceResult };
+
 export interface OrcaResponse {
   query: string;
   agentsUsed: Agent[];
@@ -272,6 +275,7 @@ export interface OrcaResponse {
   evidence?: EvidencePayload;
   whatIfComparison?: WhatIfComparisonPayload;
   missionPlan?: MissionPlannerPayload;
+  geofenceResult?: GeofenceResult;
 }
 
 // ---- Chat ----
@@ -290,6 +294,7 @@ export interface ChatMessage {
   evidence?: EvidencePayload;
   whatIfComparison?: WhatIfComparisonPayload;
   missionPlan?: MissionPlannerPayload;
+  geofenceResult?: GeofenceResult;
 }
 
 // ---- Marine Conditions (Unified) ----

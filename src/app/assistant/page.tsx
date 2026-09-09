@@ -6,7 +6,7 @@ import { Send, Mic, Globe, Bot, User, Shield, Lightbulb, Database, Loader2, Anch
 import { cn } from '@/lib/utils';
 import { orchestrate, AgentOutput } from '@/lib/orchestrator';
 import { ChatMessage, AgentType, EvidencePayload, WhatIfComparisonPayload } from '@/types/marine';
-import { DemoModeBanner, AgentTracePanel, WhyEvidenceModal, WhatIfComparisonCard, MissionPlannerCard } from '@/components/cards';
+import { DemoModeBanner, AgentTracePanel, WhyEvidenceModal, WhatIfComparisonCard, MissionPlannerCard, GeofenceAlertCard } from '@/components/cards';
 
 const EXAMPLE_QUESTIONS = [
   'Where is the nearest Potential Fishing Zone (PFZ) today?',
@@ -90,6 +90,7 @@ export default function AssistantPage() {
         evidence: response.evidence,
         whatIfComparison: response.whatIfComparison,
         missionPlan: response.missionPlan,
+        geofenceResult: response.geofenceResult,
       };
       setMessages(prev => [...prev, assistantMsg]);
     } catch {
@@ -279,6 +280,11 @@ export default function AssistantPage() {
                         mission={msg.missionPlan}
                         onOpenWhy={() => setActiveEvidence(msg.evidence || null)}
                       />
+                    )}
+
+                    {/* Geofence Safeguard Alert Card */}
+                    {msg.geofenceResult && (
+                      <GeofenceAlertCard geofence={msg.geofenceResult} />
                     )}
 
                     {/* Structured Data */}

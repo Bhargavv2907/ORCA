@@ -4,6 +4,7 @@
 
 import assert from 'node:assert/strict';
 import { calculateMarineRisk } from '../lib/risk-engine';
+import { checkGeofenceProximity } from '../lib/geofence-engine';
 
 console.log('🧪 Running Phase 3 Marine Risk Engine Unit Tests...\n');
 
@@ -96,4 +97,35 @@ console.log('🧪 Running Phase 3 Marine Risk Engine Unit Tests...\n');
   console.log('✅ PASS: 4. Conflicting signals test passed');
 }
 
-console.log('\n🎉 ALL 4 RISK ENGINE UNIT TESTS PASSED SUCCESSFULLY!');
+// 5. Geofence Boundary Proximity Test (Sir Creek IMBL Coordinates)
+{
+  const insideGeofence = checkGeofenceProximity({ lat: 23.63, lon: 68.12 });
+  assert.equal(insideGeofence.status, 'INSIDE', 'Position inside Sir Creek IMBL radius must return INSIDE');
+  assert.equal(insideGeofence.isRestricted, true, 'isRestricted must be true inside boundary');
+
+  const nearGeofence = checkGeofenceProximity({ lat: 23.90, lon: 68.12 });
+  assert.equal(nearGeofence.status, 'WARNING', 'Position within warning buffer of IMBL must return WARNING');
+
+  const openSea = checkGeofenceProximity({ lat: 18.95, lon: 72.82 });
+  assert.equal(openSea.status, 'CLEAR', 'Mumbai harbour coordinates clear of IMBL must return CLEAR');
+
+  console.log('✅ PASS: 5. Geofence boundary proximity calculation test passed');
+}
+
+// 6. Integrated Risk Engine Geofence Penalty
+{
+  const riskWithGeofenceInside = calculateMarineRisk({
+    location: { lat: 23.63, lon: 68.12 }, // Sir Creek IMBL
+    waveHeight: 1.0,
+    windSpeed: 10,
+  });
+
+  assert.ok(
+    riskWithGeofenceInside.status === 'HIGH_RISK' || riskWithGeofenceInside.status === 'AVOID',
+    `Coordinates inside IMBL must trigger HIGH_RISK or AVOID status, got ${riskWithGeofenceInside.status}`,
+  );
+
+  console.log('✅ PASS: 6. Integrated risk engine geofence penalty test passed');
+}
+
+console.log('\n🎉 ALL 6 RISK ENGINE & GEOFENCE UNIT TESTS PASSED SUCCESSFULLY!');

@@ -6,6 +6,7 @@
 import { Agent, AgentType, OrcaResponse, MissionPlannerPayload } from '@/types/marine';
 import { getMockWeather, getMockWaves, getMockOcean, getMockFishingZones, getMockRoutes, getMockSafety } from '@/data/mock-data';
 import { calculateSafetyScore, calculateMarineRisk } from '@/lib/risk-engine';
+import { checkGeofenceProximity } from '@/lib/geofence-engine';
 import { getMarineConditions } from '@/services/marine/unified';
 import { retrieveRelevantContext, RAGSearchResult } from '@/lib/rag-engine';
 import { getSessionContext, updateSessionContext, resolveFollowUpContext } from '@/lib/session-memory';
@@ -310,19 +311,25 @@ function generateResponse(
         ? 'Strong wind alert in effect. Small crafts should avoid open sea.'
         : 'Weather conditions are stable for daytime fishing operations.',
     }),
-    geofence_query: () => ({
-      safetyStatus: safety,
-      reasoning: [
-        'Current position verified against Indian Maritime Boundary Line (IMBL) & MPA boundaries.',
-        'No restricted zone violations detected within 20 km radius.',
-        'Dangerous shallow reef areas flagged on map.',
-      ],
-      recommendation: 'Current operational area is clear of restricted maritime zones. Keep clear of international boundary limits.',
-      structuredData: {
-        geofenceStatus: 'CLEAR',
-        mapAction: gisOutput?.mapAction?.mapAction || 'show_geofence',
-      },
-    }),
+    geofence_query: () => {
+      const geoResult = checkGeofenceProximity({ lat: 18.95, lon: 72.82 });
+      return {
+        safetyStatus: safety,
+        reasoning: [
+          `Position (18.95°N, 72.82°E) evaluated against Indian Maritime Boundary Line (IMBL) & MPA boundaries.`,
+          `Nearest boundary: ${geoResult.nearestZone} (${geoResult.distanceKm} km away).`,
+          `Geofence safeguard status: ${geoResult.status} — ${geoResult.advisory}`,
+        ],
+        recommendation: geoResult.advisory,
+        structuredData: {
+          geofenceStatus: geoResult.status,
+          nearestZone: geoResult.nearestZone,
+          distanceKm: geoResult.distanceKm,
+          mapAction: gisOutput?.mapAction?.mapAction || 'show_geofence',
+        },
+        geofenceResult: geoResult,
+      };
+    },
     whatif_query: () => {
       const baseWave = waves.height;
       const baseWind = weather.windSpeed;
@@ -388,6 +395,7 @@ function generateResponse(
     structuredData: partial.structuredData,
     whatIfComparison: partial.whatIfComparison,
     missionPlan: partial.missionPlan,
+    geofenceResult: partial.geofenceResult,
   };
 }
 

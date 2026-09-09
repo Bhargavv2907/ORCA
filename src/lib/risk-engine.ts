@@ -3,6 +3,7 @@
 // ============================================================
 
 import { SafetyScore, RiskComponent, RiskWeights, WeatherData, WaveData, OceanData } from '@/types/marine';
+import { checkGeofenceProximity } from '@/lib/geofence-engine';
 
 export interface RiskConfig {
   weights: {
@@ -194,13 +195,31 @@ export function calculateMarineRisk(input: MarineRiskInput, config: RiskConfig =
   }
 
   // Geofence / Boundary Risk
-  const isRestricted = Boolean(input.isRestrictedZone);
-  const geofenceScore = isRestricted ? 0 : 95;
+  let isRestricted = Boolean(input.isRestrictedZone);
+  let geofenceScore = isRestricted ? 0 : 95;
+  let geofenceDesc = isRestricted ? 'Inside restricted/prohibited waters' : 'Clear of restricted waters';
+
+  if (input.location) {
+    const geoResult = checkGeofenceProximity(input.location);
+    if (geoResult.status === 'INSIDE') {
+      isRestricted = true;
+      geofenceScore = 0;
+      geofenceDesc = `INSIDE RESTRICTED ZONE: ${geoResult.nearestZone}`;
+    } else if (geoResult.status === 'WARNING') {
+      isRestricted = true;
+      geofenceScore = 30;
+      geofenceDesc = `WARNING: ${geoResult.distanceKm} km from ${geoResult.nearestZone}`;
+    } else {
+      geofenceScore = 95;
+      geofenceDesc = `Clear of restricted waters (${geoResult.distanceKm} km to ${geoResult.nearestZone})`;
+    }
+  }
+
   factors.push({
     name: 'Geofence Status',
     score: geofenceScore,
     weight: config.weights.geofence * 100,
-    description: isRestricted ? 'Inside restricted/prohibited waters' : 'Clear of restricted waters',
+    description: geofenceDesc,
   });
   weightedScore += geofenceScore * config.weights.geofence;
   totalWeight += config.weights.geofence;
