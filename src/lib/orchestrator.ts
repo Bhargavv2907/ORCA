@@ -27,16 +27,22 @@ export interface QueryClassification {
 
 const QUERY_PATTERNS: { pattern: RegExp; agents: AgentType[]; intent: string; category: QueryClassification['category'] }[] = [
   {
+    pattern: /geofence|restricted|boundary|limit|zone.*avoid|dangerous.*area|prohibited/i,
+    agents: ['gis_navigation', 'safety_decision'],
+    intent: 'geofence_query',
+    category: 'route',
+  },
+  {
+    pattern: /fish|catch|where.*fish|pfz|fishing.*zone/i,
+    agents: ['ocean_pfz', 'weather_hazard', 'gis_navigation', 'safety_decision'],
+    intent: 'fishing_recommendation',
+    category: 'fishing',
+  },
+  {
     pattern: /safe|danger|risk|go out|sail/i,
     agents: ['weather_hazard', 'ocean_pfz', 'safety_decision'],
     intent: 'safety_assessment',
     category: 'safety',
-  },
-  {
-    pattern: /fish|catch|where.*fish|zone|pfz/i,
-    agents: ['ocean_pfz', 'weather_hazard', 'gis_navigation', 'safety_decision'],
-    intent: 'fishing_recommendation',
-    category: 'fishing',
   },
   {
     pattern: /route|path|way|navigate|travel|distance/i,

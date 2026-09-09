@@ -13,13 +13,17 @@ export async function GET(request: NextRequest) {
   const lat = parseFloat(params.get('lat') || '18.95');
   const lon = parseFloat(params.get('lon') || '72.82');
 
-  if (isNaN(lat) || isNaN(lon)) {
-    return NextResponse.json({ error: 'Invalid coordinates' }, { status: 400 });
+  if (isNaN(lat) || isNaN(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) {
+    return NextResponse.json({ error: 'Invalid latitude or longitude parameters' }, { status: 400 });
   }
 
   try {
     const conditions = await getMarineConditions(lat, lon);
-    return NextResponse.json(conditions);
+    return NextResponse.json(conditions, {
+      headers: {
+        'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
+      },
+    });
   } catch (error) {
     return NextResponse.json({
       error: 'Failed to fetch unified marine conditions',
