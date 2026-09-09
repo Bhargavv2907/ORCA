@@ -6,7 +6,7 @@ import { Send, Mic, Globe, Bot, User, Shield, Lightbulb, Database, Loader2, Anch
 import { cn } from '@/lib/utils';
 import { orchestrate, AgentOutput } from '@/lib/orchestrator';
 import { ChatMessage, AgentType, EvidencePayload, WhatIfComparisonPayload } from '@/types/marine';
-import { DemoModeBanner, AgentTracePanel, WhyEvidenceModal, WhatIfComparisonCard, MissionPlannerCard, GeofenceAlertCard } from '@/components/cards';
+import { DemoModeBanner, AgentTracePanel, WhyEvidenceModal, WhatIfComparisonCard, MissionPlannerCard, GeofenceAlertCard, AudioAdvisoryPlayer } from '@/components/cards';
 
 const EXAMPLE_QUESTIONS = [
   'Where is the nearest Potential Fishing Zone (PFZ) today?',
@@ -32,7 +32,45 @@ export default function AssistantPage() {
   const [activeAgents, setActiveAgents] = useState<Set<AgentType>>(new Set());
   const [completedAgents, setCompletedAgents] = useState<Set<AgentType>>(new Set());
   const [activeEvidence, setActiveEvidence] = useState<EvidencePayload | null>(null);
+  const [isListening, setIsListening] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const handleVoiceInput = () => {
+    if (typeof window === 'undefined') return;
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert('Speech recognition is not supported in this browser. Please type your query.');
+      return;
+    }
+
+    if (isListening) {
+      setIsListening(false);
+      return;
+    }
+
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.lang = language === 'Hindi' ? 'hi-IN' : language === 'Marathi' ? 'mr-IN' : language === 'Tamil' ? 'ta-IN' : 'en-IN';
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+
+      recognition.onstart = () => setIsListening(true);
+      recognition.onend = () => setIsListening(false);
+      recognition.onerror = () => setIsListening(false);
+
+      recognition.onresult = (event: any) => {
+        const transcript = event.results[0][0].transcript;
+        if (transcript) {
+          setInput(transcript);
+          handleSend(transcript);
+        }
+      };
+
+      recognition.start();
+    } catch {
+      setIsListening(false);
+    }
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -244,7 +282,7 @@ export default function AssistantPage() {
 
                     {/* Recommendation */}
                     {msg.recommendation && (
-                      <div className="p-3 rounded-xl bg-teal-500/5 border border-teal-500/15 space-y-2">
+                      <div className="p-3 rounded-xl bg-teal-500/5 border border-teal-500/15 space-y-3">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-1.5">
                             <Lightbulb className="w-3.5 h-3.5 text-teal-400" />
@@ -261,6 +299,9 @@ export default function AssistantPage() {
                           )}
                         </div>
                         <p className="text-sm text-white">{msg.recommendation}</p>
+
+                        {/* Multi-lingual Audio Advisory Player */}
+                        <AudioAdvisoryPlayer text={msg.recommendation} defaultLanguage={language} />
                       </div>
                     )}
 
@@ -381,8 +422,14 @@ export default function AssistantPage() {
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center gap-2 p-2 rounded-2xl glass border border-navy-600/30 focus-within:border-teal-500/40 transition-colors">
             <button
-              className="p-2.5 rounded-xl hover:bg-white/5 text-slate-400 hover:text-white transition-colors"
-              title="Voice input"
+              onClick={handleVoiceInput}
+              className={cn(
+                'p-2.5 rounded-xl transition-all',
+                isListening
+                  ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40 animate-pulse'
+                  : 'hover:bg-white/5 text-slate-400 hover:text-white'
+              )}
+              title={isListening ? 'Listening... Speak now' : 'Voice input (Vernacular Speech Recognition)'}
             >
               <Mic className="w-5 h-5" />
             </button>

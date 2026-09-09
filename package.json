@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "npx tsx src/__tests__/risk-engine.test.ts"
+    "test": "npx tsx src/__tests__/risk-engine.test.ts && npx tsx src/__tests__/i18n-engine.test.ts"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.23",
