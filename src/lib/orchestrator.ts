@@ -3,7 +3,7 @@
 // Target 5-Agent Architecture with Zod Validation & Map Actions
 // ============================================================
 
-import { Agent, AgentType, OrcaResponse } from '@/types/marine';
+import { Agent, AgentType, OrcaResponse, MissionPlannerPayload } from '@/types/marine';
 import { getMockWeather, getMockWaves, getMockOcean, getMockFishingZones, getMockRoutes, getMockSafety } from '@/data/mock-data';
 import { calculateSafetyScore, calculateMarineRisk } from '@/lib/risk-engine';
 import { getMarineConditions } from '@/services/marine/unified';
@@ -272,6 +272,17 @@ function generateResponse(
         safetyScore: safety.overall,
         mapAction: gisOutput?.mapAction?.mapAction || 'highlight_pfz',
       },
+      missionPlan: {
+        recommendedZone: zones[0].name,
+        suitabilityScore: zones[0].suitabilityScore,
+        safetyScore: safety.overall,
+        safetyLabel: safety.label,
+        recommendedTime: '05:30 AM (Tomorrow)',
+        recommendedRoute: 'Route B (Coastal Path)',
+        distanceKm: zones[0].distanceFromCoast,
+        warnings: safety.overall < 70 ? ['High wave swell warning along coastal shelf.'] : ['Verify fuel reserves before departure.'],
+        mapAction: gisOutput?.mapAction?.mapAction || 'highlight_pfz',
+      },
     }),
     route_planning: () => ({
       safetyStatus: safety,
@@ -376,6 +387,7 @@ function generateResponse(
     confidence: 85,
     structuredData: partial.structuredData,
     whatIfComparison: partial.whatIfComparison,
+    missionPlan: partial.missionPlan,
   };
 }
 

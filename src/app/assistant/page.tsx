@@ -6,7 +6,7 @@ import { Send, Mic, Globe, Bot, User, Shield, Lightbulb, Database, Loader2, Anch
 import { cn } from '@/lib/utils';
 import { orchestrate, AgentOutput } from '@/lib/orchestrator';
 import { ChatMessage, AgentType, EvidencePayload, WhatIfComparisonPayload } from '@/types/marine';
-import { DemoModeBanner, AgentTracePanel, WhyEvidenceModal, WhatIfComparisonCard } from '@/components/cards';
+import { DemoModeBanner, AgentTracePanel, WhyEvidenceModal, WhatIfComparisonCard, MissionPlannerCard } from '@/components/cards';
 
 const EXAMPLE_QUESTIONS = [
   'Where is the nearest Potential Fishing Zone (PFZ) today?',
@@ -89,6 +89,7 @@ export default function AssistantPage() {
         executionTrace: response.executionTrace,
         evidence: response.evidence,
         whatIfComparison: response.whatIfComparison,
+        missionPlan: response.missionPlan,
       };
       setMessages(prev => [...prev, assistantMsg]);
     } catch {
@@ -270,6 +271,14 @@ export default function AssistantPage() {
                     {/* What-If Scenario Comparison Card */}
                     {msg.whatIfComparison && (
                       <WhatIfComparisonCard comparison={msg.whatIfComparison} />
+                    )}
+
+                    {/* Flagship Fishing Mission Planner Card */}
+                    {msg.missionPlan && (
+                      <MissionPlannerCard
+                        mission={msg.missionPlan}
+                        onOpenWhy={() => setActiveEvidence(msg.evidence || null)}
+                      />
                     )}
 
                     {/* Structured Data */}

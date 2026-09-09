@@ -245,6 +245,19 @@ export interface WhatIfComparisonPayload {
   recommendation: string;
 }
 
+export interface MissionPlannerPayload {
+  recommendedZone: string;
+  suitabilityScore: number;
+  safetyScore: number;
+  safetyLabel: string;
+  recommendedTime: string;
+  recommendedRoute: string;
+  distanceKm: number;
+  warnings: string[];
+  mapAction: string;
+  evidence?: EvidencePayload;
+}
+
 export interface OrcaResponse {
   query: string;
   agentsUsed: Agent[];
@@ -258,6 +271,7 @@ export interface OrcaResponse {
   executionTrace?: AgentTraceEvent[];
   evidence?: EvidencePayload;
   whatIfComparison?: WhatIfComparisonPayload;
+  missionPlan?: MissionPlannerPayload;
 }
 
 // ---- Chat ----
@@ -275,6 +289,7 @@ export interface ChatMessage {
   executionTrace?: AgentTraceEvent[];
   evidence?: EvidencePayload;
   whatIfComparison?: WhatIfComparisonPayload;
+  missionPlan?: MissionPlannerPayload;
 }
 
 // ---- Marine Conditions (Unified) ----
