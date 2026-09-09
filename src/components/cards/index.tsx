@@ -11,6 +11,9 @@ import {
 import { cn, getMetricStatusColor, getMetricBgColor } from '@/lib/utils';
 import { OceanMetric, FishingZone, RouteOption, Alert, Agent, DataSource } from '@/types/marine';
 
+export { AgentTracePanel } from './AgentTracePanel';
+export { WhyEvidenceModal } from './WhyEvidenceModal';
+
 // ---- Icon Map ----
 const ICON_MAP: Record<string, React.ElementType> = {
   wind: Wind, waves: Waves, thermometer: Thermometer, navigation: Navigation,

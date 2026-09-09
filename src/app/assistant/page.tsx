@@ -2,11 +2,11 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Mic, Globe, Bot, User, Shield, Lightbulb, Database, Loader2, Anchor } from 'lucide-react';
+import { Send, Mic, Globe, Bot, User, Shield, Lightbulb, Database, Loader2, Anchor, HelpCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { orchestrate, AgentOutput } from '@/lib/orchestrator';
-import { ChatMessage, AgentType } from '@/types/marine';
-import { DemoModeBanner } from '@/components/cards';
+import { ChatMessage, AgentType, EvidencePayload } from '@/types/marine';
+import { DemoModeBanner, AgentTracePanel, WhyEvidenceModal } from '@/components/cards';
 
 const EXAMPLE_QUESTIONS = [
   'Where is the nearest Potential Fishing Zone (PFZ) today?',
@@ -31,6 +31,7 @@ export default function AssistantPage() {
   const [showLangMenu, setShowLangMenu] = useState(false);
   const [activeAgents, setActiveAgents] = useState<Set<AgentType>>(new Set());
   const [completedAgents, setCompletedAgents] = useState<Set<AgentType>>(new Set());
+  const [activeEvidence, setActiveEvidence] = useState<EvidencePayload | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -85,7 +86,8 @@ export default function AssistantPage() {
         reasoning: response.reasoning,
         recommendation: response.recommendation,
         dataSources: response.dataSources,
-        structuredData: response.structuredData,
+        executionTrace: response.executionTrace,
+        evidence: response.evidence,
       };
       setMessages(prev => [...prev, assistantMsg]);
     } catch {
@@ -239,13 +241,29 @@ export default function AssistantPage() {
 
                     {/* Recommendation */}
                     {msg.recommendation && (
-                      <div className="p-3 rounded-xl bg-teal-500/5 border border-teal-500/15">
-                        <div className="flex items-center gap-1.5 mb-1">
-                          <Lightbulb className="w-3.5 h-3.5 text-teal-400" />
-                          <span className="text-xs text-teal-400 font-semibold uppercase tracking-wider">Recommendation</span>
+                      <div className="p-3 rounded-xl bg-teal-500/5 border border-teal-500/15 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <Lightbulb className="w-3.5 h-3.5 text-teal-400" />
+                            <span className="text-xs text-teal-400 font-semibold uppercase tracking-wider">Recommendation</span>
+                          </div>
+                          {msg.evidence && (
+                            <button
+                              onClick={() => setActiveEvidence(msg.evidence!)}
+                              className="flex items-center gap-1 px-2 py-1 rounded bg-teal-500/10 hover:bg-teal-500/20 text-[10px] text-teal-300 border border-teal-500/20 transition-colors font-medium"
+                            >
+                              <HelpCircle className="w-3 h-3" />
+                              Why? (View Proof)
+                            </button>
+                          )}
                         </div>
                         <p className="text-sm text-white">{msg.recommendation}</p>
                       </div>
+                    )}
+
+                    {/* Agent Trace Panel */}
+                    {msg.executionTrace && msg.executionTrace.length > 0 && (
+                      <AgentTracePanel trace={msg.executionTrace} />
                     )}
 
                     {/* Structured Data */}
@@ -361,6 +379,12 @@ export default function AssistantPage() {
           </div>
         </div>
       </div>
+      {/* Why Evidence Modal */}
+      <WhyEvidenceModal
+        isOpen={Boolean(activeEvidence)}
+        onClose={() => setActiveEvidence(null)}
+        evidence={activeEvidence ?? undefined}
+      />
     </div>
   );
 }

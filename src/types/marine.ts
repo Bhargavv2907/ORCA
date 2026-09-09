@@ -204,6 +204,35 @@ export interface OrcaQuery {
   language: string;
 }
 
+export interface AgentTraceEvent {
+  step: number;
+  agentId: AgentType;
+  agentName: string;
+  toolsCalled: string[];
+  durationMs: number;
+  timestamp: string;
+  status: 'running' | 'completed' | 'error';
+  summary: string;
+}
+
+export interface EvidenceItem {
+  metric: string;
+  value: string | number;
+  unit?: string;
+  source: string;
+  timestamp: string;
+  type: 'observation' | 'forecast' | 'advisory';
+  status: 'live' | 'cached' | 'unavailable';
+}
+
+export interface EvidencePayload {
+  measurements: EvidenceItem[];
+  riskFactors: RiskComponent[];
+  confidence: number;
+  agentsInvolved: string[];
+  warnings: string[];
+}
+
 export interface OrcaResponse {
   query: string;
   agentsUsed: Agent[];
@@ -214,6 +243,8 @@ export interface OrcaResponse {
   timestamp: string;
   confidence: number;
   structuredData?: Record<string, unknown>;
+  executionTrace?: AgentTraceEvent[];
+  evidence?: EvidencePayload;
 }
 
 // ---- Chat ----
@@ -228,6 +259,8 @@ export interface ChatMessage {
   recommendation?: string;
   dataSources?: string[];
   structuredData?: Record<string, unknown>;
+  executionTrace?: AgentTraceEvent[];
+  evidence?: EvidencePayload;
 }
 
 // ---- Marine Conditions (Unified) ----
