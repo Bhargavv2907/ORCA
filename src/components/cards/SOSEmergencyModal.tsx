@@ -24,21 +24,47 @@ export function SOSEmergencyModal({ isOpen, onClose }: SOSEmergencyModalProps) {
   const [broadcasting, setBroadcasting] = useState(false);
   const [broadcastSent, setBroadcastSent] = useState(false);
   const [countdown, setCountdown] = useState(3);
-  const [location, setLocation] = useState({ lat: 18.92, lon: 72.83, name: 'Mumbai Coast' });
+  const [location, setLocation] = useState({ lat: 18.92, lon: 72.83, name: 'Coastal Waters' });
   const [conditions, setConditions] = useState<MarineConditions | null>(null);
   const [alerts, setAlerts] = useState<ProactiveAlert[]>([]);
   const [riskData, setRiskData] = useState<{ score: number; label: string; color: string } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [gpsActive, setGpsActive] = useState(false);
+
+  const detectDeviceGPS = () => {
+    if (typeof window !== 'undefined' && 'geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const loc = {
+            lat: pos.coords.latitude,
+            lon: pos.coords.longitude,
+            name: 'Live GPS Position',
+            state: 'Offshore',
+          };
+          setLocation(loc);
+          setGpsActive(true);
+        },
+        () => {
+          setGpsActive(false);
+        },
+        { enableHighAccuracy: true, timeout: 6000 }
+      );
+    }
+  };
 
   useEffect(() => {
     async function fetchEmergencyTelemetry() {
       if (!isOpen) return;
       setLoading(true);
+
       const loc = getSelectedLocation();
       setLocation({ lat: loc.lat, lon: loc.lon, name: loc.name });
       setBroadcastSent(false);
       setBroadcasting(false);
       setCountdown(3);
+
+      // Attempt live device GPS if available
+      detectDeviceGPS();
 
       try {
         const cond = await getMarineConditions(loc.lat, loc.lon);
@@ -134,9 +160,15 @@ export function SOSEmergencyModal({ isOpen, onClose }: SOSEmergencyModalProps) {
                 </div>
                 <div>
                   <p className="text-xs font-bold text-white">Vessel: INF-2847 (Sagar Mitra)</p>
-                  <p className="text-[11px] text-slate-400 flex items-center gap-2">
-                    <MapPin className="w-3 h-3 text-red-400" />
+                  <p className="text-[11px] text-slate-400 flex items-center gap-2 flex-wrap">
+                    <MapPin className="w-3 h-3 text-red-400 shrink-0" />
                     <span>{location.lat.toFixed(4)}° N, {location.lon.toFixed(4)}° E ({location.name})</span>
+                    <button
+                      onClick={detectDeviceGPS}
+                      className="px-2 py-0.5 rounded bg-teal-500/20 text-teal-300 text-[10px] font-bold border border-teal-500/30 hover:bg-teal-500/30 transition-colors"
+                    >
+                      {gpsActive ? '✓ Hardware GPS Active' : '📍 Refresh GPS'}
+                    </button>
                   </p>
                 </div>
               </div>
