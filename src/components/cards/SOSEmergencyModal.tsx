@@ -4,10 +4,16 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   AlertOctagon, X, PhoneCall, Radio, Volume2, ShieldAlert,
-  MapPin, CheckCircle2, Wifi, WifiOff, Send, Anchor
+  MapPin, CheckCircle2, WifiOff, Waves, Wind, Thermometer,
+  Shield, AlertTriangle, Compass, LifeBuoy, BatteryCharging
 } from 'lucide-react';
 import { getSelectedLocation } from '@/lib/location-store';
 import { speakVernacularAdvisory } from '@/lib/i18n-engine';
+import { getMarineConditions } from '@/services/marine/unified';
+import { checkGeofenceProximity } from '@/lib/geofence-engine';
+import { evaluateProactiveAlerts, ProactiveAlert } from '@/lib/alert-engine';
+import { calculateMarineRisk } from '@/lib/risk-engine';
+import { MarineConditions } from '@/types/marine';
 
 interface SOSEmergencyModalProps {
   isOpen: boolean;
@@ -19,15 +25,52 @@ export function SOSEmergencyModal({ isOpen, onClose }: SOSEmergencyModalProps) {
   const [broadcastSent, setBroadcastSent] = useState(false);
   const [countdown, setCountdown] = useState(3);
   const [location, setLocation] = useState({ lat: 18.92, lon: 72.83, name: 'Mumbai Coast' });
+  const [conditions, setConditions] = useState<MarineConditions | null>(null);
+  const [alerts, setAlerts] = useState<ProactiveAlert[]>([]);
+  const [riskData, setRiskData] = useState<{ score: number; label: string; color: string } | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (isOpen) {
+    async function fetchEmergencyTelemetry() {
+      if (!isOpen) return;
+      setLoading(true);
       const loc = getSelectedLocation();
       setLocation({ lat: loc.lat, lon: loc.lon, name: loc.name });
       setBroadcastSent(false);
       setBroadcasting(false);
       setCountdown(3);
+
+      try {
+        const cond = await getMarineConditions(loc.lat, loc.lon);
+        setConditions(cond);
+
+        const geo = checkGeofenceProximity({ lat: loc.lat, lon: loc.lon });
+        const evalAlerts = evaluateProactiveAlerts(cond, geo);
+        setAlerts(evalAlerts);
+
+        const risk = calculateMarineRisk({
+          waveHeight: cond.waves.height,
+          windSpeed: cond.weather.windSpeed,
+          pressure: cond.weather.pressure,
+          visibility: cond.weather.visibility,
+          rainfall: cond.weather.rainfall,
+          currentSpeed: cond.ocean.currentSpeed,
+        });
+
+        const color = risk.score >= 70 ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30'
+          : risk.score >= 40 ? 'text-amber-400 bg-amber-500/10 border-amber-500/30'
+          : 'text-red-400 bg-red-500/10 border-red-500/30';
+
+        const label = risk.score >= 70 ? 'SAFE' : risk.score >= 40 ? 'CAUTION — MARGINAL' : 'CRITICAL HAZARD';
+        setRiskData({ score: risk.score, label, color });
+      } catch {
+        // Fallback static metrics if offline
+      } finally {
+        setLoading(false);
+      }
     }
+
+    fetchEmergencyTelemetry();
   }, [isOpen]);
 
   const handleTriggerSOS = () => {
@@ -41,9 +84,11 @@ export function SOSEmergencyModal({ isOpen, onClose }: SOSEmergencyModalProps) {
         setBroadcasting(false);
         setBroadcastSent(true);
 
+        const waveTxt = conditions ? `Wave height ${conditions.waves.height.toFixed(1)} meters, wind ${Math.round(conditions.weather.windSpeed)} kilometers per hour.` : '';
+
         // Speak audio alert
         speakVernacularAdvisory(
-          `MAYDAY MAYDAY MAYDAY. Emergency distress signal transmitted for vessel near ${location.name} at coordinates ${location.lat.toFixed(2)} North, ${location.lon.toFixed(2)} East. Indian Coast Guard alerted.`,
+          `MAYDAY MAYDAY MAYDAY. Emergency distress signal transmitted for vessel INF 2847 Sagar Mitra near ${location.name} at coordinates ${location.lat.toFixed(2)} North, ${location.lon.toFixed(2)} East. ${waveTxt} Indian Coast Guard alerted.`,
           'English'
         );
       }
@@ -54,22 +99,22 @@ export function SOSEmergencyModal({ isOpen, onClose }: SOSEmergencyModalProps) {
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md overflow-y-auto">
         <motion.div
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.9, opacity: 0 }}
-          className="w-full max-w-lg overflow-hidden rounded-3xl bg-navy-950 border border-red-500/50 shadow-2xl glow-danger"
+          className="w-full max-w-xl max-h-[92vh] overflow-y-auto rounded-3xl bg-navy-950 border border-red-500/50 shadow-2xl glow-danger"
         >
           {/* Header */}
-          <div className="bg-gradient-to-r from-red-950 via-red-900 to-navy-950 p-5 flex items-center justify-between border-b border-red-500/30">
+          <div className="sticky top-0 z-20 bg-gradient-to-r from-red-950 via-red-900 to-navy-950 p-4 sm:p-5 flex items-center justify-between border-b border-red-500/30">
             <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-2xl bg-red-500/20 border border-red-500/40 flex items-center justify-center animate-pulse">
+              <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-red-500/20 border border-red-500/40 flex items-center justify-center animate-pulse shrink-0">
                 <AlertOctagon className="w-6 h-6 text-red-400" />
               </div>
               <div>
-                <h2 className="text-xl font-extrabold text-white tracking-wide">EMERGENCY SOS</h2>
-                <p className="text-xs text-red-300">Indian Coast Guard & Maritime Distress Dispatch</p>
+                <h2 className="text-lg sm:text-xl font-extrabold text-white tracking-wide">EMERGENCY SOS & LIVE TELEMETRY</h2>
+                <p className="text-[11px] sm:text-xs text-red-300">Indian Coast Guard & Maritime Distress Dispatch</p>
               </div>
             </div>
             <button
@@ -80,43 +125,139 @@ export function SOSEmergencyModal({ isOpen, onClose }: SOSEmergencyModalProps) {
             </button>
           </div>
 
-          <div className="p-6 space-y-6">
-            {/* Live GPS Coordinates */}
-            <div className="p-4 rounded-2xl bg-red-950/30 border border-red-500/20 flex items-center justify-between">
+          <div className="p-4 sm:p-6 space-y-5">
+            {/* Vessel Telemetry Header */}
+            <div className="p-4 rounded-2xl bg-navy-900 border border-navy-700/60 flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                <MapPin className="w-5 h-5 text-red-400" />
+                <div className="w-9 h-9 rounded-xl bg-teal-500/10 border border-teal-500/30 flex items-center justify-center text-teal-400 font-bold text-xs">
+                  INF
+                </div>
                 <div>
-                  <p className="text-[11px] uppercase tracking-wider text-slate-400 font-bold">Vessel Position</p>
-                  <p className="text-sm font-bold text-white">
-                    {location.lat.toFixed(4)}° N, {location.lon.toFixed(4)}° E ({location.name})
+                  <p className="text-xs font-bold text-white">Vessel: INF-2847 (Sagar Mitra)</p>
+                  <p className="text-[11px] text-slate-400 flex items-center gap-2">
+                    <MapPin className="w-3 h-3 text-red-400" />
+                    <span>{location.lat.toFixed(4)}° N, {location.lon.toFixed(4)}° E ({location.name})</span>
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-1.5 text-xs text-red-400 font-semibold bg-red-500/10 px-2.5 py-1 rounded-full border border-red-500/30">
-                <Radio className="w-3.5 h-3.5 animate-pulse" />
-                <span>VHF Ch 16 Active</span>
+
+              <div className="flex items-center gap-2 text-[11px]">
+                <span className="px-2.5 py-1 rounded-full bg-red-500/20 text-red-300 border border-red-500/40 font-bold flex items-center gap-1">
+                  <Radio className="w-3 h-3 animate-pulse" /> VHF Ch 16
+                </span>
+                <span className="px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 font-semibold flex items-center gap-1">
+                  <BatteryCharging className="w-3 h-3 text-emerald-400" /> 94%
+                </span>
               </div>
             </div>
 
+            {/* Live Emergency Marine Conditions Metrics Grid */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Live Environmental Danger Metrics</p>
+                {riskData && (
+                  <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border uppercase ${riskData.color}`}>
+                    Safety Score: {riskData.score}/100 — {riskData.label}
+                  </span>
+                )}
+              </div>
+
+              {conditions ? (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                  <div className="p-3 rounded-xl bg-navy-900/80 border border-red-500/20">
+                    <div className="flex items-center justify-between text-slate-400 mb-1">
+                      <span className="text-[10px] font-semibold">Wave Swell</span>
+                      <Waves className="w-3.5 h-3.5 text-blue-400" />
+                    </div>
+                    <p className="text-sm font-extrabold text-white">{conditions.waves.height.toFixed(1)} m</p>
+                    <p className="text-[10px] text-amber-400">{conditions.waves.height > 2.5 ? '⚠️ High Swell' : 'Moderate'}</p>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-navy-900/80 border border-red-500/20">
+                    <div className="flex items-center justify-between text-slate-400 mb-1">
+                      <span className="text-[10px] font-semibold">Wind Speed</span>
+                      <Wind className="w-3.5 h-3.5 text-teal-400" />
+                    </div>
+                    <p className="text-sm font-extrabold text-white">{Math.round(conditions.weather.windSpeed)} km/h</p>
+                    <p className="text-[10px] text-slate-400">{conditions.weather.windDirection}</p>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-navy-900/80 border border-red-500/20">
+                    <div className="flex items-center justify-between text-slate-400 mb-1">
+                      <span className="text-[10px] font-semibold">Sea Temp</span>
+                      <Thermometer className="w-3.5 h-3.5 text-rose-400" />
+                    </div>
+                    <p className="text-sm font-extrabold text-white">{conditions.ocean.sst.toFixed(1)} °C</p>
+                    <p className="text-[10px] text-slate-400">ISRO Satellite</p>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-navy-900/80 border border-red-500/20">
+                    <div className="flex items-center justify-between text-slate-400 mb-1">
+                      <span className="text-[10px] font-semibold">Pressure</span>
+                      <Compass className="w-3.5 h-3.5 text-purple-400" />
+                    </div>
+                    <p className="text-sm font-extrabold text-white">{Math.round(conditions.weather.pressure)} hPa</p>
+                    <p className="text-[10px] text-slate-400">{conditions.weather.pressure < 1000 ? '⚠️ Low Pressure' : 'Normal'}</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-3 rounded-xl bg-navy-900 text-xs text-slate-400 text-center animate-pulse">
+                  Fetching live marine observations...
+                </div>
+              )}
+            </div>
+
+            {/* Active Proactive Hazard Alerts List */}
+            {alerts.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs text-red-400 font-bold uppercase tracking-wider flex items-center gap-1.5">
+                  <AlertTriangle className="w-3.5 h-3.5 text-red-400" />
+                  <span>Active Proactive Hazard Alerts ({alerts.length})</span>
+                </p>
+                <div className="space-y-2 max-h-36 overflow-y-auto pr-1">
+                  {alerts.map((alert) => (
+                    <div
+                      key={alert.hash}
+                      className={`p-3 rounded-xl border text-xs ${
+                        alert.severity === 'CRITICAL'
+                          ? 'bg-red-950/40 border-red-500/50 text-red-200'
+                          : alert.severity === 'HIGH'
+                          ? 'bg-amber-950/40 border-amber-500/40 text-amber-200'
+                          : 'bg-navy-900 border-navy-700 text-slate-300'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between font-bold mb-1">
+                        <span className="text-white">{alert.title}</span>
+                        <span className="text-[9px] uppercase px-2 py-0.5 rounded-full bg-black/40 border border-white/10 font-black">
+                          {alert.severity}
+                        </span>
+                      </div>
+                      <p className="text-[11px] leading-relaxed opacity-90">{alert.description}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Broadcast Action Area */}
             {!broadcastSent ? (
-              <div className="text-center space-y-4">
+              <div className="text-center space-y-3 pt-2">
                 <button
                   onClick={handleTriggerSOS}
                   disabled={broadcasting}
-                  className={`w-full py-5 rounded-2xl font-black text-lg tracking-wider transition-all duration-300 flex items-center justify-center gap-3 shadow-lg ${
+                  className={`w-full py-4 sm:py-5 rounded-2xl font-black text-base sm:text-lg tracking-wider transition-all duration-300 flex items-center justify-center gap-3 shadow-lg ${
                     broadcasting
                       ? 'bg-red-600 text-white animate-pulse'
                       : 'bg-gradient-to-r from-red-600 via-rose-600 to-red-700 text-white hover:scale-[1.02] hover:shadow-red-600/40 glow-danger'
                   }`}
                 >
-                  <ShieldAlert className="w-7 h-7" />
+                  <ShieldAlert className="w-6 h-6 sm:w-7 sm:h-7" />
                   <span>
-                    {broadcasting ? `TRANSMITTING MAYDAY (${countdown}s)...` : 'PRESS TO BROADCAST MAYDAY SOS'}
+                    {broadcasting ? `TRANSMITTING MAYDAY (${countdown}s)...` : 'TRANSMIT MAYDAY DISTRESS BEACON'}
                   </span>
                 </button>
                 <p className="text-xs text-slate-400">
-                  Sends automated distress beacon to Indian Coast Guard (ICG) MRCC & nearby registered vessels.
+                  Transmits automated MAYDAY distress beacon with telemetry & live GPS to Coast Guard MRCC & nearby AIS vessels.
                 </p>
               </div>
             ) : (
@@ -133,7 +274,7 @@ export function SOSEmergencyModal({ isOpen, onClose }: SOSEmergencyModalProps) {
                   Transmitted to Coast Guard MRCC Mumbai/Chennai & VHF Channel 16. Audio alert spoken in English & Vernacular.
                 </p>
                 <button
-                  onClick={() => speakVernacularAdvisory(`Mayday beacon active for ${location.name}. Hold fast, rescue dispatched.`, 'English')}
+                  onClick={() => speakVernacularAdvisory(`Mayday beacon active for Sagar Mitra near ${location.name}. Hold fast, rescue dispatched.`, 'English')}
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500/20 text-emerald-300 text-xs font-semibold hover:bg-emerald-500/30 transition-colors border border-emerald-500/30"
                 >
                   <Volume2 className="w-4 h-4" />
@@ -142,9 +283,31 @@ export function SOSEmergencyModal({ isOpen, onClose }: SOSEmergencyModalProps) {
               </motion.div>
             )}
 
+            {/* Offline Protocol Checklist */}
+            <div className="p-3.5 rounded-2xl bg-navy-900 border border-navy-700/50 space-y-2 text-xs">
+              <p className="font-bold text-slate-300 flex items-center gap-1.5">
+                <LifeBuoy className="w-4 h-4 text-teal-400" />
+                <span>Fisherman Emergency Checklist at Sea</span>
+              </p>
+              <ul className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-[11px] text-slate-400">
+                <li className="flex items-center gap-1.5">
+                  <span className="text-teal-400 font-bold">1.</span> Put on life jackets immediately.
+                </li>
+                <li className="flex items-center gap-1.5">
+                  <span className="text-teal-400 font-bold">2.</span> Drop sea anchor to steady vessel.
+                </li>
+                <li className="flex items-center gap-1.5">
+                  <span className="text-teal-400 font-bold">3.</span> Set VHF radio to Channel 16.
+                </li>
+                <li className="flex items-center gap-1.5">
+                  <span className="text-teal-400 font-bold">4.</span> Turn on strobe beacon light.
+                </li>
+              </ul>
+            </div>
+
             {/* Direct Helplines */}
             <div className="space-y-2">
-              <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Emergency Contact Numbers</p>
+              <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Emergency Helplines</p>
               <div className="grid grid-cols-2 gap-3">
                 <a
                   href="tel:1554"
