@@ -8,7 +8,8 @@ import {
   Shield, AlertTriangle, Compass, LifeBuoy, BatteryCharging
 } from 'lucide-react';
 import { getSelectedLocation } from '@/lib/location-store';
-import { speakVernacularAdvisory } from '@/lib/i18n-engine';
+import { speakVernacularAdvisory, COASTAL_LANGUAGES, LanguageVoiceConfig } from '@/lib/i18n-engine';
+import { getSelectedLanguage, setSelectedLanguage } from '@/lib/language-store';
 import { getMarineConditions } from '@/services/marine/unified';
 import { checkGeofenceProximity } from '@/lib/geofence-engine';
 import { evaluateProactiveAlerts, ProactiveAlert } from '@/lib/alert-engine';
@@ -30,6 +31,17 @@ export function SOSEmergencyModal({ isOpen, onClose }: SOSEmergencyModalProps) {
   const [riskData, setRiskData] = useState<{ score: number; label: string; color: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [gpsActive, setGpsActive] = useState(false);
+  const [selectedLang, setSelectedLang] = useState<LanguageVoiceConfig>(COASTAL_LANGUAGES[0]);
+
+  useEffect(() => {
+    setSelectedLang(getSelectedLanguage());
+    const handler = (e: Event) => {
+      const lang = (e as CustomEvent<LanguageVoiceConfig>).detail;
+      if (lang) setSelectedLang(lang);
+    };
+    window.addEventListener('orca-language-changed', handler);
+    return () => window.removeEventListener('orca-language-changed', handler);
+  }, []);
 
   const detectDeviceGPS = () => {
     if (typeof window !== 'undefined' && 'geolocation' in navigator) {
@@ -112,10 +124,10 @@ export function SOSEmergencyModal({ isOpen, onClose }: SOSEmergencyModalProps) {
 
         const waveTxt = conditions ? `Wave height ${conditions.waves.height.toFixed(1)} meters, wind ${Math.round(conditions.weather.windSpeed)} kilometers per hour.` : '';
 
-        // Speak audio alert
+        // Speak audio alert in chosen coastal language
         speakVernacularAdvisory(
           `MAYDAY MAYDAY MAYDAY. Emergency distress signal transmitted for vessel INF 2847 Sagar Mitra near ${location.name} at coordinates ${location.lat.toFixed(2)} North, ${location.lon.toFixed(2)} East. ${waveTxt} Indian Coast Guard alerted.`,
-          'English'
+          selectedLang.name
         );
       }
     }, 1000);
@@ -133,7 +145,7 @@ export function SOSEmergencyModal({ isOpen, onClose }: SOSEmergencyModalProps) {
           className="w-full max-w-xl max-h-[92vh] overflow-y-auto rounded-3xl bg-navy-950 border border-red-500/50 shadow-2xl glow-danger"
         >
           {/* Header */}
-          <div className="sticky top-0 z-20 bg-gradient-to-r from-red-950 via-red-900 to-navy-950 p-4 sm:p-5 flex items-center justify-between border-b border-red-500/30">
+          <div className="sticky top-0 z-20 bg-gradient-to-r from-red-950 via-red-900 to-navy-950 p-4 sm:p-5 flex items-center justify-between border-b border-red-500/30 flex-wrap gap-2">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-red-500/20 border border-red-500/40 flex items-center justify-center animate-pulse shrink-0">
                 <AlertOctagon className="w-6 h-6 text-red-400" />
@@ -143,12 +155,35 @@ export function SOSEmergencyModal({ isOpen, onClose }: SOSEmergencyModalProps) {
                 <p className="text-[11px] sm:text-xs text-red-300">Indian Coast Guard & Maritime Distress Dispatch</p>
               </div>
             </div>
-            <button
-              onClick={onClose}
-              className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
+
+            <div className="flex items-center gap-2">
+              {/* Language Selector Dropdown */}
+              <select
+                value={selectedLang.code}
+                onChange={(e) => {
+                  const found = COASTAL_LANGUAGES.find(l => l.code === e.target.value);
+                  if (found) {
+                    setSelectedLang(found);
+                    setSelectedLanguage(found);
+                  }
+                }}
+                className="bg-black/60 border border-red-500/40 text-white text-xs font-bold rounded-xl px-2.5 py-1.5 focus:outline-none hover:border-red-400 transition-colors"
+                title="Select Voice & Advisory Language"
+              >
+                {COASTAL_LANGUAGES.map((lang) => (
+                  <option key={lang.code} value={lang.code} className="bg-navy-900 text-white">
+                    {lang.flag} {lang.name} ({lang.nativeName})
+                  </option>
+                ))}
+              </select>
+
+              <button
+                onClick={onClose}
+                className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
           </div>
 
           <div className="p-4 sm:p-6 space-y-5">
@@ -306,7 +341,7 @@ export function SOSEmergencyModal({ isOpen, onClose }: SOSEmergencyModalProps) {
                   Transmitted to Coast Guard MRCC Mumbai/Chennai & VHF Channel 16. Audio alert spoken in English & Vernacular.
                 </p>
                 <button
-                  onClick={() => speakVernacularAdvisory(`Mayday beacon active for Sagar Mitra near ${location.name}. Hold fast, rescue dispatched.`, 'English')}
+                  onClick={() => speakVernacularAdvisory(`Mayday beacon active for Sagar Mitra near ${location.name}. Hold fast, rescue dispatched.`, selectedLang.name)}
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500/20 text-emerald-300 text-xs font-semibold hover:bg-emerald-500/30 transition-colors border border-emerald-500/30"
                 >
                   <Volume2 className="w-4 h-4" />
