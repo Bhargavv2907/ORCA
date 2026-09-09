@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { MapPin, Bot, ArrowRight, Shield, Clock, Anchor } from 'lucide-react';
-import { OceanMetricCard, DemoModeBanner, RiskScore } from '@/components/cards';
+import { OceanMetricCard, DemoModeBanner, RiskScore, ProactiveAlertBanner } from '@/components/cards';
 import { getMockDashboardMetrics, getMockSafety, getMockAlerts, DEFAULT_LOCATION } from '@/data/mock-data';
 import { getGreeting, formatCoordinate } from '@/lib/utils';
 import { OceanMetric, SafetyScore, Alert } from '@/types/marine';
@@ -97,7 +97,9 @@ export default function DashboardPage() {
   const statusGlow = safety?.status === 'SAFE' ? 'pulse-safe' : safety?.status === 'MODERATE' ? '' : 'pulse-danger';
 
   return (
-    <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
+    <div className="space-y-4">
+      <ProactiveAlertBanner />
+      <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
@@ -278,5 +280,6 @@ export default function DashboardPage() {
         </div>
       </div>
     </div>
-  );
+  </div>
+);
 }

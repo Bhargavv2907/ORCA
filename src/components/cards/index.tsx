@@ -17,6 +17,7 @@ export { WhatIfComparisonCard } from './WhatIfComparisonCard';
 export { MissionPlannerCard } from './MissionPlannerCard';
 export { GeofenceAlertCard } from './GeofenceAlertCard';
 export { AudioAdvisoryPlayer } from './AudioAdvisoryPlayer';
+export { ProactiveAlertBanner } from './ProactiveAlertBanner';
 
 // ---- Icon Map ----
 const ICON_MAP: Record<string, React.ElementType> = {

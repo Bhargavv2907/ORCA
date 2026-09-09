@@ -6,7 +6,7 @@ import { Send, Mic, Globe, Bot, User, Shield, Lightbulb, Database, Loader2, Anch
 import { cn } from '@/lib/utils';
 import { orchestrate, AgentOutput } from '@/lib/orchestrator';
 import { ChatMessage, AgentType, EvidencePayload, WhatIfComparisonPayload } from '@/types/marine';
-import { DemoModeBanner, AgentTracePanel, WhyEvidenceModal, WhatIfComparisonCard, MissionPlannerCard, GeofenceAlertCard, AudioAdvisoryPlayer } from '@/components/cards';
+import { DemoModeBanner, AgentTracePanel, WhyEvidenceModal, WhatIfComparisonCard, MissionPlannerCard, GeofenceAlertCard, AudioAdvisoryPlayer, ProactiveAlertBanner } from '@/components/cards';
 
 const EXAMPLE_QUESTIONS = [
   'Where is the nearest Potential Fishing Zone (PFZ) today?',
@@ -148,6 +148,7 @@ export default function AssistantPage() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-56px)] lg:h-screen">
+      <ProactiveAlertBanner />
       {/* Header */}
       <div className="shrink-0 border-b border-navy-700/20 px-4 md:px-6 py-4">
         <div className="flex items-center justify-between max-w-4xl mx-auto">
