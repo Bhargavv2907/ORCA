@@ -97,6 +97,8 @@ const PHRASE_DICTIONARY: Record<string, Record<string, string>> = {
     'Indian Coast Guard alerted': 'ઇન્ડિયન કોસ્ટ ગાર્ડને ચેતવણી આપવામાં આવી છે',
   },
   Marathi: {
+    'right now:': 'याक्षणी:',
+    'Ask me about fishing zones, routes, weather alerts, or sea conditions.': 'मासेमारी क्षेत्रे, मार्ग, हवामान इशारे किंवा समुद्राच्या परिस्थितीबद्दल मला विचारा.',
     'CLEAR': 'सुरक्षित (CLEAR)',
     'Nearest restricted boundary': 'जवळची प्रतिबंधित सीमा',
     'Position verified clear': 'स्थान पडताळून पाहिले (सुरक्षित)',
@@ -105,6 +107,7 @@ const PHRASE_DICTIONARY: Record<string, Record<string, string>> = {
     'Safe to Sail': 'समुद्रात जाणे सुरक्षित आहे',
     'Best zone today': 'आजचा सर्वोत्तम मासेमारी भाग',
     'Safety score': 'सुरक्षा गुण',
+    'Safety': 'सुरक्षा गुण',
     'Waves': 'लाटा',
     'Wind': 'वारा',
     'Temperature': 'तापमान',

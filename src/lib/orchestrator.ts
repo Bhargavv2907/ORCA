@@ -54,11 +54,40 @@ const DEFAULT_LOCATION = INDIAN_COASTAL_LOCATIONS[0]; // Mumbai fallback
 
 export function extractLocation(query: string): CoastalLocation {
   const q = query.toLowerCase();
+
+  // 1. Direct alias or city name match
   for (const loc of INDIAN_COASTAL_LOCATIONS) {
-    if (loc.aliases.some(alias => q.includes(alias))) {
+    if (
+      loc.name.toLowerCase() === q ||
+      loc.aliases.some(alias => q.includes(alias)) ||
+      q.includes(loc.name.toLowerCase())
+    ) {
       return loc;
     }
   }
+
+  // 2. State name / state alias match
+  const stateMap: Record<string, string> = {
+    kerala: 'Kochi',
+    gujarat: 'Veraval',
+    'tamil nadu': 'Chennai',
+    tamil: 'Chennai',
+    andhra: 'Visakhapatnam',
+    bengal: 'Kolkata',
+    karnataka: 'Mangalore',
+    goa: 'Goa',
+    odisha: 'Paradip',
+    maharashtra: 'Mumbai',
+    puducherry: 'Pondicherry',
+  };
+
+  for (const [stateKeyword, cityName] of Object.entries(stateMap)) {
+    if (q.includes(stateKeyword)) {
+      const match = INDIAN_COASTAL_LOCATIONS.find(l => l.name.toLowerCase() === cityName.toLowerCase());
+      if (match) return match;
+    }
+  }
+
   return DEFAULT_LOCATION;
 }
 
