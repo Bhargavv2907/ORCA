@@ -7,9 +7,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, Bot, Map, Fish, Route, CloudSun, Waves,
   AlertTriangle, Settings, ChevronLeft, ChevronRight, Brain,
-  Menu, X, Database, Info, Anchor, Ship
+  Menu, X, Database, Info, Anchor, Ship, Trophy
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { PitchDeckDemoModal } from '@/components/cards/PitchDeckDemoModal';
 
 const NAV_ITEMS = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -37,6 +38,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [showPitchDeck, setShowPitchDeck] = useState(false);
 
   const isActive = (href: string) => pathname === href;
 
@@ -193,6 +195,18 @@ export function Sidebar() {
           ))}
 
           <button
+            onClick={() => setShowPitchDeck(true)}
+            title="SIH Pitch Deck & Demo Mode"
+            className={cn(
+              'w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-bold transition-all bg-gradient-to-r from-teal-500/20 to-cyan-500/20 hover:from-teal-500/30 hover:to-cyan-500/30 text-teal-300 border border-teal-500/30 mb-1',
+              collapsed && 'justify-center'
+            )}
+          >
+            <Trophy className="w-4 h-4 shrink-0 text-amber-400" />
+            {!collapsed && <span className="truncate">SIH Pitch Deck</span>}
+          </button>
+
+          <button
             onClick={() => setCollapsed(!collapsed)}
             className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-slate-500 hover:text-slate-300 hover:bg-white/5 w-full transition-all"
           >
@@ -218,6 +232,12 @@ export function Sidebar() {
           </Link>
         ))}
       </nav>
+
+      {/* Pitch Deck Modal */}
+      <PitchDeckDemoModal
+        isOpen={showPitchDeck}
+        onClose={() => setShowPitchDeck(false)}
+      />
     </>
   );
 }

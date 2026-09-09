@@ -19,6 +19,7 @@ export { GeofenceAlertCard } from './GeofenceAlertCard';
 export { AudioAdvisoryPlayer } from './AudioAdvisoryPlayer';
 export { ProactiveAlertBanner } from './ProactiveAlertBanner';
 export { OfflineIndicator } from './OfflineIndicator';
+export { PitchDeckDemoModal } from './PitchDeckDemoModal';
 
 // ---- Icon Map ----
 const ICON_MAP: Record<string, React.ElementType> = {
