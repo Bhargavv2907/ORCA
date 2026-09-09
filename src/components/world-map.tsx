@@ -222,6 +222,7 @@ export default function WorldMapComponent({
   const layerGroupRef = useRef<any>(null);
   const lineLayerRef = useRef<any>(null);
   const [isLoaded, setIsLoaded] = useState(false);
+  const inspectPointRef = useRef<(lat: number, lon: number, label?: string) => void>(() => {});
   const [clickedPoint, setClickedPoint] = useState<{ lat: number; lon: number; data?: MarineConditions; loading: boolean; label?: string } | null>(null);
 
   const inspectPoint = React.useCallback((lat: number, lon: number, label?: string) => {
@@ -242,6 +243,11 @@ export default function WorldMapComponent({
         setClickedPoint((prev) => (prev ? { ...prev, loading: false } : null));
       });
   }, [onPointClick]);
+
+  // Keep ref in sync so the map click handler always calls the latest inspectPoint
+  useEffect(() => {
+    inspectPointRef.current = inspectPoint;
+  }, [inspectPoint]);
 
   // Expose global inspector trigger for Leaflet popups
   useEffect(() => {
@@ -305,7 +311,8 @@ export default function WorldMapComponent({
     });
   };
 
-  // Initialize Leaflet Map
+  // Initialize Leaflet Map — runs once on mount only
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!containerRef.current || mapInstanceRef.current) return;
 
@@ -333,6 +340,13 @@ export default function WorldMapComponent({
         zoomControl: false,
       });
 
+      // Add initial tile layer immediately so tiles show right away
+      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        attribution: '&copy; Esri World Imagery & ISRO MOSDAC',
+        maxZoom: 18,
+        noWrap: false,
+      }).addTo(map);
+
       // Add Zoom Control at top right
       L.control.zoom({ position: 'topright' }).addTo(map);
 
@@ -341,11 +355,11 @@ export default function WorldMapComponent({
       layerGroupRef.current = layerGroup;
       mapInstanceRef.current = map;
 
-      // Handle map click for live sampling
+      // Handle map click for live sampling — use ref so we don't depend on onPointClick
       map.on('click', (e: any) => {
         const lat = +e.latlng.lat.toFixed(3);
         const lon = +e.latlng.lng.toFixed(3);
-        inspectPoint(lat, lon, `Ocean Point (${lat}°N, ${lon}°E)`);
+        inspectPointRef.current(lat, lon, `Ocean Point (${lat}°N, ${lon}°E)`);
       });
 
       setTimeout(() => {
@@ -362,7 +376,7 @@ export default function WorldMapComponent({
         mapInstanceRef.current = null;
       }
     };
-  }, [onPointClick]);
+  }, []);
 
   // Update Basemap Tiles based on satelliteMode
   useEffect(() => {
@@ -431,9 +445,13 @@ export default function WorldMapComponent({
   useEffect(() => {
     if (!containerRef.current || !mapInstanceRef.current || !isLoaded) return;
     const map = mapInstanceRef.current;
-    setTimeout(() => { map.invalidateSize(); }, 200);
+    setTimeout(() => {
+      if (mapInstanceRef.current) map.invalidateSize();
+    }, 200);
     const ro = new ResizeObserver(() => {
-      map.invalidateSize();
+      if (mapInstanceRef.current) {
+        try { map.invalidateSize(); } catch (_) { /* map may have been removed */ }
+      }
     });
     ro.observe(containerRef.current);
     return () => ro.disconnect();
@@ -490,14 +508,14 @@ export default function WorldMapComponent({
             inspectPoint(sector.center.lat, sector.center.lon, sector.name);
           });
           marker.bindPopup(
-            `<div class="p-2.5 text-xs font-sans">
-              <div class="flex items-center justify-between mb-1">
-                <h4 class="font-bold text-teal-600 text-sm">🇮🇳 ${sector.name}</h4>
-                <span class="text-[9px] px-1.5 py-0.5 rounded bg-teal-100 text-teal-800 font-semibold">${sector.type}</span>
+            `<div style="padding:10px;font-size:12px;font-family:system-ui,sans-serif;color:#e2e8f0;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                <h4 style="font-weight:700;color:#2dd4bf;font-size:14px;margin:0;">🇮🇳 ${sector.name}</h4>
+                <span style="font-size:9px;padding:2px 6px;border-radius:4px;background:rgba(13,148,136,0.2);color:#5eead4;font-weight:600;border:1px solid rgba(45,212,191,0.3);">${sector.type}</span>
               </div>
-              <p class="text-slate-600 mb-1"><strong>State/UT:</strong> ${sector.state}</p>
-              <p class="text-slate-500 mb-2">${sector.description}</p>
-              <div class="text-[10px] bg-slate-100 p-1.5 rounded font-mono mb-2">
+              <p style="color:#94a3b8;margin:0 0 4px 0;"><strong style="color:#cbd5e1;">State/UT:</strong> ${sector.state}</p>
+              <p style="color:#64748b;margin:0 0 8px 0;">${sector.description}</p>
+              <div style="font-size:10px;background:rgba(30,58,95,0.5);padding:6px 8px;border-radius:6px;font-family:monospace;margin-bottom:8px;color:#5eead4;border:1px solid rgba(30,58,95,0.6);">
                 Lat: ${sector.center.lat}°N | Lon: ${sector.center.lon}°E
               </div>
               <button
@@ -528,13 +546,13 @@ export default function WorldMapComponent({
           });
 
           circle.bindPopup(
-            `<div class="p-2 text-xs font-sans">
-              <div class="flex items-center justify-between mb-1">
-                <strong class="text-teal-600 text-sm">${zone.name}</strong>
-                <span class="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-bold">${zone.suitabilityScore}% Match</span>
+            `<div style="padding:8px;font-size:12px;font-family:system-ui,sans-serif;color:#e2e8f0;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                <strong style="color:#2dd4bf;font-size:14px;">${zone.name}</strong>
+                <span style="padding:2px 6px;border-radius:4px;background:rgba(16,185,129,0.2);color:#6ee7b7;font-size:10px;font-weight:700;border:1px solid rgba(16,185,129,0.3);">${zone.suitabilityScore}% Match</span>
               </div>
-              <p class="text-slate-600 mb-1">Activity Level: <strong>${zone.historicalActivity}</strong></p>
-              <p class="text-slate-500">SST: ${zone.sst}°C | Chlorophyll: ${zone.chlorophyll} mg/m³</p>
+              <p style="color:#94a3b8;margin:0 0 4px 0;">Activity Level: <strong style="color:#cbd5e1;">${zone.historicalActivity}</strong></p>
+              <p style="color:#64748b;margin:0;">SST: ${zone.sst}°C | Chlorophyll: ${zone.chlorophyll} mg/m³</p>
             </div>`
           );
 
@@ -600,10 +618,10 @@ export default function WorldMapComponent({
         }).addTo(layerGroup);
 
         highlightCircle.bindPopup(`
-          <div class="p-2 font-sans text-xs">
-            <h4 class="font-bold text-teal-600 text-sm mb-1">🎯 Highlighted PFZ: ${targetZone.name}</h4>
-            <p class="text-slate-600">Suitability Score: <strong>${targetZone.suitabilityScore}% Match</strong></p>
-            <p class="text-slate-500 font-mono">SST: ${targetZone.sst}°C | Chlorophyll: ${targetZone.chlorophyll} mg/m³</p>
+          <div style="padding:8px;font-size:12px;font-family:system-ui,sans-serif;color:#e2e8f0;">
+            <h4 style="font-weight:700;color:#2dd4bf;font-size:14px;margin:0 0 6px 0;">🎯 Highlighted PFZ: ${targetZone.name}</h4>
+            <p style="color:#94a3b8;margin:0 0 4px 0;">Suitability Score: <strong style="color:#6ee7b7;">${targetZone.suitabilityScore}% Match</strong></p>
+            <p style="color:#64748b;font-family:monospace;margin:0;">SST: ${targetZone.sst}°C | Chlorophyll: ${targetZone.chlorophyll} mg/m³</p>
           </div>
         `).openPopup();
 
@@ -636,9 +654,9 @@ export default function WorldMapComponent({
         }).addTo(layerGroup);
 
         polygon.bindPopup(`
-          <div class="p-2 font-sans text-xs text-red-600 font-bold">
-            ⚠️ Restricted Maritime Zone / IMBL Boundary<br/>
-            <span class="text-slate-600 text-[11px] font-normal">Prohibited waters for commercial fishing without clearance.</span>
+          <div style="padding:8px;font-size:12px;font-family:system-ui,sans-serif;">
+            <strong style="color:#f87171;font-size:13px;">⚠️ Restricted Maritime Zone / IMBL Boundary</strong><br/>
+            <span style="color:#94a3b8;font-size:11px;font-weight:400;">Prohibited waters for commercial fishing without clearance.</span>
           </div>
         `).openPopup();
 
