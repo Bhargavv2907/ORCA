@@ -309,6 +309,15 @@ function generateResponse(
     fishing_recommendation: () => ({
       safetyStatus: safety,
       recommendation: `🐟 Best zone today: ${zones[0].name} — ${zones[0].distanceFromCoast} km offshore, suitability ${zones[0].suitabilityScore}%. Sea temp ${zones[0].sst}°C, chlorophyll ${zones[0].chlorophyll} mg/m³. Waves ${waves.height.toFixed(1)}m · Wind ${Math.round(weather.windSpeed)} km/h. Safety: ${safety.overall}/100 (${safety.label}). Take Route B (38 km, 96% safety).`,
+      missionPlan: {
+        targetZone: zones[0].name,
+        distanceKm: zones[0].distanceFromCoast,
+        estimatedFuelLiters: 45,
+        estimatedDurationHours: 3.5,
+        recommendedRoute: 'Route B (Coastal Path)',
+        safetyScore: safety.overall,
+        optimalDepartureTime: '05:30 AM',
+      },
     }),
     route_planning: () => ({
       safetyStatus: safety,
