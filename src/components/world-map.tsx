@@ -542,11 +542,15 @@ export default function WorldMapComponent({
       // 2. POTENTIAL FISHING ZONES (PFZ)
       if (currentLayers.has('fishing')) {
         zonesList.forEach((zone) => {
+          const color = zone.color || '#14b8a6';
+          const radiusMeters = (zone.radius || 15) * 1000;
+
           const circle = L.circle([zone.center.lat, zone.center.lon], {
-            color: zone.color || '#14b8a6',
-            fillColor: zone.color || '#14b8a6',
-            fillOpacity: 0.25,
-            radius: 35000,
+            color: color,
+            fillColor: color,
+            fillOpacity: 0.22,
+            radius: radiusMeters,
+            weight: 2,
           });
 
           circle.on('click', () => {
@@ -556,15 +560,31 @@ export default function WorldMapComponent({
           circle.bindPopup(
             `<div style="padding:8px;font-size:12px;font-family:system-ui,sans-serif;color:#e2e8f0;">
               <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-                <strong style="color:#2dd4bf;font-size:14px;">${zone.name}</strong>
+                <strong style="color:${color};font-size:14px;">${zone.name}</strong>
                 <span style="padding:2px 6px;border-radius:4px;background:rgba(16,185,129,0.2);color:#6ee7b7;font-size:10px;font-weight:700;border:1px solid rgba(16,185,129,0.3);">${zone.suitabilityScore}% Match</span>
               </div>
-              <p style="color:#94a3b8;margin:0 0 4px 0;">Activity Level: <strong style="color:#cbd5e1;">${zone.historicalActivity}</strong></p>
+              <p style="color:#94a3b8;margin:0 0 4px 0;">Activity Level: <strong style="color:#cbd5e1;">${zone.historicalActivity}</strong> | Radius: ${zone.radius} km</p>
               <p style="color:#64748b;margin:0;">SST: ${zone.sst}°C | Chlorophyll: ${zone.chlorophyll} mg/m³</p>
             </div>`
           );
 
           circle.addTo(layerGroup);
+
+          // Add Zone Label Badge at Circle Center
+          const shortName = zone.name.includes('Zone A') ? 'Zone A' :
+                            zone.name.includes('Zone B') ? 'Zone B' :
+                            zone.name.includes('Zone C') ? 'Zone C' : zone.name.split(' ')[0];
+          const badgeIcon = L.divIcon({
+            className: 'custom-zone-badge',
+            html: `<div style="background:${color}22;border:1.5px solid ${color};color:${color};padding:2px 6px;border-radius:12px;font-size:10px;font-weight:bold;white-space:nowrap;backdrop-filter:blur(4px);box-shadow:0 2px 6px rgba(0,0,0,0.4);">
+              📍 ${shortName} (${zone.suitabilityScore}%)
+            </div>`,
+            iconSize: [80, 20],
+            iconAnchor: [40, 10],
+          });
+          const badgeMarker = L.marker([zone.center.lat, zone.center.lon], { icon: badgeIcon });
+          badgeMarker.on('click', () => inspect(zone.center.lat, zone.center.lon, zone.name));
+          badgeMarker.addTo(layerGroup);
         });
       }
 
