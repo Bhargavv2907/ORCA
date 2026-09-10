@@ -102,10 +102,8 @@ export default function LandingPage() {
             transition={{ duration: 0.8, delay: 0.2 }}
             className="mb-4"
           >
-            <div className="flex items-center justify-center gap-4 mb-4">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center glow-teal">
-                <Anchor className="w-9 h-9 text-navy-950" />
-              </div>
+            <div className="flex items-center justify-center gap-4 mb-6">
+              <img src="/logo.jpg" alt="JalSaathi Official Logo" className="w-24 h-24 md:w-32 md:h-32 rounded-3xl object-cover shadow-2xl border-2 border-teal-400/50 glow-teal" />
             </div>
             <h1 className="text-6xl md:text-8xl font-black text-white tracking-tight mb-3">
               JalSaathi

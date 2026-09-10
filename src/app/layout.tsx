@@ -31,6 +31,10 @@ export const metadata: Metadata = {
     "ISRO MOSDAC",
   ],
   manifest: "/manifest.json",
+  icons: {
+    icon: "/logo.jpg",
+    apple: "/logo.jpg",
+  },
 };
 
 export const viewport: Viewport = {

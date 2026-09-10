@@ -70,10 +70,8 @@ export function Sidebar() {
     <>
       {/* Mobile header */}
       <div className="lg:hidden fixed top-0 left-0 right-0 z-50 glass px-4 py-3 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center">
-            <Anchor className="w-5 h-5 text-navy-950" />
-          </div>
+        <Link href="/" className="flex items-center gap-2.5">
+          <img src="/logo.jpg" alt="JalSaathi Logo" className="w-9 h-9 rounded-xl object-cover shadow-lg border border-teal-500/40 shrink-0" />
           <span className="text-lg font-bold text-white">JalSaathi</span>
         </Link>
         <div className="flex items-center gap-2">
@@ -114,12 +112,10 @@ export function Sidebar() {
             className="lg:hidden fixed left-0 top-0 bottom-0 z-50 w-[280px] bg-navy-900 border-r border-navy-700/40 flex flex-col overflow-y-auto"
           >
             <div className="p-4 flex items-center gap-3 border-b border-navy-700/30">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center">
-                <Anchor className="w-6 h-6 text-navy-950" />
-              </div>
+              <img src="/logo.jpg" alt="JalSaathi Logo" className="w-10 h-10 rounded-xl object-cover shadow-lg border border-teal-500/40 shrink-0" />
               <div>
                 <h1 className="text-lg font-bold text-white tracking-tight">JalSaathi</h1>
-                <p className="text-[10px] text-teal-400/70 tracking-wider uppercase">Ocean Intelligence</p>
+                <p className="text-[10px] text-teal-400/70 tracking-wider uppercase">Fisherman Companion</p>
               </div>
             </div>
 
@@ -156,13 +152,11 @@ export function Sidebar() {
         {/* Logo */}
         <div className={cn('p-4 flex items-center border-b border-navy-700/20', collapsed ? 'justify-center' : 'gap-3')}>
           <Link href="/" className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center shrink-0 glow-teal">
-              <Anchor className="w-6 h-6 text-navy-950" />
-            </div>
+            <img src="/logo.jpg" alt="JalSaathi Logo" className="w-10 h-10 rounded-xl object-cover shadow-lg border border-teal-500/40 shrink-0" />
             {!collapsed && (
               <div>
                 <h1 className="text-lg font-bold text-white tracking-tight">JalSaathi</h1>
-                <p className="text-[10px] text-teal-400/70 tracking-wider uppercase">Ocean Intelligence</p>
+                <p className="text-[10px] text-teal-400/70 tracking-wider uppercase">Fisherman Companion</p>
               </div>
             )}
           </Link>

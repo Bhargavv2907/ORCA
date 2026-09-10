@@ -188,10 +188,8 @@ export default function LoginPage() {
       <div className="w-full max-w-md space-y-6">
         {/* Logo & Header */}
         <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-tr from-teal-500 to-emerald-400 p-0.5 shadow-xl">
-            <div className="w-full h-full bg-navy-950 rounded-[14px] flex items-center justify-center">
-              <Anchor className="w-7 h-7 text-teal-300" />
-            </div>
+          <div className="inline-flex items-center justify-center">
+            <img src="/logo.jpg" alt="JalSaathi Logo" className="w-16 h-16 rounded-2xl object-cover shadow-xl border border-teal-500/40" />
           </div>
           <h1 className="text-2xl font-black text-white tracking-tight">JalSaathi Mobile Portal</h1>
           <p className="text-xs text-slate-400">AI-Powered Marine Intelligence & Firebase Sync</p>
