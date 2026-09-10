@@ -6,10 +6,10 @@ import {
   Layers, MapPin, Radio, Shield, Thermometer, Wind, Waves,
   Droplets, RefreshCw, X, Globe, Eye, Ship, Fish, Navigation, Maximize2, Compass, ArrowUpRight
 } from 'lucide-react';
-import { MarineConditions, FishingZone } from '@/types/marine';
+import { MarineConditions, FishingZone, Vessel } from '@/types/marine';
 import { MapAction } from '@/lib/agents/schemas';
 import { cn } from '@/lib/utils';
-import { getMockFishingZones, getMockRoutes } from '@/data/mock-data';
+import { getMockFishingZones, getMockRoutes, getMockVessels } from '@/data/mock-data';
 import { ALL_INDIAN_PORTS } from '@/data/indian-ports';
 
 // Import Leaflet CSS dynamically in client component
@@ -201,6 +201,7 @@ interface WorldMapProps {
   onPointClick?: (lat: number, lon: number, data: MarineConditions | null) => void;
 
   fishingZones?: FishingZone[];
+  vessels?: Vessel[];
   satelliteMode?: string;
   activeLayers?: Set<string>;
   highlightCoasts?: boolean;
@@ -211,6 +212,7 @@ interface WorldMapProps {
 export default function WorldMapComponent({
   onPointClick,
   fishingZones = [],
+  vessels = [],
   satelliteMode = 'esri_satellite',
   activeLayers = new Set(['mosdac_overlay', 'winds', 'fishing', 'coastal_detect']),
   highlightCoasts = true,
@@ -265,6 +267,10 @@ export default function WorldMapComponent({
   const zonesList = useMemo(() => {
     return fishingZones.length > 0 ? fishingZones : getMockFishingZones();
   }, [fishingZones]);
+
+  const vesselsList = useMemo(() => {
+    return vessels && vessels.length > 0 ? vessels : getMockVessels();
+  }, [vessels]);
 
   // Compute nearest fishing zone whenever a point is clicked
   const nearestZoneInfo = useMemo<{ zone: FishingZone; km: number; nm: number; bearing: string } | null>(() => {
@@ -737,8 +743,53 @@ export default function WorldMapComponent({
         });
         L.marker([centerLat, centerLon - 0.01], { icon: myBoatIcon }).addTo(layerGroup);
       }
+
+      // 5. LIVE MARINETRAFFIC AIS VESSELS LAYER
+      if (currentLayers.has('vessels') || currentLayers.has('ais') || true) {
+        vesselsList.forEach((vessel) => {
+          const typeColor = vessel.type === 'fishing' ? '#06b6d4' : vessel.type === 'cargo' ? '#f97316' : vessel.type === 'passenger' ? '#10b981' : vessel.type === 'commercial' ? '#8b5cf6' : '#94a3b8';
+          const typeBadge = vessel.type.toUpperCase();
+
+          const vesselIcon = L.divIcon({
+            className: 'custom-vessel-marker',
+            html: `<div style="position:relative;display:flex;align-items:center;cursor:pointer;">
+              <div style="width:24px;height:24px;border-radius:50%;background:rgba(15,23,42,0.9);border:2px solid ${typeColor};display:flex;align-items:center;justify-content:center;box-shadow:0 0 10px ${typeColor}88;transform:rotate(${vessel.heading}deg);">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="${typeColor}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 2L2 22h20L12 2z"/>
+                </svg>
+              </div>
+              <span style="margin-left:5px;font-size:9.5px;font-weight:700;color:${typeColor};background:rgba(15,23,42,0.92);padding:1.5px 6px;border-radius:4px;white-space:nowrap;border:1px solid ${typeColor}66;backdrop-filter:blur(4px);">
+                🚢 ${vessel.name.split(' ')[0]} (${vessel.speed} kts)
+              </span>
+            </div>`,
+            iconSize: [140, 26],
+            iconAnchor: [12, 13],
+          });
+
+          const vMarker = L.marker([vessel.position.lat, vessel.position.lon], { icon: vesselIcon });
+          vMarker.on('click', () => inspect(vessel.position.lat, vessel.position.lon, `Vessel ${vessel.name}`));
+          vMarker.bindTooltip(
+            `<div style="padding:8px 12px;background:#0f172a;color:#fff;font-size:11px;font-family:system-ui,sans-serif;border-radius:8px;border:1px solid ${typeColor};min-width:210px;box-shadow:0 4px 12px rgba(0,0,0,0.5);">
+              <div style="font-weight:800;font-size:13px;color:${typeColor};margin-bottom:4px;">🚢 ${vessel.name}</div>
+              <div style="font-size:10px;color:#94a3b8;margin-bottom:4px;display:flex;align-items:center;gap:6px;">
+                <span style="padding:1px 6px;border-radius:4px;background:${typeColor}22;color:${typeColor};border:1px solid ${typeColor}66;font-weight:700;font-size:9px;">${typeBadge}</span>
+                <span>Flag: <strong>${vessel.flag || 'IN'}</strong></span>
+                <span>Status: <strong style="color:#34d399;">${vessel.activity || 'Transit'}</strong></span>
+              </div>
+              <div style="font-size:10px;color:#cbd5e1;margin-bottom:3px;">
+                ⚡ <strong>Speed:</strong> ${vessel.speed} kts | 🧭 <strong>Heading:</strong> ${vessel.heading}°
+              </div>
+              <div style="font-size:9.5px;color:#64748b;font-family:monospace;">
+                GPS: ${vessel.position.lat.toFixed(4)}°N, ${vessel.position.lon.toFixed(4)}°E
+              </div>
+            </div>`,
+            { sticky: true }
+          );
+          vMarker.addTo(layerGroup);
+        });
+      }
     });
-  }, [highlightCoasts, activeLayersKey, zonesList, isLoaded]);
+  }, [highlightCoasts, activeLayersKey, zonesList, vesselsList, isLoaded]);
 
   // Handle AI-Controlled Map Actions (Phase 6)
   useEffect(() => {

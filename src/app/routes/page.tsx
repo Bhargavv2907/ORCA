@@ -9,8 +9,8 @@ import {
   Crosshair, AlertTriangle, Plus, Minus, X, Check, Volume2, ShieldAlert
 } from 'lucide-react';
 import { RouteCard, DemoModeBanner } from '@/components/cards';
-import { getMockRoutes, getMockFishingZones } from '@/data/mock-data';
-import { RouteOption, Coordinates, FishingZone } from '@/types/marine';
+import { getMockRoutes, getMockFishingZones, getMockVessels } from '@/data/mock-data';
+import { RouteOption, Coordinates, FishingZone, Vessel } from '@/types/marine';
 import { generateOfflineRoutes } from '@/lib/offline-routing';
 import { MapAction } from '@/lib/agents/schemas';
 import { INDIAN_COASTAL_SECTORS } from '@/components/world-map';
@@ -71,7 +71,7 @@ export default function RoutesPage() {
   const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(true);
   const [isOffline, setIsOffline] = useState(false);
-
+  const [vesselData, setVesselData] = useState<{ totalVessels: number; trafficDensity: string; shippingLaneStatus: string; vessels: Vessel[] } | null>(null);
 
   // IMD (India Meteorological Department) Data State
   const [imdData, setImdData] = useState<{
@@ -121,7 +121,13 @@ export default function RoutesPage() {
     const defaultRoutes = getMockRoutes();
     setRoutes(defaultRoutes);
 
-
+    // Fetch live MarineTraffic AIS vessel data
+    fetch(`/api/vessels?lat=${currentSector.center.lat}&lon=${currentSector.center.lon}`)
+      .then(res => res.json())
+      .then(json => {
+        if (json.success && json.data) setVesselData(json.data);
+      })
+      .catch(() => null);
 
     // Fetch India Meteorological Department (IMD) Live Marine Warnings & Bulletins
     fetch('/api/imd/marine')
@@ -176,11 +182,13 @@ export default function RoutesPage() {
     const startPt = { lat: sector.center.lat, lon: sector.center.lon };
     const destPt = primaryZone.center;
     const newRoutes = generateOfflineRoutes(startPt, destPt);
-    setRoutes(newRoutes);
-    setSelectedRouteIndex(1);
-    setHasSearched(true);
-
-
+    // Refresh AIS vessels for new sector coordinates
+    fetch(`/api/vessels?lat=${sector.center.lat}&lon=${sector.center.lon}`)
+      .then(res => res.json())
+      .then(json => {
+        if (json.success && json.data) setVesselData(json.data);
+      })
+      .catch(() => null);
   };
 
   const handleSearch = async (targetDest?: string) => {
@@ -396,6 +404,7 @@ export default function RoutesPage() {
         {/* Interactive Leaflet Map Component */}
         <WorldMap
           fishingZones={displayZones}
+          vessels={vesselData?.vessels || getMockVessels()}
           mapActionPayload={mapActionPayload}
           selectedRegion={currentSector}
           satelliteMode="nautical_ecdis"
