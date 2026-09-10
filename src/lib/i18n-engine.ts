@@ -707,32 +707,6 @@ export function translateAdvisory(text: string, targetLanguage: string): string 
   }
 
   return translated;
-=======
- * Returns translated text for target language, dynamically substituting maritime phrases.
- */
-export function translateAdvisory(text: string, targetLanguage: string): string {
-  if (!text || targetLanguage === 'English') return text;
-
-  // 1. Direct full string lookup
-  const exact = FULL_TRANSLATIONS[text]?.[targetLanguage];
-  if (exact) return exact;
-
-  // 2. Phrase substitution dictionary
-  const dict = PHRASE_DICTIONARY[targetLanguage];
-  if (!dict) return text;
-
-  // Direct exact phrase lookup
-  if (dict[text]) return dict[text];
-
-  let result = text;
-  for (const [englishPhrase, translatedPhrase] of Object.entries(dict)) {
-    if (result.includes(englishPhrase)) {
-      result = result.replaceAll(englishPhrase, translatedPhrase);
-    }
-  }
-
-  return result;
->>>>>>> 5d27106
 }
 
 export function getLanguageBCP47(languageName: string): string {

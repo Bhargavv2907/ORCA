@@ -75,16 +75,9 @@ export default function MapPage() {
   }, []);
 
   useEffect(() => {
+    // Real-time fishing zones generation
     const center = selectedRegion.center || getSelectedLocation();
     setZones(generateRealTimeFishingZones(center.lat, center.lon, liveConditions || undefined, selectedRegion.name));
-
-    // Fetch live vessel telemetry from API
-    fetch(`/api/vessels?lat=${center.lat}&lon=${center.lon}`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.data?.vessels) setVessels(data.data.vessels);
-      })
-      .catch(() => setVessels(getMockVessels()));
 
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);

@@ -140,6 +140,13 @@ export default function RoutesPage() {
 
   // ECDIS Overlays Panel State
   const [isOverlaysOpen, setIsOverlaysOpen] = useState(true);
+  const [overlays, setOverlays] = useState({
+    pfz: true,
+    ais: true,
+    tss: true,
+    military: true,
+    weather: false,
+  });
   // Location-accurate real-time satellite Potential Fishing Zones for active coast
   const displayZones = useMemo(() => {
     return generateRealTimeFishingZones(currentSector.center.lat, currentSector.center.lon, undefined, currentSector.name);
