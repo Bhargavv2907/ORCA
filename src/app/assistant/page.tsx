@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { orchestrate, AgentOutput } from '@/lib/orchestrator';
 import { ChatMessage, AgentType, EvidencePayload } from '@/types/marine';
 import { DemoModeBanner, WhyEvidenceModal, AudioAdvisoryPlayer, ProactiveAlertBanner } from '@/components/cards';
+import { translateAdvisory } from '@/lib/i18n-engine';
 
 const EXAMPLE_QUESTIONS = [
   'Where is the nearest Potential Fishing Zone (PFZ) today?',
@@ -272,7 +273,9 @@ export default function AssistantPage() {
                     )}
 
                     {/* Recommendation */}
-                    <p className="text-sm text-slate-200 leading-relaxed">{msg.recommendation || msg.content}</p>
+                    <p className="text-sm text-slate-200 leading-relaxed">
+                      {translateAdvisory(msg.recommendation || msg.content, language)}
+                    </p>
 
                     {/* Why? button + Audio */}
                     <div className="flex items-center gap-2 flex-wrap pt-1">
@@ -286,7 +289,11 @@ export default function AssistantPage() {
                         </button>
                       )}
                       {msg.recommendation && (
-                        <AudioAdvisoryPlayer text={msg.recommendation} defaultLanguage={language} />
+                        <AudioAdvisoryPlayer
+                          key={`${msg.id}-${language}`}
+                          text={msg.recommendation}
+                          defaultLanguage={language}
+                        />
                       )}
                     </div>
                   </div>

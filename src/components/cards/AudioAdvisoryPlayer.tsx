@@ -17,6 +17,10 @@ export function AudioAdvisoryPlayer({ text, defaultLanguage = 'English' }: Audio
   const [translatedPreview, setTranslatedPreview] = useState(text);
 
   useEffect(() => {
+    setLanguage(defaultLanguage);
+  }, [defaultLanguage]);
+
+  useEffect(() => {
     setTranslatedPreview(translateAdvisory(text, language));
   }, [text, language]);
 
