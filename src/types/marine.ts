@@ -264,6 +264,7 @@ export interface MissionPlannerPayload {
 import type { GeofenceResult } from '@/lib/geofence-engine';
 export type { GeofenceResult };
 
+export type JalSaathiResponse = OrcaResponse;
 export interface OrcaResponse {
   query: string;
   agentsUsed: Agent[];
