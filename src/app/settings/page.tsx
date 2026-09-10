@@ -117,30 +117,70 @@ export default function SettingsPage() {
       </motion.div>
 
       {/* Units */}
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.15 }} className="rounded-2xl border border-navy-600/20 bg-card p-5">
-        <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2"><Gauge className="w-4 h-4 text-teal-400" /> {t('Units', language)}</h3>
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.15 }} className="rounded-2xl border border-navy-600/30 bg-card p-5">
+        <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+          <Gauge className="w-4 h-4 text-teal-400" /> {t('Units', language)}
+        </h3>
         <div className="space-y-4">
+          {/* Speed */}
           <div className="flex items-center justify-between">
-            <span className="text-sm text-slate-400">{t('Speed', language)}</span>
-            <div className="flex gap-2">
+            <span className="text-sm text-white font-medium">{t('Speed', language)}</span>
+            <div className="p-1 rounded-xl bg-navy-950/80 border border-navy-700/60 flex items-center gap-1 shadow-inner">
               {['km/h', 'knots', 'mph'].map(u => (
-                <button key={u} onClick={() => handleSpeedUnitChange(u)} className={cn('px-3 py-1 rounded-lg text-xs font-medium transition-colors', speedUnit === u ? 'bg-teal-500/20 text-teal-300 border border-teal-500/30' : 'text-slate-400 bg-navy-800/50 hover:text-white')}>{u}</button>
+                <button
+                  key={u}
+                  onClick={() => handleSpeedUnitChange(u)}
+                  className={cn(
+                    'px-3 py-1.5 rounded-lg text-xs font-semibold transition-all',
+                    speedUnit === u
+                      ? 'bg-teal-500 text-navy-950 font-bold shadow-md shadow-teal-500/30'
+                      : 'text-slate-300 hover:text-white hover:bg-navy-800/80'
+                  )}
+                >
+                  {u}
+                </button>
               ))}
             </div>
           </div>
+
+          {/* Distance */}
           <div className="flex items-center justify-between">
-            <span className="text-sm text-slate-400">{t('Distance', language)}</span>
-            <div className="flex gap-2">
+            <span className="text-sm text-white font-medium">{t('Distance', language)}</span>
+            <div className="p-1 rounded-xl bg-navy-950/80 border border-navy-700/60 flex items-center gap-1 shadow-inner">
               {['km', 'nm', 'miles'].map(u => (
-                <button key={u} onClick={() => handleDistanceUnitChange(u)} className={cn('px-3 py-1 rounded-lg text-xs font-medium transition-colors', distanceUnit === u ? 'bg-teal-500/20 text-teal-300 border border-teal-500/30' : 'text-slate-400 bg-navy-800/50 hover:text-white')}>{u}</button>
+                <button
+                  key={u}
+                  onClick={() => handleDistanceUnitChange(u)}
+                  className={cn(
+                    'px-3 py-1.5 rounded-lg text-xs font-semibold transition-all',
+                    distanceUnit === u
+                      ? 'bg-teal-500 text-navy-950 font-bold shadow-md shadow-teal-500/30'
+                      : 'text-slate-300 hover:text-white hover:bg-navy-800/80'
+                  )}
+                >
+                  {u}
+                </button>
               ))}
             </div>
           </div>
+
+          {/* Temperature */}
           <div className="flex items-center justify-between">
-            <span className="text-sm text-slate-400">{t('Temperature', language)}</span>
-            <div className="flex gap-2">
+            <span className="text-sm text-white font-medium">{t('Temperature', language)}</span>
+            <div className="p-1 rounded-xl bg-navy-950/80 border border-navy-700/60 flex items-center gap-1 shadow-inner">
               {['°C', '°F'].map(u => (
-                <button key={u} onClick={() => handleTempUnitChange(u)} className={cn('px-3 py-1 rounded-lg text-xs font-medium transition-colors', tempUnit === u ? 'bg-teal-500/20 text-teal-300 border border-teal-500/30' : 'text-slate-400 bg-navy-800/50 hover:text-white')}>{u}</button>
+                <button
+                  key={u}
+                  onClick={() => handleTempUnitChange(u)}
+                  className={cn(
+                    'px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all',
+                    tempUnit === u
+                      ? 'bg-teal-500 text-navy-950 font-bold shadow-md shadow-teal-500/30'
+                      : 'text-slate-300 hover:text-white hover:bg-navy-800/80'
+                  )}
+                >
+                  {u}
+                </button>
               ))}
             </div>
           </div>
@@ -148,7 +188,7 @@ export default function SettingsPage() {
       </motion.div>
 
       {/* Map Layers */}
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }} className="rounded-2xl border border-navy-600/20 bg-card p-5">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }} className="rounded-2xl border border-navy-600/30 bg-card p-5">
         <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2"><Layers className="w-4 h-4 text-teal-400" /> {t('Default Map Layers', language)}</h3>
         <div className="space-y-3">
           {Object.entries(layers).map(([key, value]) => {
@@ -164,7 +204,7 @@ export default function SettingsPage() {
             const labelKey = layerLabelMap[key] || key;
             return (
               <div key={key} className="flex items-center justify-between">
-                <span className="text-sm text-slate-400 capitalize">{t(labelKey, language)}</span>
+                <span className="text-sm text-slate-200 font-medium">{t(labelKey, language)}</span>
                 <Toggle checked={value} onChange={() => setLayers(prev => ({ ...prev, [key]: !prev[key as keyof typeof prev] }))} />
               </div>
             );
@@ -173,19 +213,28 @@ export default function SettingsPage() {
       </motion.div>
 
       {/* Risk Sensitivity */}
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.25 }} className="rounded-2xl border border-navy-600/20 bg-card p-5">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.25 }} className="rounded-2xl border border-navy-600/30 bg-card p-5">
         <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2"><Shield className="w-4 h-4 text-teal-400" /> {t('Risk Sensitivity', language)}</h3>
         <div className="flex gap-3">
           {['low', 'medium', 'high'].map(s => {
             const cap = s.charAt(0).toUpperCase() + s.slice(1);
             return (
-              <button key={s} onClick={() => handleRiskSensitivityChange(s)} className={cn('flex-1 py-2 rounded-xl text-sm font-medium transition-all',
-                riskSensitivity === s ? 'bg-teal-500/20 text-teal-300 border border-teal-500/40' : 'text-slate-400 bg-navy-800/30 border border-navy-600/20 hover:text-white'
-              )}>{t(cap, language)}</button>
+              <button
+                key={s}
+                onClick={() => handleRiskSensitivityChange(s)}
+                className={cn(
+                  'flex-1 py-2.5 rounded-xl text-xs font-semibold transition-all border',
+                  riskSensitivity === s
+                    ? 'bg-teal-500 text-navy-950 font-bold border-teal-400 shadow-md shadow-teal-500/25'
+                    : 'text-slate-200 bg-navy-800/80 border-navy-700/70 hover:bg-navy-700 hover:text-white'
+                )}
+              >
+                {t(cap, language)}
+              </button>
             );
           })}
         </div>
-        <p className="text-xs text-slate-500 mt-2">{t('Higher sensitivity triggers alerts at lower risk thresholds.', language)}</p>
+        <p className="text-xs text-slate-400 mt-2.5">{t('Higher sensitivity triggers alerts at lower risk thresholds.', language)}</p>
       </motion.div>
 
       {/* Toggles */}
