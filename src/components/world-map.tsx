@@ -412,11 +412,24 @@ export default function WorldMapComponent({
         attribution = '&copy; OpenStreetMap contributors';
       }
 
+      // Add Primary Basemap with maxNativeZoom: 13 so tiles auto-scale at high zoom levels
+      const isOceanBase = tileUrl.includes('World_Ocean_Base');
       L.tileLayer(tileUrl, {
         attribution,
         maxZoom: 18,
+        maxNativeZoom: isOceanBase ? 13 : 18,
         noWrap: false,
       }).addTo(map);
+
+      // Add OpenStreetMap backdrop behind ocean base so land/coasts are always crisp
+      if (isOceanBase) {
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; OpenStreetMap contributors',
+          maxZoom: 18,
+          opacity: 0.35,
+          zIndex: 0,
+        }).addTo(map);
+      }
 
       // Add OpenSeaMap Seamark Nautical Tile Overlay for seamarks & beacons
       if (satelliteMode === 'nautical_ecdis') {
