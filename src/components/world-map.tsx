@@ -400,11 +400,11 @@ export default function WorldMapComponent({
       let attribution = '&copy; Esri World Imagery & ISRO MOSDAC';
 
       if (satelliteMode === 'nautical_ecdis') {
-        tileUrl = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
-        attribution = '&copy; OpenStreetMap & CartoDB Voyager Nautical';
+        tileUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}';
+        attribution = '&copy; Esri World Ocean Basemap & ISRO MOSDAC';
       } else if (satelliteMode === 'dark_nautical') {
-        tileUrl = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
-        attribution = '&copy; OpenStreetMap & CartoDB Dark';
+        tileUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}';
+        attribution = '&copy; Esri Topo Map & OpenStreetMap';
       } else if (satelliteMode === 'mosdac_sst') {
         tileUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
       } else if (satelliteMode === 'osm') {
@@ -417,6 +417,15 @@ export default function WorldMapComponent({
         maxZoom: 18,
         noWrap: false,
       }).addTo(map);
+
+      // Add OpenSeaMap Seamark Nautical Tile Overlay for seamarks & beacons
+      if (satelliteMode === 'nautical_ecdis') {
+        L.tileLayer('https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png', {
+          attribution: '&copy; OpenSeaMap contributors',
+          maxZoom: 18,
+          opacity: 0.85,
+        }).addTo(map);
+      }
     });
   }, [satelliteMode, isLoaded]);
 
