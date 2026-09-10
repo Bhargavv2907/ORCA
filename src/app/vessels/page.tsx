@@ -32,9 +32,11 @@ export default function VesselsPage() {
   const loadVessels = (sectorId: string) => {
     setIsLoading(true);
     const sector = INDIAN_COASTAL_SECTORS.find(s => s.id === sectorId) || currentSector;
+    const storedKey = typeof window !== 'undefined' ? localStorage.getItem('jalsaathi_marinetraffic_key') : null;
+    const keyParam = storedKey ? `&apiKey=${encodeURIComponent(storedKey)}` : '';
     const url = sectorId === 'pan_india'
-      ? `/api/vessels?lat=18.0&lon=80.0&radius=1000`
-      : `/api/vessels?lat=${sector.center.lat}&lon=${sector.center.lon}`;
+      ? `/api/vessels?lat=18.0&lon=80.0&radius=1000${keyParam}`
+      : `/api/vessels?lat=${sector.center.lat}&lon=${sector.center.lon}${keyParam}`;
 
     fetch(url)
       .then(res => res.json())

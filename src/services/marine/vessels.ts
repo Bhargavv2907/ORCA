@@ -16,8 +16,66 @@ export interface AISDataResponse {
   vessels: Vessel[];
 }
 
-export async function fetchLiveVesselData(lat = 18.95, lon = 72.82, radiusKm = 50): Promise<AISDataResponse> {
-  // 1. TRY OPEN PUBLIC MARINE AIS API (Digitraffic Open Marine AIS Stream)
+export async function fetchLiveVesselData(lat = 18.95, lon = 72.82, radiusKm = 50, customApiKey?: string): Promise<AISDataResponse> {
+  const apiKey = customApiKey || process.env.MARINETRAFFIC_API_KEY;
+
+  // 1. TRY OFFICIAL MARINETRAFFIC API IF KEY IS PROVIDED
+  if (apiKey && apiKey.length > 5) {
+    try {
+      const minLat = (lat - 0.8).toFixed(4);
+      const maxLat = (lat + 0.8).toFixed(4);
+      const minLon = (lon - 0.8).toFixed(4);
+      const maxLon = (lon + 0.8).toFixed(4);
+      const url = `https://services.marinetraffic.com/api/exportvessels/${apiKey}/MINLAT:${minLat}/MAXLAT:${maxLat}/MINLON:${minLon}/MAXLON:${maxLon}/protocol:json`;
+
+      const res = await fetch(url, {
+        headers: { 'Accept': 'application/json' },
+        next: { revalidate: 60 },
+      });
+
+      if (res.ok) {
+        const rawData = await res.json();
+        if (Array.isArray(rawData) && rawData.length > 0) {
+          const mappedVessels: Vessel[] = rawData.map((v: Record<string, unknown>, idx: number) => {
+            const vesselTypeNum = Number(v.SHIPTYPE || 0);
+            let type: Vessel['type'] = 'commercial';
+            if (vesselTypeNum >= 30 && vesselTypeNum <= 39) type = 'fishing';
+            else if (vesselTypeNum >= 60 && vesselTypeNum <= 69) type = 'passenger';
+            else if (vesselTypeNum >= 70 && vesselTypeNum <= 79) type = 'cargo';
+
+            return {
+              id: String(v.MMSI || `mmsi-${idx}`),
+              name: String(v.SHIPNAME || `Vessel-${v.MMSI}`).trim(),
+              type,
+              position: {
+                lat: parseFloat(String(v.LAT || lat)),
+                lon: parseFloat(String(v.LON || lon)),
+              },
+              speed: parseFloat(String(v.SPEED || 8.5)),
+              heading: parseInt(String(v.HEADING || v.COURSE || 180), 10),
+              activity: parseFloat(String(v.SPEED || 0)) < 0.5 ? 'Anchored' : 'Transit',
+              lastUpdated: new Date().toISOString(),
+              flag: String(v.FLAG || 'IN'),
+              length: Number(v.LENGTH || 120),
+            };
+          });
+
+          return {
+            source: 'Official MarineTraffic Live AIS API',
+            retrievedAt: new Date().toISOString(),
+            totalVessels: mappedVessels.length,
+            trafficDensity: mappedVessels.length >= 15 ? 'EXTREME' : mappedVessels.length >= 8 ? 'HIGH' : 'MEDIUM',
+            shippingLaneStatus: mappedVessels.length >= 10 ? 'CONGESTED' : 'CLEAR',
+            vessels: mappedVessels,
+          };
+        }
+      }
+    } catch (err) {
+      console.warn('[JalSaathi] MarineTraffic API custom key request error:', err);
+    }
+  }
+
+  // 2. TRY OPEN PUBLIC MARINE AIS API (Digitraffic Open Marine AIS Stream)
   try {
     const res = await fetch('https://mimerva.digitraffic.fi/api/v1/metadata/vessels', {
       headers: { 'Accept': 'application/json', 'User-Agent': 'JalSaathi-Marine-Intelligence/1.0' },
