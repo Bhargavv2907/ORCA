@@ -6,17 +6,19 @@ import { usePathname } from 'next/navigation';
 import { Home, LayoutDashboard, Map, Bot, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/AuthContext';
+import { useSelectedLanguage, t } from '@/lib/language-store';
 
 const NAV_ITEMS = [
   { href: '/', label: 'Home', icon: Home },
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/map', label: 'World Map', icon: Map },
-  { href: '/assistant', label: 'ORCA AI', icon: Bot },
+  { href: '/map', label: 'Marine Map', icon: Map },
+  { href: '/assistant', label: 'AI Assistant', icon: Bot },
   { href: '/login', label: 'Account', icon: User },
 ];
 
 export function BottomNav() {
   const pathname = usePathname();
+  const language = useSelectedLanguage();
   const { user } = useAuth();
 
   return (
@@ -44,7 +46,7 @@ export function BottomNav() {
                 )}
               </div>
               <span className="text-[10px] mt-0.5 tracking-tight font-medium">
-                {item.label}
+                {t(item.label, language).split(' ')[0]}
               </span>
             </Link>
           );

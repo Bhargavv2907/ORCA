@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PitchDeckDemoModal } from '@/components/cards/PitchDeckDemoModal';
+import { useSelectedLanguage, t } from '@/lib/language-store';
 
 const NAV_ITEMS = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -36,6 +37,7 @@ const BOTTOM_ITEMS = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const language = useSelectedLanguage();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [showPitchDeck, setShowPitchDeck] = useState(false);
@@ -62,7 +64,7 @@ export function Sidebar() {
       )}
       <item.icon className={cn('w-5 h-5 shrink-0', isActive(item.href) ? 'text-teal-400' : 'text-slate-500 group-hover:text-slate-300')} />
       {!collapsed && (
-        <span className="truncate">{item.label}</span>
+        <span className="truncate">{t(item.label, language)}</span>
       )}
     </Link>
   );
@@ -169,7 +171,7 @@ export function Sidebar() {
                 />
               )}
               <item.icon className={cn('w-5 h-5 shrink-0', isActive(item.href) ? 'text-teal-400' : 'text-slate-500 group-hover:text-slate-300')} />
-              {!collapsed && <span className="truncate">{item.label}</span>}
+              {!collapsed && <span className="truncate">{t(item.label, language)}</span>}
             </Link>
           ))}
         </nav>
@@ -180,7 +182,7 @@ export function Sidebar() {
             <Link
               key={item.href}
               href={item.href}
-              title={collapsed ? item.label : undefined}
+              title={collapsed ? t(item.label, language) : undefined}
               className={cn(
                 'flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-all duration-200',
                 collapsed && 'justify-center',
@@ -190,7 +192,7 @@ export function Sidebar() {
               )}
             >
               <item.icon className="w-4 h-4 shrink-0" />
-              {!collapsed && <span className="truncate">{item.label}</span>}
+              {!collapsed && <span className="truncate">{t(item.label, language)}</span>}
             </Link>
           ))}
 
