@@ -1,6 +1,6 @@
 // ============================================================
-// ORCA — Multi-lingual Vernacular Translation & Voice Engine (Phase 10)
-// Supporting 9 Coastal Indian Languages with Web Speech API
+// ORCA — Multi-lingual Vernacular Translation & Voice Engine
+// Supporting 9 Coastal Indian Languages with Web Speech API & HTML5 Audio TTS Fallback
 // ============================================================
 
 export interface LanguageVoiceConfig {
@@ -8,22 +8,23 @@ export interface LanguageVoiceConfig {
   name: string;
   nativeName: string;
   bcp47: string;
+  shortLang: string;
   flag: string;
 }
 
 export const COASTAL_LANGUAGES: LanguageVoiceConfig[] = [
-  { code: 'en', name: 'English', nativeName: 'English', bcp47: 'en-IN', flag: '🇮🇳' },
-  { code: 'hi', name: 'Hindi', nativeName: 'हिंदी', bcp47: 'hi-IN', flag: '🇮🇳' },
-  { code: 'mr', name: 'Marathi', nativeName: 'मराठी', bcp47: 'mr-IN', flag: '🚩' },
-  { code: 'gu', name: 'Gujarati', nativeName: 'ગુજરાતી', bcp47: 'gu-IN', flag: '🌊' },
-  { code: 'ta', name: 'Tamil', nativeName: 'தமிழ்', bcp47: 'ta-IN', flag: '⛵' },
-  { code: 'te', name: 'Telugu', nativeName: 'తెలుగు', bcp47: 'te-IN', flag: '⚓' },
-  { code: 'kn', name: 'Kannada', nativeName: 'கன்னட / ಕನ್ನಡ', bcp47: 'kn-IN', flag: '🌊' },
-  { code: 'ml', name: 'Malayalam', nativeName: 'മലയാളം', bcp47: 'ml-IN', flag: '🌴' },
-  { code: 'bn', name: 'Bengali', nativeName: 'বাংলা', bcp47: 'bn-IN', flag: '🐟' },
+  { code: 'en', name: 'English', nativeName: 'English', bcp47: 'en-IN', shortLang: 'en', flag: '🇮🇳' },
+  { code: 'hi', name: 'Hindi', nativeName: 'हिंदी', bcp47: 'hi-IN', shortLang: 'hi', flag: '🇮🇳' },
+  { code: 'mr', name: 'Marathi', nativeName: 'मराठी', bcp47: 'mr-IN', shortLang: 'mr', flag: '🚩' },
+  { code: 'gu', name: 'Gujarati', nativeName: 'ગુજરાતી', bcp47: 'gu-IN', shortLang: 'gu', flag: '🌊' },
+  { code: 'ta', name: 'Tamil', nativeName: 'தமிழ்', bcp47: 'ta-IN', shortLang: 'ta', flag: '⛵' },
+  { code: 'te', name: 'Telugu', nativeName: 'తెలుగు', bcp47: 'te-IN', shortLang: 'te', flag: '⚓' },
+  { code: 'kn', name: 'Kannada', nativeName: 'ಕನ್ನಡ', bcp47: 'kn-IN', shortLang: 'kn', flag: '🌊' },
+  { code: 'ml', name: 'Malayalam', nativeName: 'മലയാളം', bcp47: 'ml-IN', shortLang: 'ml', flag: '🌴' },
+  { code: 'bn', name: 'Bengali', nativeName: 'বাংলা', bcp47: 'bn-IN', shortLang: 'bn', flag: '🐟' },
 ];
 
-const TRANSLATIONS: Record<string, Record<string, string>> = {
+const FULL_TRANSLATIONS: Record<string, Record<string, string>> = {
   'Fishing is safe with standard caution. Return before evening as wind speeds may increase.': {
     Hindi: 'सामान्य सावधानी के साथ मछली पकड़ना सुरक्षित है। शाम से पहले लौट आएं क्योंकि हवा की गति बढ़ सकती है।',
     Marathi: 'सामान्य खबरदारी बाळगून मासेमारी सुरक्षित आहे. वाऱ्याचा वेग वाढू शकत असल्याने संध्याकाळपूर्वी परत या.',
@@ -47,43 +48,182 @@ const TRANSLATIONS: Record<string, Record<string, string>> = {
 };
 
 /**
- * Returns translated text for target language, falling back to original English if missing.
+ * Returns translated text for target language, dynamically handling dynamic marine advisories.
  */
 export function translateAdvisory(text: string, targetLanguage: string): string {
   if (targetLanguage === 'English') return text;
-  const match = TRANSLATIONS[text]?.[targetLanguage];
+  const match = FULL_TRANSLATIONS[text]?.[targetLanguage];
   if (match) return match;
 
-  // Fallback pattern translations
-  if (text.includes('safe') || text.includes('Safe')) {
-    const safeWordMap: Record<string, string> = {
-      Hindi: 'समुद्र में जाना सुरक्षित है।',
+  // Dynamic sentence translation mapping for marine dashboard & safe route advisories
+  let translated = text;
+
+  // Key phrase translations for all 9 languages
+  const keyPhrases: Record<string, Record<string, string>> = {
+    'Best zone today:': {
+      Hindi: 'आज का सर्वोत्तम क्षेत्र:',
+      Marathi: 'आजचे सर्वोत्तम क्षेत्र:',
+      Gujarati: 'આજનો શ્રેષ્ઠ વિસ્તાર:',
+      Tamil: 'இன்றைய சிறந்த பகுதி:',
+      Telugu: 'నేటి ఉత్తమ ప్రాంతం:',
+      Kannada: 'ಇಂದಿನ ಅತ್ಯುತ್ತಮ ವಲಯ:',
+      Malayalam: 'ഇന്നത്തെ മികച്ച പ്രദേശം:',
+      Bengali: 'আজকের সেরা অঞ্চল:',
+    },
+    'Fishing Zone A — Mumbai High Shelf': {
+      Hindi: 'फिशिंग ज़ोन ए - मुंबई हाई शेल्फ',
+      Marathi: 'फिशिंग झोन ए - मुंबई हाय शेल्फ',
+      Gujarati: 'ફિશિંગ ઝોન એ - મુંબઈ હાઈ શેલ્ફ',
+      Tamil: 'மீன்பிடி மண்டலம் ஏ - மும்பை உயர் அலமாரி',
+      Telugu: 'ఫిషింగ్ జోన్ ఎ - ముంబై హై షెల్ఫ్',
+      Kannada: 'ಫಿಶಿಂಗ್ ಝೋನ್ ಎ - ಮುಂಬೈ ಹೈ ಶೆಲ್ಫ್',
+      Malayalam: 'ഫിഷിംഗ് സോൺ എ - മുംബൈ ഹൈ ഷെൽഫ്',
+      Bengali: 'ফিশিং জোন এ - মুম্বাই হাই শেলফ',
+    },
+    'suitability': {
+      Hindi: 'उपयुक्तता',
+      Marathi: 'योग्यतेचे प्रमाण',
+      Gujarati: 'અનુકૂળતા',
+      Tamil: 'பொருத்தம்',
+      Telugu: 'అనుకూలత',
+      Kannada: 'ಸೂಕ್ತತೆ',
+      Malayalam: 'അനുയോജ്യത',
+      Bengali: 'উপযোগিতা',
+    },
+    'Sea temp': {
+      Hindi: 'समुद्र का तापमान',
+      Marathi: 'समुद्राचे तापमान',
+      Gujarati: 'દરિયાઈ તાપમાન',
+      Tamil: 'கடல் வெப்பநிலை',
+      Telugu: 'సముద్ర ఉష్ణోగ్రత',
+      Kannada: 'ಸಮುದ್ರದ ತಾಪಮಾನ',
+      Malayalam: 'കടൽ താപനില',
+      Bengali: 'সমুদ্রের তাপমাত্রা',
+    },
+    'chlorophyll': {
+      Hindi: 'क्लोरोफिल',
+      Marathi: 'क्लोरोफिल',
+      Gujarati: 'ક્લોરોફિલ',
+      Tamil: 'குளோரோபில்',
+      Telugu: 'క్లోరోఫిల్',
+      Kannada: 'ಕ್ಲೋರೊಫಿಲ್',
+      Malayalam: 'ക്ലോറോഫിൽ',
+      Bengali: 'ক্লোরোফিল',
+    },
+    'Waves': {
+      Hindi: 'लहरें',
+      Marathi: 'लाटा',
+      Gujarati: 'મોજા',
+      Tamil: 'அலைகள்',
+      Telugu: 'అలలు',
+      Kannada: 'ಅಲೆಗಳು',
+      Malayalam: 'തിരമാലകൾ',
+      Bengali: 'তরঙ্গ',
+    },
+    'Wind': {
+      Hindi: 'हवा की गति',
+      Marathi: 'वाऱ्याचा वेग',
+      Gujarati: 'પવનની ગતિ',
+      Tamil: 'காற்றின் வேகம்',
+      Telugu: 'గాలి వేగం',
+      Kannada: 'ಗಾಳಿಯ ವೇಗ',
+      Malayalam: 'കാറ്റിന്റെ വേഗത',
+      Bengali: 'বাতাসের গতি',
+    },
+    'Safe to Sail': {
+      Hindi: 'नौकायन के लिए सुरक्षित',
+      Marathi: 'प्रवासासाठी सुरक्षित',
+      Gujarati: 'મુસાફરી માટે સલામત',
+      Tamil: 'பயணத்திற்கு பாதுகாப்பானது',
+      Telugu: 'ప్రయాణానికి సురక్షితం',
+      Kannada: 'ಪ್ರಯಾಣಕ್ಕೆ ಸುರಕ್ಷಿತ',
+      Malayalam: 'യാത്രയ്ക്ക് സുരക്ഷിതം',
+      Bengali: 'ভ্রমণের জন্য নিরাপদ',
+    },
+    'Take Route B': {
+      Hindi: 'रूट बी लें',
+      Marathi: 'मार्ग बी घ्या',
+      Gujarati: 'રૂટ બી લો',
+      Tamil: 'வழி பி எடுக்கவும்',
+      Telugu: 'రూట్ బి తీసుకోండి',
+      Kannada: 'ರೂಟ್ ಬಿ ತೆಗೆದುಕೊಳ್ಳಿ',
+      Malayalam: 'റൂട്ട് ബി തിരഞ്ഞെടുക്കുക',
+      Bengali: 'রুট বি নিন',
+    },
+    'safety': {
+      Hindi: 'सुरक्षा',
+      Marathi: 'सुरक्षितता',
+      Gujarati: 'સલામતી',
+      Tamil: 'பாதுகாப்பு',
+      Telugu: 'భద్రత',
+      Kannada: 'ಸುರಕ್ಷತೆ',
+      Malayalam: 'സുരക്ഷ',
+      Bengali: 'নিরাপত্তা',
+    },
+  };
+
+  // Replace phrases with target language equivalents
+  Object.entries(keyPhrases).forEach(([enKey, langMap]) => {
+    if (langMap[targetLanguage]) {
+      translated = translated.replaceAll(enKey, langMap[targetLanguage]);
+    }
+  });
+
+  // Prepend safe navigation statement for vernacular clarity if safe
+  if (text.includes('Safe') || text.includes('safe') || text.includes('Best zone')) {
+    const safePreamble: Record<string, string> = {
+      Hindi: 'समुद्र में नौकायन सुरक्षित है।',
       Marathi: 'समुद्रात जाणे सुरक्षित आहे.',
       Gujarati: 'દરિયામાં જવું સલામત છે.',
-      Tamil: 'கடலுக்கு செல்வது பாதுகாப்பானது.',
+      Tamil: 'கடலுக்குச் செல்வது பாதுகாப்பானது.',
       Telugu: 'సముద్రంలోనికి వెళ్లడం సురక్షితం.',
       Kannada: 'ಸಮುದ್ರಕ್ಕೆ ಹೋಗುವುದು ಸುರಕ್ಷಿತ.',
       Malayalam: 'കടലിൽ പോകുന്നത് സുരക്ഷിതമാണ്.',
       Bengali: 'সমুদ্রে যাওয়া নিরাপদ।',
     };
-    return safeWordMap[targetLanguage] ? `${safeWordMap[targetLanguage]} ${text}` : text;
+
+    if (safePreamble[targetLanguage] && !translated.startsWith(safePreamble[targetLanguage])) {
+      translated = `${safePreamble[targetLanguage]} ${translated}`;
+    }
   }
 
-  return text;
+  return translated;
 }
 
-/**
- * Returns the BCP 47 language code for a language name.
- */
 export function getLanguageBCP47(languageName: string): string {
   const found = COASTAL_LANGUAGES.find(l => l.name.toLowerCase() === languageName.toLowerCase());
   return found ? found.bcp47 : 'en-IN';
 }
 
-let activeUtterance: SpeechSynthesisUtterance | null = null;
+export function getLanguageShortCode(languageName: string): string {
+  const found = COASTAL_LANGUAGES.find(l => l.name.toLowerCase() === languageName.toLowerCase());
+  return found ? found.shortLang : 'en';
+}
+
+let activeSpeechUtterance: SpeechSynthesisUtterance | null = null;
+let activeAudioFallback: HTMLAudioElement | null = null;
 
 /**
- * Speaks advisory text aloud using Web Speech API synthesis in target language.
+ * Stops any active vernacular speech synthesis or audio fallback.
+ */
+export function stopVernacularAdvisory(): void {
+  if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+    try {
+      window.speechSynthesis.cancel();
+    } catch (_) {}
+  }
+  if (activeAudioFallback) {
+    try {
+      activeAudioFallback.pause();
+      activeAudioFallback.currentTime = 0;
+    } catch (_) {}
+    activeAudioFallback = null;
+  }
+  activeSpeechUtterance = null;
+}
+
+/**
+ * Speaks advisory text aloud using Web Speech API synthesis with HTML5 Audio TTS stream fallback.
  */
 export function speakVernacularAdvisory(
   text: string,
@@ -91,46 +231,128 @@ export function speakVernacularAdvisory(
   rate: number = 1.0,
   onEnd?: () => void
 ): boolean {
-  if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
-    return false;
-  }
-
   stopVernacularAdvisory();
 
   const bcp47 = getLanguageBCP47(languageName);
+  const shortLang = getLanguageShortCode(languageName);
   const translatedText = translateAdvisory(text, languageName);
 
-  const utterance = new SpeechSynthesisUtterance(translatedText);
-  utterance.lang = bcp47;
-  utterance.rate = rate;
+  let nativeSpeechSuccess = false;
 
-  const voices = window.speechSynthesis.getVoices();
-  const matchedVoice = voices.find(v => v.lang.startsWith(bcp47.slice(0, 2)) || v.lang.includes(bcp47));
-  if (matchedVoice) {
-    utterance.voice = matchedVoice;
+  // 1. TRY NATIVE BROWSER WEB SPEECH SYNTHESIS API FIRST
+  if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+    try {
+      // Resume synthesis if browser paused audio context
+      if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume();
+      }
+
+      const voices = window.speechSynthesis.getVoices();
+      const matchedVoice = voices.find(
+        v => v.lang === bcp47 || v.lang.startsWith(shortLang) || v.lang.includes(shortLang)
+      );
+
+      // If a matching native voice exists for the language, use Web Speech API
+      if (matchedVoice || shortLang === 'en' || shortLang === 'hi') {
+        const utterance = new SpeechSynthesisUtterance(translatedText);
+        utterance.lang = bcp47;
+        utterance.rate = rate;
+
+        if (matchedVoice) {
+          utterance.voice = matchedVoice;
+        }
+
+        utterance.onend = () => {
+          activeSpeechUtterance = null;
+          onEnd?.();
+        };
+
+        utterance.onerror = (e) => {
+          console.warn('[ORCA TTS] WebSpeech error, falling back to Audio Stream:', e);
+          activeSpeechUtterance = null;
+          playHtml5AudioFallback(translatedText, shortLang, rate, onEnd);
+        };
+
+        activeSpeechUtterance = utterance;
+        window.speechSynthesis.speak(utterance);
+        nativeSpeechSuccess = true;
+        return true;
+      }
+    } catch (err) {
+      console.warn('[ORCA TTS] Native speech failed, triggering Audio Stream fallback:', err);
+    }
   }
 
-  utterance.onend = () => {
-    activeUtterance = null;
-    onEnd?.();
-  };
+  // 2. HTML5 AUDIO TTS FALLBACK FOR REGIONAL LANGUAGES WITHOUT INSTALLED SYSTEM VOICES
+  if (!nativeSpeechSuccess) {
+    return playHtml5AudioFallback(translatedText, shortLang, rate, onEnd);
+  }
 
-  utterance.onerror = () => {
-    activeUtterance = null;
-    onEnd?.();
-  };
-
-  activeUtterance = utterance;
-  window.speechSynthesis.speak(utterance);
   return true;
 }
 
 /**
- * Stops any active vernacular speech synthesis.
+ * Plays speech audio via Google Translate TTS API Stream fallback when native voices are missing.
  */
-export function stopVernacularAdvisory(): void {
-  if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+function playHtml5AudioFallback(
+  text: string,
+  langCode: string,
+  rate: number,
+  onEnd?: () => void
+): boolean {
+  try {
+    const cleanText = encodeURIComponent(text.slice(0, 200));
+    // Public Google Translate TTS API audio stream
+    const ttsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${cleanText}&tl=${langCode}&client=tw-ob`;
+
+    const audio = new Audio(ttsUrl);
+    audio.playbackRate = rate;
+
+    audio.onended = () => {
+      activeAudioFallback = null;
+      onEnd?.();
+    };
+
+    audio.onerror = (err) => {
+      console.warn('[ORCA TTS] Audio fallback playback error, using backup English speech:', err);
+      activeAudioFallback = null;
+      // Ultimate fallback: Speak text in English voice so audio NEVER fails silently
+      fallbackToEnglishSpeech(text, rate, onEnd);
+    };
+
+    activeAudioFallback = audio;
+    const playPromise = audio.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(() => {
+        fallbackToEnglishSpeech(text, rate, onEnd);
+      });
+    }
+    return true;
+  } catch (err) {
+    console.error('[ORCA TTS] Audio creation error:', err);
+    return fallbackToEnglishSpeech(text, rate, onEnd);
+  }
+}
+
+/**
+ * Ultimate Fallback: Speaks text in standard English voice if system has zero regional TTS engines.
+ */
+function fallbackToEnglishSpeech(text: string, rate: number, onEnd?: () => void): boolean {
+  if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+    onEnd?.();
+    return false;
+  }
+  try {
     window.speechSynthesis.cancel();
-    activeUtterance = null;
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'en-IN';
+    utterance.rate = rate;
+    utterance.onend = () => onEnd?.();
+    utterance.onerror = () => onEnd?.();
+    window.speechSynthesis.speak(utterance);
+    return true;
+  } catch (_) {
+    onEnd?.();
+    return false;
   }
 }
