@@ -135,7 +135,7 @@ export default function VesselsPage() {
         >
           {INDIAN_COASTAL_SECTORS.map((sector) => (
             <option key={sector.id} value={sector.id} className="bg-navy-900 text-white">
-              🇮🇳 {sector.name} ({sector.state}) — {sector.type}
+              🇮🇳 {sector.name.includes('(') ? sector.name : `${sector.name} (${sector.state})`} — {sector.type}
             </option>
           ))}
         </select>

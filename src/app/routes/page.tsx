@@ -349,7 +349,7 @@ export default function RoutesPage() {
             >
               {INDIAN_COASTAL_SECTORS.map((sector) => (
                 <option key={sector.id} value={sector.id} className="bg-white text-slate-900">
-                  🇮🇳 {sector.name} ({sector.state})
+                  🇮🇳 {sector.name.includes('(') ? sector.name : `${sector.name} (${sector.state})`} — {sector.type}
                 </option>
               ))}
             </select>
