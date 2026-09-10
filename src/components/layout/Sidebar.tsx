@@ -7,10 +7,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, Bot, Map, Fish, Route, CloudSun, Waves,
   AlertTriangle, Settings, ChevronLeft, ChevronRight, Brain,
-  Menu, X, Database, Info, Anchor, Ship, Trophy
+  Menu, X, Database, Info, Anchor, Ship
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { PitchDeckDemoModal } from '@/components/cards/PitchDeckDemoModal';
+
 
 const NAV_ITEMS = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -22,7 +22,7 @@ const NAV_ITEMS = [
   { href: '/ocean', label: 'Ocean Data', icon: Waves },
   { href: '/vessels', label: 'Vessels', icon: Ship },
   { href: '/alerts', label: 'Alerts', icon: AlertTriangle },
-  { href: '/intelligence', label: 'ORCA Intelligence', icon: Brain },
+  { href: '/intelligence', label: 'JalSaathi Intelligence', icon: Brain },
 ];
 
 import { User } from 'lucide-react';
@@ -38,7 +38,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [showPitchDeck, setShowPitchDeck] = useState(false);
+
 
   const isActive = (href: string) => pathname === href;
 
@@ -75,7 +75,7 @@ export function Sidebar() {
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center">
             <Anchor className="w-5 h-5 text-navy-950" />
           </div>
-          <span className="text-lg font-bold text-white">ORCA</span>
+          <span className="text-lg font-bold text-white">JalSaathi</span>
         </Link>
         <button onClick={() => setMobileOpen(!mobileOpen)} className="p-2 rounded-lg hover:bg-white/10 text-slate-300">
           {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -110,7 +110,7 @@ export function Sidebar() {
                 <Anchor className="w-6 h-6 text-navy-950" />
               </div>
               <div>
-                <h1 className="text-lg font-bold text-white tracking-tight">ORCA</h1>
+                <h1 className="text-lg font-bold text-white tracking-tight">JalSaathi</h1>
                 <p className="text-[10px] text-teal-400/70 tracking-wider uppercase">Ocean Intelligence</p>
               </div>
             </div>
@@ -139,7 +139,7 @@ export function Sidebar() {
             </div>
             {!collapsed && (
               <div>
-                <h1 className="text-lg font-bold text-white tracking-tight">ORCA</h1>
+                <h1 className="text-lg font-bold text-white tracking-tight">JalSaathi</h1>
                 <p className="text-[10px] text-teal-400/70 tracking-wider uppercase">Ocean Intelligence</p>
               </div>
             )}
@@ -195,18 +195,6 @@ export function Sidebar() {
           ))}
 
           <button
-            onClick={() => setShowPitchDeck(true)}
-            title="SIH Pitch Deck & Demo Mode"
-            className={cn(
-              'w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-bold transition-all bg-gradient-to-r from-teal-500/20 to-cyan-500/20 hover:from-teal-500/30 hover:to-cyan-500/30 text-teal-300 border border-teal-500/30 mb-1',
-              collapsed && 'justify-center'
-            )}
-          >
-            <Trophy className="w-4 h-4 shrink-0 text-amber-400" />
-            {!collapsed && <span className="truncate">SIH Pitch Deck</span>}
-          </button>
-
-          <button
             onClick={() => setCollapsed(!collapsed)}
             className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-slate-500 hover:text-slate-300 hover:bg-white/5 w-full transition-all"
           >
@@ -233,11 +221,7 @@ export function Sidebar() {
         ))}
       </nav>
 
-      {/* Pitch Deck Modal */}
-      <PitchDeckDemoModal
-        isOpen={showPitchDeck}
-        onClose={() => setShowPitchDeck(false)}
-      />
+
     </>
   );
 }

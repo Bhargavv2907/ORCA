@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Volume2, VolumeX, Globe, Play, Square, FastForward } from 'lucide-react';
-import { COASTAL_LANGUAGES, translateAdvisory, speakVernacularAdvisory, stopVernacularAdvisory } from '@/lib/i18n-engine';
+import { COASTAL_LANGUAGES, translateAdvisory, speakVernacularAdvisory, stopVernacularAdvisory, preloadVoices } from '@/lib/i18n-engine';
 
 interface AudioAdvisoryPlayerProps {
   text: string;
@@ -15,6 +15,11 @@ export function AudioAdvisoryPlayer({ text, defaultLanguage = 'English' }: Audio
   const [language, setLanguage] = useState(defaultLanguage);
   const [speed, setSpeed] = useState(1.0);
   const [translatedPreview, setTranslatedPreview] = useState(text);
+
+  // Preload voices on mount
+  useEffect(() => {
+    preloadVoices();
+  }, []);
 
   useEffect(() => {
     setLanguage(defaultLanguage);

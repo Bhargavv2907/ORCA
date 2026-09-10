@@ -1,5 +1,5 @@
 // ============================================================
-// ORCA — MOSDAC Search API Route
+// JalSaathi — MOSDAC Search API Route
 // Proxies search requests to MOSDAC catalog (no auth required)
 // GET /api/mosdac/search?datasetId=...&startTime=...&endTime=...
 // ============================================================

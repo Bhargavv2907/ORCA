@@ -6,10 +6,11 @@ import {
   Layers, MapPin, Radio, Shield, Thermometer, Wind, Waves,
   Droplets, RefreshCw, X, Globe, Eye, Ship, Fish, Navigation, Maximize2, Compass, ArrowUpRight
 } from 'lucide-react';
-import { MarineConditions, Vessel, FishingZone } from '@/types/marine';
+import { MarineConditions, FishingZone } from '@/types/marine';
 import { MapAction } from '@/lib/agents/schemas';
 import { cn } from '@/lib/utils';
 import { getMockFishingZones, getMockRoutes } from '@/data/mock-data';
+import { ALL_INDIAN_PORTS } from '@/data/indian-ports';
 
 // Import Leaflet CSS dynamically in client component
 import 'leaflet/dist/leaflet.css';
@@ -198,7 +199,7 @@ export interface MapRegion {
 
 interface WorldMapProps {
   onPointClick?: (lat: number, lon: number, data: MarineConditions | null) => void;
-  vessels?: Vessel[];
+
   fishingZones?: FishingZone[];
   satelliteMode?: string;
   activeLayers?: Set<string>;
@@ -209,10 +210,9 @@ interface WorldMapProps {
 
 export default function WorldMapComponent({
   onPointClick,
-  vessels = [],
   fishingZones = [],
   satelliteMode = 'esri_satellite',
-  activeLayers = new Set(['mosdac_overlay', 'winds', 'fishing', 'vessels', 'coastal_detect']),
+  activeLayers = new Set(['mosdac_overlay', 'winds', 'fishing', 'coastal_detect']),
   highlightCoasts = true,
   mapActionPayload,
   selectedRegion,
@@ -613,40 +613,50 @@ export default function WorldMapComponent({
         });
       }
 
-      // 3. LIVE VESSEL POSITIONS (AIS)
-      if (currentLayers.has('vessels')) {
-        vessels.forEach((vessel) => {
-          const color = vessel.type === 'fishing' ? '#34d399' : vessel.type === 'commercial' ? '#fbbf24' : '#38bdf8';
-          const heading = vessel.heading || 0;
-          const vesselIcon = L.divIcon({
-            className: 'custom-vessel-marker',
+
+      // 3. INDIAN PORTS LAYER (ALL MAJOR, DEEPWATER, PRIVATE & MINOR PORTS OF INDIA)
+      if (currentLayers.has('ports')) {
+        ALL_INDIAN_PORTS.forEach((port) => {
+          const color = port.type === 'major' ? '#f59e0b' : port.type === 'deepwater' ? '#10b981' : port.type === 'private' ? '#8b5cf6' : '#38bdf8';
+          const bgColor = port.type === 'major' ? 'rgba(245,158,11,0.18)' : port.type === 'deepwater' ? 'rgba(16,185,129,0.18)' : port.type === 'private' ? 'rgba(139,92,246,0.18)' : 'rgba(56,189,248,0.18)';
+          const borderColor = port.type === 'major' ? 'rgba(245,158,11,0.6)' : port.type === 'deepwater' ? 'rgba(16,185,129,0.6)' : port.type === 'private' ? 'rgba(139,92,246,0.6)' : 'rgba(56,189,248,0.6)';
+          const label = port.type === 'major' ? 'MAJOR PORT' : port.type === 'deepwater' ? 'DEEPWATER TRANS.' : port.type === 'private' ? 'PRIVATE PORT' : 'MINOR PORT';
+
+          const portIcon = L.divIcon({
+            className: 'custom-port-marker',
             html: `<div style="position:relative;display:flex;align-items:center;cursor:pointer;">
-              <div style="transform:rotate(${heading}deg);width:16px;height:16px;display:flex;align-items:center;justify-content:center;">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="${color}" stroke="#030712" stroke-width="1.5">
-                  <path d="M12 2L19 21L12 17L5 21L12 2Z"/>
+              <div style="width:22px;height:22px;border-radius:50%;background:${bgColor};border:2px solid ${color};display:flex;align-items:center;justify-content:center;box-shadow:0 0 10px ${color}66;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="5" r="3"/><line x1="12" y1="22" x2="12" y2="8"/><path d="M5 12H2a10 10 0 0 0 20 0h-3"/>
                 </svg>
               </div>
-              <span style="margin-left:4px;font-size:9px;font-weight:bold;color:#f8fafc;background:rgba(15,23,42,0.85);padding:1px 4px;border-radius:4px;white-space:nowrap;border:1px solid ${color}66;">
-                ${vessel.name.split(' ')[0]} (${vessel.speed}kn)
+              <span style="margin-left:4px;font-size:9.5px;font-weight:700;color:${color};background:rgba(15,23,42,0.92);padding:1.5px 6px;border-radius:4px;white-space:nowrap;border:1px solid ${borderColor};backdrop-filter:blur(4px);">
+                ${port.name.split('(')[0].trim()}
               </span>
             </div>`,
-            iconSize: [80, 18],
-            iconAnchor: [8, 9],
+            iconSize: [130, 24],
+            iconAnchor: [11, 12],
           });
 
-          const marker = L.marker([vessel.position.lat, vessel.position.lon], { icon: vesselIcon });
-          marker.on('click', () => {
-            inspect(vessel.position.lat, vessel.position.lon, `${vessel.name} (${vessel.type}) — Speed ${vessel.speed} kn, Heading ${heading}°`);
-          });
+          const marker = L.marker([port.lat, port.lon], { icon: portIcon });
+          marker.on('click', () => inspect(port.lat, port.lon, `${port.name} — ${port.state}`));
           marker.bindTooltip(
-            `<div style="padding:4px 8px;background:#0f172a;color:#fff;font-size:11px;font-family:sans-serif;border-radius:6px;border:1px solid ${color};">
-              🚢 <strong>${vessel.name}</strong> (${vessel.type.toUpperCase()})<br/>
-              Speed: <strong>${vessel.speed} knots</strong> | Heading: <strong>${heading}°</strong><br/>
-              Flag: ${vessel.flag || 'IN'} | Length: ${vessel.length || 20}m
+            `<div style="padding:8px 12px;background:#0f172a;color:#fff;font-size:11px;font-family:system-ui,sans-serif;border-radius:8px;border:1px solid ${color};min-width:200px;box-shadow:0 4px 12px rgba(0,0,0,0.5);">
+              <div style="font-weight:800;font-size:12.5px;color:${color};margin-bottom:4px;display:flex;align-items:center;justify-content:space-between;">
+                <span>⚓ ${port.name}</span>
+              </div>
+              <div style="font-size:10px;color:#94a3b8;margin-bottom:4px;">
+                <span style="display:inline-block;padding:1px 6px;border-radius:4px;background:${bgColor};color:${color};border:1px solid ${borderColor};font-weight:700;font-size:9px;margin-right:6px;">${label}</span>
+                <strong style="color:#cbd5e1;">${port.state}</strong> (${port.coast})
+              </div>
+              ${port.cargoType ? `<div style="font-size:10px;color:#38bdf8;margin-bottom:3px;">📦 <strong>Cargo:</strong> ${port.cargoType}</div>` : ''}
+              ${port.description ? `<div style="font-size:9.5px;color:#64748b;margin-bottom:4px;line-height:1.3;">${port.description}</div>` : ''}
+              <div style="font-size:9.5px;color:#475569;font-family:monospace;">
+                GPS: ${port.lat.toFixed(4)}°N, ${port.lon.toFixed(4)}°E
+              </div>
             </div>`,
             { sticky: true }
           );
-
           marker.addTo(layerGroup);
         });
       }
@@ -728,7 +738,7 @@ export default function WorldMapComponent({
         L.marker([centerLat, centerLon - 0.01], { icon: myBoatIcon }).addTo(layerGroup);
       }
     });
-  }, [highlightCoasts, activeLayersKey, zonesList, vessels, isLoaded]);
+  }, [highlightCoasts, activeLayersKey, zonesList, isLoaded]);
 
   // Handle AI-Controlled Map Actions (Phase 6)
   useEffect(() => {

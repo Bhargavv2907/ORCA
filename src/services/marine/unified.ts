@@ -1,5 +1,5 @@
 // ============================================================
-// ORCA Unified Marine Service Layer
+// JalSaathi Unified Marine Service Layer
 // Aggregates data from IMD, MOSDAC, Open-Meteo, and local mock engine
 // ============================================================
 
@@ -165,7 +165,7 @@ export async function getMarineConditions(lat: number, lon: number): Promise<Mar
 
   // Build composite source label
   if (sources.length > 0) {
-    conditions.source = sources.join(' + ') + ' + ORCA Engine';
+    conditions.source = sources.join(' + ') + ' + JalSaathi Engine';
   }
 
   return conditions;

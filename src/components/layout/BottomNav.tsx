@@ -11,7 +11,7 @@ const NAV_ITEMS = [
   { href: '/', label: 'Home', icon: Home },
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/map', label: 'World Map', icon: Map },
-  { href: '/assistant', label: 'ORCA AI', icon: Bot },
+  { href: '/assistant', label: 'JalSaathi AI', icon: Bot },
   { href: '/login', label: 'Account', icon: User },
 ];
 

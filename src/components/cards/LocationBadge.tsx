@@ -31,8 +31,8 @@ export function LocationBadge({ onLocationChange, className }: LocationBadgeProp
       setLocation(loc);
       onLocationChange?.(loc);
     };
-    window.addEventListener('orca-location-changed', handler);
-    return () => window.removeEventListener('orca-location-changed', handler);
+    window.addEventListener('jalsaathi-location-changed', handler);
+    return () => window.removeEventListener('jalsaathi-location-changed', handler);
   }, [onLocationChange]);
 
   // Close on outside click

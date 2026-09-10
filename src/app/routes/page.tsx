@@ -9,8 +9,8 @@ import {
   Crosshair, AlertTriangle, Plus, Minus, X, Check, Volume2, ShieldAlert
 } from 'lucide-react';
 import { RouteCard, DemoModeBanner } from '@/components/cards';
-import { getMockRoutes, getMockFishingZones, getMockVessels } from '@/data/mock-data';
-import { RouteOption, Coordinates, FishingZone, Vessel } from '@/types/marine';
+import { getMockRoutes, getMockFishingZones } from '@/data/mock-data';
+import { RouteOption, Coordinates, FishingZone } from '@/types/marine';
 import { generateOfflineRoutes } from '@/lib/offline-routing';
 import { MapAction } from '@/lib/agents/schemas';
 import { INDIAN_COASTAL_SECTORS } from '@/components/world-map';
@@ -71,8 +71,7 @@ export default function RoutesPage() {
   const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(true);
   const [isOffline, setIsOffline] = useState(false);
-  const [vesselData, setVesselData] = useState<{ totalVessels: number; trafficDensity: string; shippingLaneStatus: string; vessels: Vessel[] } | null>(null);
-  const [showVesselDetails, setShowVesselDetails] = useState(false);
+
 
   // IMD (India Meteorological Department) Data State
   const [imdData, setImdData] = useState<{
@@ -122,15 +121,7 @@ export default function RoutesPage() {
     const defaultRoutes = getMockRoutes();
     setRoutes(defaultRoutes);
 
-    // Fetch direct live AIS vessel telemetry API
-    fetch('/api/vessels?lat=' + currentSector.center.lat + '&lon=' + currentSector.center.lon)
-      .then(res => res.json())
-      .then(json => {
-        if (json.success && json.data) {
-          setVesselData(json.data);
-        }
-      })
-      .catch(() => null);
+
 
     // Fetch India Meteorological Department (IMD) Live Marine Warnings & Bulletins
     fetch('/api/imd/marine')
@@ -189,13 +180,7 @@ export default function RoutesPage() {
     setSelectedRouteIndex(1);
     setHasSearched(true);
 
-    // Refresh AIS vessels for new sector coordinates
-    fetch(`/api/vessels?lat=${sector.center.lat}&lon=${sector.center.lon}`)
-      .then(res => res.json())
-      .then(json => {
-        if (json.success && json.data) setVesselData(json.data);
-      })
-      .catch(() => null);
+
   };
 
   const handleSearch = async (targetDest?: string) => {
@@ -226,7 +211,7 @@ export default function RoutesPage() {
   // Active layers set for Leaflet Map
   const activeLayersSet = new Set<string>();
   if (overlays.pfz) activeLayersSet.add('fishing');
-  if (overlays.ais) activeLayersSet.add('vessels');
+
   if (overlays.tss) activeLayersSet.add('tss');
   if (overlays.military) activeLayersSet.add('military');
   if (overlays.weather) activeLayersSet.add('winds');
@@ -410,7 +395,6 @@ export default function RoutesPage() {
       <div className="relative w-full h-[620px] rounded-2xl overflow-hidden shadow-xl border-2 border-slate-300/80 bg-[#c7e4ff]">
         {/* Interactive Leaflet Map Component */}
         <WorldMap
-          vessels={vesselData?.vessels || getMockVessels()}
           fishingZones={displayZones}
           mapActionPayload={mapActionPayload}
           selectedRegion={currentSector}
@@ -738,7 +722,7 @@ export default function RoutesPage() {
               <p className="text-slate-700 text-[11px] leading-relaxed">
                 Course adjustment: Turn <strong>240° WSW</strong> to bypass TSS shipping fairway. Maintain 6.2 kts speed.
               </p>
-              <span className="text-[10px] text-slate-500 font-mono block">Leg Distance: 18.2 km | Vessels Tracked: 2</span>
+              <span className="text-[10px] text-slate-500 font-mono block">Leg Distance: 18.2 km</span>
             </div>
 
             <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1">

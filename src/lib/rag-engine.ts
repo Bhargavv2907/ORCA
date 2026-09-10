@@ -1,5 +1,5 @@
 // ============================================================
-// ORCA — RAG (Retrieval-Augmented Generation) Engine
+// JalSaathi — RAG (Retrieval-Augmented Generation) Engine
 // Curated Knowledge Base & Vector Similarity Retrieval System
 // ============================================================
 

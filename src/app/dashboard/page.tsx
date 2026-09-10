@@ -136,7 +136,7 @@ export default function DashboardPage() {
             className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-teal-500 to-cyan-500 text-navy-950 font-semibold rounded-xl text-sm hover:shadow-lg hover:shadow-teal-500/25 transition-all"
           >
             <Bot className="w-4 h-4" />
-            Ask ORCA
+            Ask JalSaathi
           </Link>
         </div>
       </motion.div>
@@ -179,7 +179,7 @@ export default function DashboardPage() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Bot className="w-5 h-5 text-teal-400" />
-            <h3 className="text-sm font-bold text-white uppercase tracking-wider">Ask ORCA Intelligence</h3>
+            <h3 className="text-sm font-bold text-white uppercase tracking-wider">Ask JalSaathi Intelligence</h3>
           </div>
           <Link href="/assistant" className="text-xs text-teal-400 hover:underline flex items-center gap-1">
             Full Chat Mode <ArrowRight className="w-3 h-3" />
@@ -222,7 +222,7 @@ export default function DashboardPage() {
         <div className="lg:col-span-1 space-y-3">
           <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">Quick Actions</h3>
           {[
-            { href: '/assistant', icon: Bot, label: 'Ask ORCA a question', color: 'from-teal-500 to-cyan-500' },
+            { href: '/assistant', icon: Bot, label: 'Ask JalSaathi a question', color: 'from-teal-500 to-cyan-500' },
             { href: '/fishing-zones', icon: Anchor, label: 'View fishing zones', color: 'from-emerald-500 to-teal-500' },
             { href: '/routes', icon: ArrowRight, label: 'Plan a safe route', color: 'from-blue-500 to-cyan-500' },
             { href: '/map', icon: MapPin, label: 'Open marine map', color: 'from-violet-500 to-blue-500' },

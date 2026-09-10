@@ -1,5 +1,5 @@
 // ============================================================
-// ORCA — IMD Status API Route
+// JalSaathi — IMD Status API Route
 // GET /api/imd/status
 // ============================================================
 
@@ -32,7 +32,7 @@ export async function GET() {
       step1: 'Register at https://api.imd.gov.in/public/index.php',
       step2: 'Complete IP whitelisting for your server IP',
       step3: 'Add IMD_API_KEY=your_key to .env.local',
-      step4: 'Restart the ORCA dev server',
+      step4: 'Restart the JalSaathi dev server',
       note: 'All IMD APIs are free but require registration and IP whitelisting.',
     } : undefined,
   });

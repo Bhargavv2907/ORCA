@@ -1,8 +1,8 @@
 // ============================================================
-// ORCA Compact Session Memory & Context Store (Phase 7)
+// JalSaathi Compact Session Memory & Context Store (Phase 7)
 // ============================================================
 
-export interface OrcaSessionContext {
+export interface JalSaathiSessionContext {
   selectedLocation: { lat: number; lon: number; name: string };
   selectedPFZ?: { id: string; name: string; center: { lat: number; lon: number }; suitabilityScore: number; distanceFromCoast: number };
   selectedRoute?: { id: string; name: string; distance: number; safetyScore: number };
@@ -11,7 +11,7 @@ export interface OrcaSessionContext {
   userMode: 'Fisherman' | 'Researcher' | 'Authority' | 'Operator';
 }
 
-const DEFAULT_SESSION: OrcaSessionContext = {
+const DEFAULT_SESSION: JalSaathiSessionContext = {
   selectedLocation: { lat: 18.95, lon: 72.82, name: 'Mumbai Coast' },
   selectedPFZ: {
     id: 'zone-a',
@@ -31,18 +31,18 @@ const DEFAULT_SESSION: OrcaSessionContext = {
   userMode: 'Fisherman',
 };
 
-let currentSession: OrcaSessionContext = { ...DEFAULT_SESSION };
+let currentSession: JalSaathiSessionContext = { ...DEFAULT_SESSION };
 
-export function getSessionContext(): OrcaSessionContext {
+export function getSessionContext(): JalSaathiSessionContext {
   return currentSession;
 }
 
-export function updateSessionContext(patch: Partial<OrcaSessionContext>): OrcaSessionContext {
+export function updateSessionContext(patch: Partial<JalSaathiSessionContext>): JalSaathiSessionContext {
   currentSession = { ...currentSession, ...patch };
   return currentSession;
 }
 
-export function resetSessionContext(): OrcaSessionContext {
+export function resetSessionContext(): JalSaathiSessionContext {
   currentSession = { ...DEFAULT_SESSION };
   return currentSession;
 }

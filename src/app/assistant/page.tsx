@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import { orchestrate, AgentOutput } from '@/lib/orchestrator';
 import { ChatMessage, AgentType, EvidencePayload } from '@/types/marine';
 import { DemoModeBanner, WhyEvidenceModal, AudioAdvisoryPlayer, ProactiveAlertBanner } from '@/components/cards';
-import { translateAdvisory, speakVernacularAdvisory } from '@/lib/i18n-engine';
+import { translateAdvisory, speakVernacularAdvisory, preloadVoices, getLanguageBCP47 } from '@/lib/i18n-engine';
 
 const EXAMPLE_QUESTIONS = [
   'Where is the nearest Potential Fishing Zone (PFZ) today?',
@@ -114,7 +114,7 @@ export default function AssistantPage() {
 
     try {
       const recognition = new SpeechRecognition();
-      recognition.lang = language === 'Hindi' ? 'hi-IN' : language === 'Marathi' ? 'mr-IN' : language === 'Tamil' ? 'ta-IN' : 'en-IN';
+      recognition.lang = getLanguageBCP47(language);
       recognition.interimResults = false;
       recognition.maxAlternatives = 1;
 
@@ -142,6 +142,11 @@ export default function AssistantPage() {
 
   useEffect(() => { scrollToBottom(); }, [messages]);
 
+  // Preload TTS voices on mount so they're ready when needed
+  useEffect(() => {
+    preloadVoices();
+  }, []);
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
@@ -163,7 +168,7 @@ export default function AssistantPage() {
               <Bot className="w-5 h-5 text-navy-950" />
             </div>
             <div>
-              <h1 className="text-lg font-bold text-white">Ask ORCA</h1>
+              <h1 className="text-lg font-bold text-white">Ask JalSaathi</h1>
               <p className="text-xs text-slate-400">Ask anything about the sea.</p>
             </div>
           </div>
@@ -217,7 +222,7 @@ export default function AssistantPage() {
               <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-teal-400/20 to-cyan-500/20 flex items-center justify-center mb-6 border border-teal-500/20">
                 <Anchor className="w-10 h-10 text-teal-400" />
               </div>
-              <h2 className="text-2xl font-bold text-white mb-2">Ask ORCA</h2>
+              <h2 className="text-2xl font-bold text-white mb-2">Ask JalSaathi</h2>
               <p className="text-slate-400 mb-8 max-w-md">
                 Ask anything about ocean conditions, fishing zones, weather forecasts, or route safety.
               </p>

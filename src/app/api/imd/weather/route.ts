@@ -1,5 +1,5 @@
 // ============================================================
-// ORCA — IMD Current Weather & Forecast API Route
+// JalSaathi — IMD Current Weather & Forecast API Route
 // GET /api/imd/weather?stationId=43003  (Mumbai)
 // GET /api/imd/weather?lat=18.95&lon=72.82
 // ============================================================
@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
           step1: 'Register at https://api.imd.gov.in/public/index.php',
           step2: 'Complete IP whitelisting for your server',
           step3: 'Add IMD_API_KEY=your_key to .env.local',
-          step4: 'Restart the ORCA dev server',
+          step4: 'Restart the JalSaathi dev server',
           note: 'IMD APIs are free but require registration and IP whitelisting.',
         },
       }, { status: 200 });

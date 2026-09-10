@@ -1,11 +1,11 @@
 // ============================================================
-// ORCA — Offline Storage & Data Synchronization Adapter (Phase 12)
+// JalSaathi — Offline Storage & Data Synchronization Adapter (Phase 12)
 // Local storage persistence & stale data management
 // ============================================================
 
 import { MarineConditions } from '@/types/marine';
 
-const OFFLINE_MARINE_CACHE_KEY = 'orca_offline_marine_conditions_v1';
+const OFFLINE_MARINE_CACHE_KEY = 'jalsaathi_offline_marine_conditions_v1';
 
 /**
  * Saves live marine conditions to local storage for offline retrieval at sea.
@@ -70,7 +70,7 @@ export function getOfflineDataFreshnessLabel(savedTimestamp: string): string {
 }
 
 /**
- * Registers the ORCA Service Worker in client browser.
+ * Registers the JalSaathi Service Worker in client browser.
  */
 export function registerServiceWorker(): void {
   if (typeof window !== 'undefined' && 'serviceWorker' in navigator && process.env.NODE_ENV === 'production') {

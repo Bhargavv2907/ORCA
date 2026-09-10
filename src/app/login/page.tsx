@@ -49,7 +49,7 @@ export default function LoginPage() {
           return;
         }
         await loginWithEmail(email, password);
-        setMessage({ text: 'Welcome back to ORCA!', type: 'success' });
+        setMessage({ text: 'Welcome back to JalSaathi!', type: 'success' });
       }
     } catch (err: any) {
       setMessage({ text: err.message || 'Authentication error.', type: 'error' });
@@ -62,7 +62,7 @@ export default function LoginPage() {
     return (
       <div className="min-h-screen bg-navy-950 flex flex-col items-center justify-center p-6 text-teal-400">
         <Radio className="w-10 h-10 animate-spin mb-3" />
-        <p className="text-sm font-semibold tracking-wide">Initializing ORCA Firebase Auth...</p>
+        <p className="text-sm font-semibold tracking-wide">Initializing JalSaathi Firebase Auth...</p>
       </div>
     );
   }
@@ -193,7 +193,7 @@ export default function LoginPage() {
               <Anchor className="w-7 h-7 text-teal-300" />
             </div>
           </div>
-          <h1 className="text-2xl font-black text-white tracking-tight">ORCA Mobile Portal</h1>
+          <h1 className="text-2xl font-black text-white tracking-tight">JalSaathi Mobile Portal</h1>
           <p className="text-xs text-slate-400">AI-Powered Marine Intelligence & Firebase Sync</p>
         </div>
 
@@ -256,7 +256,7 @@ export default function LoginPage() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="navigator@orca-marine.isro"
+                  placeholder="navigator@jalsaathi-marine.isro"
                   className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-navy-950 border border-navy-700/50 text-xs text-white placeholder-slate-500 focus:border-teal-500 outline-none"
                 />
               </div>

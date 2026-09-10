@@ -1,5 +1,5 @@
 // ============================================================
-// ORCA — The Ocean Helper
+// JalSaathi — The Ocean Helper
 // TypeScript Type Definitions for Marine Data
 // ============================================================
 

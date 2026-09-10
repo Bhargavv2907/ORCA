@@ -1,5 +1,5 @@
 // ============================================================
-// ORCA Fishing Suitability Model — Prototype Scoring Engine
+// JalSaathi Fishing Suitability Model — Prototype Scoring Engine
 // ============================================================
 
 import { FishingZone, FishingFactor } from '@/types/marine';

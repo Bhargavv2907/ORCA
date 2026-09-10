@@ -119,7 +119,7 @@ export async function getWaves(input: unknown): Promise<NormalizedToolResult<z.i
 
 export async function getTide(input: unknown) {
   const { location } = LocationInputSchema.parse(input);
-  return unavailable(z.unknown(), 'ORCA tide sources', location, 'forecast', 'No tide data source is integrated.');
+  return unavailable(z.unknown(), 'JalSaathi tide sources', location, 'forecast', 'No tide data source is integrated.');
 }
 
 async function getMosdacValue(
@@ -146,7 +146,7 @@ export function getChlorophyll(input: unknown) { return getMosdacValue(input, 'c
 
 export async function getPFZ(input: unknown) {
   const { location } = LocationInputSchema.parse(input);
-  return unavailable(z.array(z.unknown()), 'ORCA PFZ / Copernicus Marine', location, 'advisory',
+  return unavailable(z.array(z.unknown()), 'JalSaathi PFZ / Copernicus Marine', location, 'advisory',
     'No live PFZ or Copernicus Marine integration exists. Mock fishing zones are excluded.');
 }
 
@@ -193,7 +193,7 @@ export async function getMarineAdvisories(input: unknown) {
 
 export function getUserLocation(input: unknown) {
   const { location } = OptionalLocationInputSchema.parse(input);
-  if (!location) return unavailable(CoordinatesSchema, 'ORCA user location', null, 'observation', 'No user location was supplied to the server.');
+  if (!location) return unavailable(CoordinatesSchema, 'JalSaathi user location', null, 'observation', 'No user location was supplied to the server.');
   return normalizeResult(CoordinatesSchema, {
     source: 'Caller-supplied location', retrievedAt: now(), validFrom: null, validUntil: null,
     location, value: location, unit: null, type: 'observation', status: 'cached',
@@ -207,14 +207,14 @@ export function calculateDistance(input: unknown) {
   const a = Math.sin(radians(to.lat - from.lat) / 2) ** 2 + Math.cos(radians(from.lat)) * Math.cos(radians(to.lat)) * Math.sin(radians(to.lon - from.lon) / 2) ** 2;
   const value = 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return normalizeResult(NumericValueSchema, {
-    source: 'ORCA GIS calculation', retrievedAt: now(), validFrom: null, validUntil: null,
+    source: 'JalSaathi GIS calculation', retrievedAt: now(), validFrom: null, validUntil: null,
     location: to, value, unit: 'km', type: 'observation', status: 'live',
   });
 }
 
 export async function findNearestPFZ(input: unknown) {
   const { location } = LocationInputSchema.parse(input);
-  return unavailable(z.unknown(), 'ORCA PFZ / Copernicus Marine', location, 'advisory', 'No verified PFZ dataset is available to search.');
+  return unavailable(z.unknown(), 'JalSaathi PFZ / Copernicus Marine', location, 'advisory', 'No verified PFZ dataset is available to search.');
 }
 
 const GeofenceInputSchema = z.object({ location: CoordinatesSchema, boundary: z.array(CoordinatesSchema).min(3) });
@@ -227,20 +227,20 @@ export function checkGeofence(input: unknown) {
     if ((current.lat > location.lat) !== (prior.lat > location.lat) && location.lon < (prior.lon - current.lon) * (location.lat - current.lat) / (prior.lat - current.lat) + current.lon) inside = !inside;
   }
   return normalizeResult(z.object({ inside: z.boolean() }), {
-    source: 'ORCA GIS calculation', retrievedAt: now(), validFrom: null, validUntil: null,
+    source: 'JalSaathi GIS calculation', retrievedAt: now(), validFrom: null, validUntil: null,
     location, value: { inside }, unit: null, type: 'observation', status: 'live',
   });
 }
 
 export async function findRestrictedAreas(input: unknown) {
   const { location } = LocationInputSchema.parse(input);
-  return unavailable(z.array(z.unknown()), 'ORCA GIS', location, 'advisory', 'No restricted-area dataset is integrated.');
+  return unavailable(z.array(z.unknown()), 'JalSaathi GIS', location, 'advisory', 'No restricted-area dataset is integrated.');
 }
 
 const RouteInputSchema = z.object({ origin: CoordinatesSchema, destination: CoordinatesSchema });
 export async function calculateRoute(input: unknown) {
   const { origin, destination } = RouteInputSchema.parse(input);
-  return unavailable(z.array(z.unknown()), 'ORCA offline router', origin, 'forecast',
+  return unavailable(z.array(z.unknown()), 'JalSaathi offline router', origin, 'forecast',
     `The prototype router has no verified chart, geofence, weather, or traffic inputs for the requested destination (${destination.lat}, ${destination.lon}).`);
 }
 
@@ -249,7 +249,7 @@ export function compareRoutes(input: unknown) {
   const { routes, location } = z.object({ routes: z.array(RouteCandidateSchema).min(1), location: CoordinatesSchema }).parse(input);
   const value = [...routes].sort((a, b) => a.riskScore - b.riskScore || a.distanceKm - b.distanceKm);
   return normalizeResult(z.array(RouteCandidateSchema), {
-    source: 'ORCA route comparison', retrievedAt: now(), validFrom: null, validUntil: null,
+    source: 'JalSaathi route comparison', retrievedAt: now(), validFrom: null, validUntil: null,
     location, value, unit: null, type: 'forecast', status: 'live',
   });
 }
@@ -265,7 +265,7 @@ export function calculateMarineRisk(input: unknown) {
   const { location, weather, waves, ocean, vesselCount } = MarineRiskInputSchema.parse(input);
   const value = calculateSafetyScore(weather, waves, ocean, vesselCount);
   return normalizeResult(z.unknown(), {
-    source: 'ORCA deterministic risk engine', retrievedAt: now(), validFrom: null, validUntil: null,
+    source: 'JalSaathi deterministic risk engine', retrievedAt: now(), validFrom: null, validUntil: null,
     location, value, unit: 'score_0_to_100', type: 'observation', status: 'live',
   });
 }

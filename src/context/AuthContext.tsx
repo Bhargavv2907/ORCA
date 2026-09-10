@@ -40,7 +40,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Check if offline/demo user exists in localStorage
     if (typeof window !== 'undefined') {
-      const cached = localStorage.getItem('orca_user_profile');
+      const cached = localStorage.getItem('jalsaathi_user_profile');
       if (cached) {
         try {
           const parsed = JSON.parse(cached);
@@ -135,10 +135,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const loginWithDemo = (role: 'fisherman' | 'captain' | 'researcher' = 'fisherman') => {
     const demoProfile: UserProfile = {
       uid: 'demo-user-101',
-      email: 'tanvi@orca-marine.isro',
+      email: 'tanvi@jalsaathi-marine.isro',
       displayName: 'Capt. Tanvi Sharma',
       role,
-      vesselName: 'ORCA Navigator I',
+      vesselName: 'JalSaathi Navigator I',
       homePort: 'Mumbai Marine Basin',
       createdAt: new Date().toISOString(),
     };
@@ -151,7 +151,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await signOut(auth);
     }
     if (typeof window !== 'undefined') {
-      localStorage.removeItem('orca_user_profile');
+      localStorage.removeItem('jalsaathi_user_profile');
     }
     setUser(null);
     setFavoriteZones([]);

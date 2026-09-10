@@ -17,9 +17,9 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ORCA — The Ocean Helper | AI-Powered Marine Intelligence & RAG Engine",
+  title: "JalSaathi — The Ocean Helper | AI-Powered Marine Intelligence & RAG Engine",
   description:
-    "ORCA is an AI-powered PWA marine intelligence platform helping fishermen understand the sea, find promising fishing zones, plan safer routes, and make better decisions. Real-time ISRO MOSDAC satellite integration with Firebase persistence.",
+    "JalSaathi is an AI-powered PWA marine intelligence platform helping fishermen understand the sea, find promising fishing zones, plan safer routes, and make better decisions. Real-time ISRO MOSDAC satellite integration with Firebase persistence.",
   keywords: [
     "marine intelligence",
     "fishing",

@@ -1,5 +1,5 @@
 // ============================================================
-// ORCA — MOSDAC Status API Route
+// JalSaathi — MOSDAC Status API Route
 // Returns connection status, available datasets, and auth state
 // GET /api/mosdac/status
 // ============================================================
@@ -25,7 +25,7 @@ export async function GET() {
     setupInstructions: !status.hasCredentials ? {
       step1: 'Create an account at https://mosdac.gov.in/signup/',
       step2: 'Add MOSDAC_USERNAME and MOSDAC_PASSWORD to your .env.local file',
-      step3: 'Restart the ORCA dev server',
+      step3: 'Restart the JalSaathi dev server',
       note: 'Search works without credentials. Download/real-time data requires authentication.',
     } : undefined,
   });

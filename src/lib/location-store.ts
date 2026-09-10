@@ -1,11 +1,11 @@
 // ============================================================
-// ORCA Location Store — Shared location state for all pages
+// JalSaathi Location Store — Shared location state for all pages
 // Persisted in localStorage so every page uses the same city
 // ============================================================
 
 import { INDIAN_COASTAL_LOCATIONS, CoastalLocation } from '@/lib/orchestrator';
 
-const STORAGE_KEY = 'orca_selected_location';
+const STORAGE_KEY = 'jalsaathi_selected_location';
 
 /** Mumbai — the default fallback */
 export const DEFAULT_LOCATION: CoastalLocation = INDIAN_COASTAL_LOCATIONS[0];
@@ -32,7 +32,7 @@ export function setSelectedLocation(loc: CoastalLocation): void {
   if (typeof window === 'undefined') return;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(loc));
   // Dispatch a custom event so other components can react without a page reload
-  window.dispatchEvent(new CustomEvent('orca-location-changed', { detail: loc }));
+  window.dispatchEvent(new CustomEvent('jalsaathi-location-changed', { detail: loc }));
 }
 
 /** Build a marine API URL for the selected (or given) location */

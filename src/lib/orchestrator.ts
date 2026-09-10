@@ -1,5 +1,5 @@
 // ============================================================
-// ORCA AI Orchestrator — Multi-Agent Intelligence Engine (Phase 2)
+// JalSaathi AI Orchestrator — Multi-Agent Intelligence Engine (Phase 2)
 // Target 5-Agent Architecture with Zod Validation & Map Actions
 // ============================================================
 
@@ -402,7 +402,7 @@ function generateResponse(
     // ---- Abusive language warning ----
     abusive: () => ({
       safetyStatus: { overall: 0, status: 'WARNING' as any, label: 'Inappropriate Language', components: [] },
-      recommendation: `⚠️ Please use respectful language. ORCA is a marine safety assistant designed to help fishermen stay safe at sea. I'm here to help you with fishing zones, weather conditions, route safety, and ocean data. Please rephrase your question and I'll be happy to assist.`,
+      recommendation: `⚠️ Please use respectful language. JalSaathi is a marine safety assistant designed to help fishermen stay safe at sea. I'm here to help you with fishing zones, weather conditions, route safety, and ocean data. Please rephrase your question and I'll be happy to assist.`,
     }),
 
     // ---- Greeting response ----
@@ -415,7 +415,7 @@ function generateResponse(
 
       return {
         safetyStatus: safety,
-        recommendation: `${timeGreeting}! 🌊 Welcome to ORCA — your marine intelligence assistant for ${cityName}. ${conditionBrief} (Safety: ${safety.overall}/100, Waves: ${waves.height.toFixed(1)}m, Wind: ${Math.round(weather.windSpeed)} km/h).\n\nHere's what I can help you with:\n• 🐟 "What fish can I expect today?" — species forecast\n• 🗺️ "Where is the nearest fishing zone?" — PFZ advisory\n• ⛵ "Is it safe to go out?" — safety assessment\n• 🌤️ "What's the weather like?" — live conditions\n• 🧭 "Which route is safest?" — navigation\n\nJust ask me anything about the sea!`,
+        recommendation: `${timeGreeting}! 🌊 Welcome to JalSaathi — your marine intelligence assistant for ${cityName}. ${conditionBrief} (Safety: ${safety.overall}/100, Waves: ${waves.height.toFixed(1)}m, Wind: ${Math.round(weather.windSpeed)} km/h).\n\nHere's what I can help you with:\n• 🐟 "What fish can I expect today?" — species forecast\n• 🗺️ "Where is the nearest fishing zone?" — PFZ advisory\n• ⛵ "Is it safe to go out?" — safety assessment\n• 🌤️ "What's the weather like?" — live conditions\n• 🧭 "Which route is safest?" — navigation\n\nJust ask me anything about the sea!`,
       };
     },
 
@@ -510,7 +510,7 @@ function generateResponse(
     safetyStatus: partial.safetyStatus || safety,
     reasoning: partial.reasoning || [],
     recommendation: partial.recommendation || '',
-    dataSources: ['ISRO MOSDAC Satellite API', 'Open-Meteo Weather & Marine API', 'IMD Marine Bulletins', 'ORCA Risk Engine'],
+    dataSources: ['ISRO MOSDAC Satellite API', 'Open-Meteo Weather & Marine API', 'IMD Marine Bulletins', 'JalSaathi Risk Engine'],
     timestamp: new Date().toISOString(),
     confidence: 85,
     structuredData: partial.structuredData,
@@ -535,7 +535,7 @@ export async function orchestrate(
       agentsUsed: [],
       safetyStatus: { overall: 0, status: 'WARNING' as any, label: 'Inappropriate Language', components: [] },
       reasoning: [],
-      recommendation: `⚠️ Please use respectful language. ORCA is a marine safety assistant designed to help fishermen stay safe at sea. I'm here to help you with fishing zones, weather conditions, route safety, and ocean data. Please rephrase your question and I'll be happy to assist.`,
+      recommendation: `⚠️ Please use respectful language. JalSaathi is a marine safety assistant designed to help fishermen stay safe at sea. I'm here to help you with fishing zones, weather conditions, route safety, and ocean data. Please rephrase your question and I'll be happy to assist.`,
       dataSources: [],
       timestamp: new Date().toISOString(),
       confidence: 100,

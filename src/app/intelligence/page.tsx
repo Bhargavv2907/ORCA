@@ -80,7 +80,7 @@ export default function IntelligencePage() {
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-white flex items-center gap-3">
             <Brain className="w-7 h-7 text-teal-400" />
-            ORCA Intelligence
+            JalSaathi Intelligence
           </h1>
           <p className="text-sm text-slate-400 mt-1">Watch the multi-agent orchestration engine in action.</p>
         </div>
@@ -321,7 +321,7 @@ export default function IntelligencePage() {
           </div>
           <h2 className="text-xl font-bold text-white mb-2">Multi-Agent Intelligence Engine</h2>
           <p className="text-sm text-slate-400 max-w-md mb-4">
-            Type a question or select an example above to watch the ORCA orchestration pipeline in action.
+            Type a question or select an example above to watch the JalSaathi orchestration pipeline in action.
           </p>
           <p className="text-xs text-slate-500">
             Query → Orchestrator → Agent Selection → Data Analysis → Reasoning → Answer

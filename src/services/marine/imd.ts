@@ -1,5 +1,5 @@
 // ============================================================
-// ORCA — India Meteorological Department (IMD) Integration
+// JalSaathi — India Meteorological Department (IMD) Integration
 // Official IMD Public APIs (https://api.imd.gov.in)
 //
 // API Key: Required (free) — Register at https://api.imd.gov.in/public/index.php

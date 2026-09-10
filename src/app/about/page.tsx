@@ -16,7 +16,7 @@ export default function AboutPage() {
         <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center mx-auto mb-6 glow-teal">
           <Anchor className="w-10 h-10 text-navy-950" />
         </div>
-        <h1 className="text-4xl md:text-5xl font-black text-white mb-3">ORCA</h1>
+        <h1 className="text-4xl md:text-5xl font-black text-white mb-3">JalSaathi</h1>
         <p className="text-xl text-teal-300 italic mb-2">Your intelligent companion at sea.</p>
         <p className="text-sm text-slate-400 max-w-2xl mx-auto">
           Real-time ocean intelligence. Safer journeys. Smarter fishing.
@@ -24,9 +24,9 @@ export default function AboutPage() {
       </motion.div>
 
       <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} className="rounded-2xl border border-navy-600/20 bg-card p-6">
-        <motion.h2 variants={fadeUp} custom={0} className="text-xl font-bold text-white mb-4">What is ORCA?</motion.h2>
+        <motion.h2 variants={fadeUp} custom={0} className="text-xl font-bold text-white mb-4">What is JalSaathi?</motion.h2>
         <motion.p variants={fadeUp} custom={1} className="text-slate-400 leading-relaxed">
-          ORCA is an AI-powered marine intelligence and decision-support platform designed primarily for fishermen. It combines real-time and near-real-time marine weather, ocean conditions, fishing activity, vessel information, maps, and AI reasoning to answer fishermen&apos;s questions in simple language.
+          JalSaathi is an AI-powered marine intelligence and decision-support platform designed primarily for fishermen. It combines real-time and near-real-time marine weather, ocean conditions, fishing activity, vessel information, maps, and AI reasoning to answer fishermen&apos;s questions in simple language.
         </motion.p>
       </motion.div>
 
@@ -59,7 +59,7 @@ export default function AboutPage() {
           <motion.h3 variants={fadeUp} custom={0} className="text-lg font-semibold text-white mb-4">Core Principles</motion.h3>
           <div className="space-y-4">
             {[
-              { icon: Zap, title: 'Collect → Understand → Reason', desc: 'ORCA doesn\'t just display data — it correlates, reasons, and recommends.' },
+              { icon: Zap, title: 'Collect → Understand → Reason', desc: 'JalSaathi doesn\'t just display data — it correlates, reasons, and recommends.' },
               { icon: Shield, title: 'Safety First', desc: 'Every recommendation prioritizes the safety of fishermen and their vessels.' },
               { icon: Globe, title: 'Accessible Intelligence', desc: 'Complex ocean data explained in simple language, in 9 regional languages.' },
               { icon: Heart, title: 'Built for Communities', desc: 'Designed for fishermen, coastal communities, and marine researchers.' },
@@ -77,7 +77,7 @@ export default function AboutPage() {
       </div>
 
       <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="text-center py-8 border-t border-navy-700/20">
-        <p className="text-sm text-slate-500 mb-2">ORCA — The Ocean Helper</p>
+        <p className="text-sm text-slate-500 mb-2">JalSaathi — The Ocean Helper</p>
         <p className="text-xs text-slate-600">Built with Next.js, TypeScript, and AI • Powered by open marine data</p>
       </motion.div>
     </div>

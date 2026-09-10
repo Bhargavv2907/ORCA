@@ -1,5 +1,5 @@
 // ============================================================
-// ORCA Deterministic Marine Risk Engine (Phase 3)
+// JalSaathi Deterministic Marine Risk Engine (Phase 3)
 // ============================================================
 
 import { SafetyScore, RiskComponent, RiskWeights, WeatherData, WaveData, OceanData } from '@/types/marine';

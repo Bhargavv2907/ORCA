@@ -1,5 +1,5 @@
 // ============================================================
-// ORCA Mock Data — Realistic Marine Data for Demo Mode
+// JalSaathi Mock Data — Realistic Marine Data for Demo Mode
 // Location: Mumbai / Arabian Sea (18.95°N, 72.82°E)
 // ============================================================
 
@@ -93,7 +93,7 @@ export function getMockMarineConditions(): MarineConditions {
     ocean: getMockOcean(),
     safety: getMockSafety(),
     timestamp: new Date().toISOString(),
-    source: 'ORCA Demo Engine',
+    source: 'JalSaathi Demo Engine',
     dataStatus: 'MOCK',
   };
 }
@@ -867,7 +867,7 @@ export function getMockDataSources(): DataSource[] {
     },
     {
       id: 'rag-engine',
-      name: 'ORCA RAG Engine',
+      name: 'JalSaathi RAG Engine',
       description: 'Embedded Retrieval-Augmented Generation knowledge vector store indexing ISRO MOSDAC manuals, IMD advisories, INCOIS PFZ science, and Indian EEZ regulations.',
       dataProvided: ['ISRO MOSDAC Dataset Manuals', 'IMD Cyclone & Warning Rules', 'INCOIS PFZ Thermal Gradients', 'Indian EEZ Maritime Rules'],
       updateFrequency: 'Continuous',

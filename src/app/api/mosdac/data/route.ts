@@ -1,5 +1,5 @@
 // ============================================================
-// ORCA — MOSDAC Real-Time Satellite Data API Route
+// JalSaathi — MOSDAC Real-Time Satellite Data API Route
 // Fetches SST, Winds, Chlorophyll from MOSDAC for a location
 // GET /api/mosdac/data?lat=18.95&lon=72.82
 // ============================================================

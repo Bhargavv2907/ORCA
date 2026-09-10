@@ -1,5 +1,5 @@
 // ============================================================
-// ORCA — Firebase Authentication & Firestore Data Storage Service
+// JalSaathi — Firebase Authentication & Firestore Data Storage Service
 // ============================================================
 
 import { initializeApp, getApps, getApp } from 'firebase/app';
@@ -9,9 +9,9 @@ import { getFirestore, doc, setDoc, getDoc, collection, addDoc, getDocs, query, 
 // Firebase configuration from env or fallback
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || 'demo-api-key',
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || 'orca-marine.firebaseapp.com',
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'orca-marine',
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || 'orca-marine.appspot.com',
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || 'jalsaathi-marine.firebaseapp.com',
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'jalsaathi-marine',
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || 'jalsaathi-marine.appspot.com',
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || '123456789',
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || '1:123456789:web:abcdef',
 };
@@ -64,7 +64,7 @@ export async function saveUserProfileToFirestore(profile: UserProfile): Promise<
   if (!isFirebaseConfigured) {
     // Offline local storage fallback
     if (typeof window !== 'undefined') {
-      localStorage.setItem('orca_user_profile', JSON.stringify(profile));
+      localStorage.setItem('jalsaathi_user_profile', JSON.stringify(profile));
     }
     return true;
   }
@@ -86,9 +86,9 @@ export async function saveUserProfileToFirestore(profile: UserProfile): Promise<
 export async function saveFavoriteZoneToFirestore(userId: string, zone: StoredFishingZone): Promise<boolean> {
   if (!isFirebaseConfigured) {
     if (typeof window !== 'undefined') {
-      const existing = JSON.parse(localStorage.getItem(`orca_zones_${userId}`) || '[]');
+      const existing = JSON.parse(localStorage.getItem(`jalsaathi_zones_${userId}`) || '[]');
       const updated = [zone, ...existing.filter((z: StoredFishingZone) => z.id !== zone.id)];
-      localStorage.setItem(`orca_zones_${userId}`, JSON.stringify(updated));
+      localStorage.setItem(`jalsaathi_zones_${userId}`, JSON.stringify(updated));
     }
     return true;
   }
@@ -107,7 +107,7 @@ export async function saveFavoriteZoneToFirestore(userId: string, zone: StoredFi
 export async function getFavoriteZonesFromFirestore(userId: string): Promise<StoredFishingZone[]> {
   if (!isFirebaseConfigured) {
     if (typeof window !== 'undefined') {
-      return JSON.parse(localStorage.getItem(`orca_zones_${userId}`) || '[]');
+      return JSON.parse(localStorage.getItem(`jalsaathi_zones_${userId}`) || '[]');
     }
     return [];
   }
@@ -133,8 +133,8 @@ export async function logQueryToFirestore(userId: string, question: string, safe
 
   if (!isFirebaseConfigured) {
     if (typeof window !== 'undefined') {
-      const existing = JSON.parse(localStorage.getItem(`orca_queries_${userId}`) || '[]');
-      localStorage.setItem(`orca_queries_${userId}`, JSON.stringify([queryItem, ...existing].slice(0, 20)));
+      const existing = JSON.parse(localStorage.getItem(`jalsaathi_queries_${userId}`) || '[]');
+      localStorage.setItem(`jalsaathi_queries_${userId}`, JSON.stringify([queryItem, ...existing].slice(0, 20)));
     }
     return true;
   }

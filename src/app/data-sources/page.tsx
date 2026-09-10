@@ -57,7 +57,7 @@ export default function DataSourcesPage() {
             <Database className="w-7 h-7 text-teal-400" />
             Data Sources
           </h1>
-          <p className="text-sm text-slate-400 mt-1">Transparent overview of all data sources powering ORCA.</p>
+          <p className="text-sm text-slate-400 mt-1">Transparent overview of all data sources powering JalSaathi.</p>
         </div>
         <DemoModeBanner />
       </motion.div>
@@ -65,7 +65,7 @@ export default function DataSourcesPage() {
       {/* Info */}
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="rounded-2xl border border-teal-500/15 bg-teal-500/5 p-4">
         <p className="text-sm text-slate-300">
-          ORCA streams real-time marine data directly from ISRO MOSDAC (INSAT-3D SST, EOS-06 Scatterometer winds & OCM Chlorophyll) and Open-Meteo weather and wave observation APIs.
+          JalSaathi streams real-time marine data directly from ISRO MOSDAC (INSAT-3D SST, EOS-06 Scatterometer winds & OCM Chlorophyll) and Open-Meteo weather and wave observation APIs.
         </p>
       </motion.div>
 

@@ -108,7 +108,7 @@ export default function LandingPage() {
               </div>
             </div>
             <h1 className="text-6xl md:text-8xl font-black text-white tracking-tight mb-3">
-              ORCA
+              JalSaathi
             </h1>
             <p className="text-xl md:text-2xl text-teal-300 font-light italic">
               Your intelligent companion at sea.
@@ -134,7 +134,7 @@ export default function LandingPage() {
               href="/dashboard"
               className="group flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-teal-500 to-cyan-500 text-navy-950 font-bold rounded-2xl text-lg hover:shadow-lg hover:shadow-teal-500/25 transition-all duration-300 hover:scale-105"
             >
-              Launch ORCA
+              Launch JalSaathi
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </Link>
             <Link
@@ -173,7 +173,7 @@ export default function LandingPage() {
               One ocean. Four intelligent agents.
             </motion.h2>
             <motion.p variants={fadeUp} custom={2} className="text-slate-400 max-w-2xl mx-auto">
-              ORCA combines specialized AI agents that work together to analyze different aspects of the ocean and provide actionable insights.
+              JalSaathi combines specialized AI agents that work together to analyze different aspects of the ocean and provide actionable insights.
             </motion.p>
           </motion.div>
 
@@ -212,7 +212,7 @@ export default function LandingPage() {
               How It Works
             </motion.p>
             <motion.h2 variants={fadeUp} custom={1} className="text-3xl md:text-4xl font-bold text-white mb-4">
-              Powered by the ORCA Intelligence Engine
+              Powered by the JalSaathi Intelligence Engine
             </motion.h2>
           </motion.div>
 
@@ -262,7 +262,7 @@ export default function LandingPage() {
                 <span className="text-3xl">🐋</span> The Solution
               </motion.h3>
               <motion.div variants={fadeUp} custom={1} className="space-y-4">
-                <p className="text-slate-400">ORCA brings it all together. Multiple specialized AI agents analyze different parts of the ocean and deliver simple, actionable answers.</p>
+                <p className="text-slate-400">JalSaathi brings it all together. Multiple specialized AI agents analyze different parts of the ocean and deliver simple, actionable answers.</p>
                 <div className="p-4 rounded-xl bg-emerald-500/5 border border-emerald-500/20">
                   <p className="text-sm text-white font-medium">⚠️ &quot;Conditions are becoming rough. It is safer to return before 6 PM.&quot;</p>
                   <p className="text-xs text-emerald-400 mt-2">Simple. Clear. Actionable.</p>
@@ -301,7 +301,7 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="py-8 px-6 border-t border-navy-700/20 text-center">
         <p className="text-sm text-slate-500">
-          ORCA — The Ocean Helper • Real-time ocean intelligence. Safer journeys. Smarter fishing.
+          JalSaathi — The Ocean Helper • Real-time ocean intelligence. Safer journeys. Smarter fishing.
         </p>
       </footer>
     </div>

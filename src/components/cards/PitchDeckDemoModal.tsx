@@ -53,7 +53,7 @@ export function PitchDeckDemoModal({ isOpen, onClose }: PitchDeckDemoModalProps)
       content: (
         <div className="space-y-3 text-xs">
           <p className="text-slate-300">
-            ORCA coordinates 5 dedicated specialized agents to analyze marine conditions:
+            JalSaathi coordinates 5 dedicated specialized agents to analyze marine conditions:
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
@@ -188,7 +188,7 @@ export function PitchDeckDemoModal({ isOpen, onClose }: PitchDeckDemoModalProps)
           <div className="p-4 rounded-xl bg-gradient-to-r from-teal-500/10 via-cyan-500/10 to-teal-500/10 border border-teal-500/30 text-center space-y-2">
             <h4 className="text-base font-bold text-white">Empowering Indian Coastal Communities</h4>
             <p className="text-slate-300 text-xs max-w-md mx-auto">
-              ORCA bridges satellite oceanography with artisanal and commercial fishermen, reducing vessel fuel consumption by up to 25% while saving lives in hazardous sea conditions.
+              JalSaathi bridges satellite oceanography with artisanal and commercial fishermen, reducing vessel fuel consumption by up to 25% while saving lives in hazardous sea conditions.
             </p>
           </div>
 

@@ -1,5 +1,5 @@
 // ============================================================
-// ORCA Live AIS & Vessel Data Service
+// JalSaathi Live AIS & Vessel Data Service
 // Directly fetches & computes real-time vessel tracking,
 // traffic density metrics, and shipping lane collision risks.
 // ============================================================
@@ -20,7 +20,7 @@ export async function fetchLiveVesselData(lat = 18.95, lon = 72.82, radiusKm = 5
   // 1. TRY OPEN PUBLIC MARINE AIS API (Digitraffic Open Marine AIS Stream)
   try {
     const res = await fetch('https://mimerva.digitraffic.fi/api/v1/metadata/vessels', {
-      headers: { 'Accept': 'application/json', 'User-Agent': 'ORCA-Marine-Intelligence/1.0' },
+      headers: { 'Accept': 'application/json', 'User-Agent': 'JalSaathi-Marine-Intelligence/1.0' },
       next: { revalidate: 120 },
     });
 
@@ -80,7 +80,7 @@ export async function fetchLiveVesselData(lat = 18.95, lon = 72.82, radiusKm = 5
       }
     }
   } catch (err) {
-    console.warn('[ORCA AIS] Primary AIS API fallback:', err);
+    console.warn('[JalSaathi AIS] Primary AIS API fallback:', err);
   }
 
   // 2. High-precision live AIS simulation engine anchored to target coordinates
@@ -99,7 +99,7 @@ export async function fetchLiveVesselData(lat = 18.95, lon = 72.82, radiusKm = 5
     totalVessels >= 8 ? 'EXTREME' : totalVessels >= 5 ? 'HIGH' : totalVessels >= 3 ? 'MEDIUM' : 'LOW';
 
   return {
-    source: 'ORCA Integrated AIS Stream',
+    source: 'JalSaathi Integrated AIS Stream',
     retrievedAt: new Date().toISOString(),
     totalVessels,
     trafficDensity,

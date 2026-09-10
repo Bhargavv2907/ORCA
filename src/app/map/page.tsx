@@ -5,13 +5,13 @@ import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Layers, X, MapPin, Wind, Waves, Navigation, Thermometer,
-  Fish, Ship, Route, Eye, Anchor, Globe, Radio, Shield, RefreshCw,
+  Fish, Route, Eye, Anchor, Globe, Radio, Shield, RefreshCw,
   Droplets, CheckCircle2, ChevronRight, Compass
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { getMockVessels, getMockFishingZones, getMockRoutes } from '@/data/mock-data';
+import { getMockFishingZones, getMockRoutes } from '@/data/mock-data';
 import { DemoModeBanner } from '@/components/cards';
-import { Vessel, FishingZone, MarineConditions } from '@/types/marine';
+import { FishingZone, MarineConditions } from '@/types/marine';
 import { MapAction } from '@/lib/agents/schemas';
 import { INDIAN_COASTAL_SECTORS } from '@/components/world-map';
 import { getSelectedLocation, marineApiUrl } from '@/lib/location-store';
@@ -51,9 +51,9 @@ const SATELLITE_MODES = [
 ];
 
 const LAYERS = [
+  { id: 'ports', label: 'Indian Major & Minor Ports (70+ Ports)', icon: Anchor, color: 'text-amber-400' },
   { id: 'coastal_detect', label: 'India Coastline Detector (11 Sectors)', icon: Shield, color: 'text-emerald-400' },
   { id: 'fishing', label: 'Potential Fishing Zones (PFZ)', icon: Fish, color: 'text-teal-400' },
-  { id: 'vessels', label: 'Live Vessel Positions (AIS)', icon: Ship, color: 'text-amber-400' },
   { id: 'winds', label: 'Scatterometer Wind Vectors', icon: Wind, color: 'text-blue-400' },
   { id: 'routes', label: 'Safe Navigation Routes', icon: Route, color: 'text-violet-400' },
 ];
@@ -61,10 +61,10 @@ const LAYERS = [
 export default function MapPage() {
   const [selectedRegion, setSelectedRegion] = useState(REGIONS[0]);
   const [satelliteMode, setSatelliteMode] = useState('esri_satellite');
-  const [activeLayers, setActiveLayers] = useState<Set<string>>(new Set(['coastal_detect', 'fishing', 'vessels', 'winds']));
+  const [activeLayers, setActiveLayers] = useState<Set<string>>(new Set(['ports', 'coastal_detect', 'fishing', 'winds']));
   const [showLayerPanel, setShowLayerPanel] = useState(false);
   const [showCoastListPanel, setShowCoastListPanel] = useState(true);
-  const [vessels, setVessels] = useState<Vessel[]>([]);
+
   const [zones, setZones] = useState<FishingZone[]>([]);
   const [liveConditions, setLiveConditions] = useState<MarineConditions | null>(null);
   const [mapActionPayload, setMapActionPayload] = useState<MapAction | undefined>(undefined);
@@ -74,7 +74,7 @@ export default function MapPage() {
   }, []);
 
   useEffect(() => {
-    setVessels(getMockVessels());
+
     setZones(getMockFishingZones());
 
     if (typeof window !== 'undefined') {
@@ -205,7 +205,6 @@ export default function MapPage() {
       {/* Main Interactive World Map Viewport */}
       <div className="relative flex-1 w-full h-full overflow-hidden">
         <WorldMap
-          vessels={vessels}
           fishingZones={zones}
           satelliteMode={satelliteMode}
           activeLayers={activeLayers}
@@ -360,15 +359,11 @@ export default function MapPage() {
       <div className="z-20 bg-navy-950/95 border-t border-navy-700/40 px-4 py-2 flex flex-wrap items-center justify-between text-[11px] text-slate-400 gap-2">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-1.5">
-            <div className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
-            <span>Fishing Vessel</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-2.5 h-2.5 rounded-full bg-amber-400" />
-            <span>Commercial Cargo</span>
-          </div>
-          <div className="flex items-center gap-1.5">
             <div className="w-2.5 h-2.5 rounded-full bg-teal-400" />
+            <span>Fishing Zones (PFZ)</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
             <span>Indian Coast Detector (11 Sectors)</span>
           </div>
         </div>

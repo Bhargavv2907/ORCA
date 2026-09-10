@@ -1,5 +1,5 @@
 // ============================================================
-// ORCA — Proactive Hazard Alerting & De-duplication Engine (Phase 11)
+// JalSaathi — Proactive Hazard Alerting & De-duplication Engine (Phase 11)
 // Real-time hazard detection, fingerprinting & alert de-duplication
 // ============================================================
 

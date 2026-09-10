@@ -35,7 +35,7 @@ export default function SettingsPage() {
           <Settings className="w-7 h-7 text-teal-400" />
           Settings
         </h1>
-        <p className="text-sm text-slate-400 mt-1">Customize your ORCA experience.</p>
+        <p className="text-sm text-slate-400 mt-1">Customize your JalSaathi experience.</p>
       </motion.div>
 
       {/* Language */}

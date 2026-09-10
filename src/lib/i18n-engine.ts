@@ -1,6 +1,6 @@
 // ============================================================
-// ORCA — Multi-lingual Vernacular Translation & Voice Engine
-// Supporting 9 Coastal Indian Languages with Web Speech API & HTML5 Audio TTS Fallback
+// JalSaathi — Multi-lingual Vernacular Translation & Voice Engine
+// Supporting 9 Coastal Indian Languages with Web Speech API & Server-Proxied TTS Fallback
 // ============================================================
 
 export interface LanguageVoiceConfig {
@@ -23,6 +23,10 @@ export const COASTAL_LANGUAGES: LanguageVoiceConfig[] = [
   { code: 'ml', name: 'Malayalam', nativeName: 'മലയാളം', bcp47: 'ml-IN', shortLang: 'ml', flag: '🌴' },
   { code: 'bn', name: 'Bengali', nativeName: 'বাংলা', bcp47: 'bn-IN', shortLang: 'bn', flag: '🐟' },
 ];
+
+// ==============================================================================
+// TRANSLATION ENGINE
+// ==============================================================================
 
 const FULL_TRANSLATIONS: Record<string, Record<string, string>> = {
   'Fishing is safe with standard caution. Return before evening as wind speeds may increase.': {
@@ -200,30 +204,264 @@ export function getLanguageShortCode(languageName: string): string {
   return found ? found.shortLang : 'en';
 }
 
-let activeSpeechUtterance: SpeechSynthesisUtterance | null = null;
-let activeAudioFallback: HTMLAudioElement | null = null;
+// ==============================================================================
+// TTS ENGINE — Robust multilingual speech with 3-tier fallback
+// ==============================================================================
+
+let activeAudioElement: HTMLAudioElement | null = null;
+let voicesLoaded = false;
+let cachedVoices: SpeechSynthesisVoice[] = [];
 
 /**
- * Stops any active vernacular speech synthesis or audio fallback.
+ * Pre-loads Web Speech voices. Must be called early (e.g. on page mount).
+ * Voices load asynchronously in most browsers — calling getVoices() once isn't enough.
+ */
+export function preloadVoices(): void {
+  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+
+  const loadVoices = () => {
+    cachedVoices = window.speechSynthesis.getVoices();
+    if (cachedVoices.length > 0) {
+      voicesLoaded = true;
+      console.log(`[JalSaathi TTS] Loaded ${cachedVoices.length} voices`);
+    }
+  };
+
+  // Load immediately (works in Firefox)
+  loadVoices();
+
+  // Chrome/Edge fire this event when voices are ready
+  if ('onvoiceschanged' in window.speechSynthesis) {
+    window.speechSynthesis.onvoiceschanged = loadVoices;
+  }
+
+  // Safety: poll once after 500ms in case event never fires
+  setTimeout(loadVoices, 500);
+}
+
+/**
+ * Stops any active speech or audio playback.
  */
 export function stopVernacularAdvisory(): void {
+  // Stop Web Speech API
   if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
     try {
       window.speechSynthesis.cancel();
     } catch (_) {}
   }
-  if (activeAudioFallback) {
+  // Stop HTML5 Audio
+  if (activeAudioElement) {
     try {
-      activeAudioFallback.pause();
-      activeAudioFallback.currentTime = 0;
+      activeAudioElement.pause();
+      activeAudioElement.removeAttribute('src');
+      activeAudioElement.load(); // release the resource
     } catch (_) {}
-    activeAudioFallback = null;
+    activeAudioElement = null;
   }
-  activeSpeechUtterance = null;
 }
 
 /**
- * Speaks advisory text aloud using Web Speech API synthesis with HTML5 Audio TTS stream fallback.
+ * Find a matching voice for the given language from cached voices.
+ */
+function findVoiceForLanguage(bcp47: string, shortLang: string): SpeechSynthesisVoice | null {
+  // Re-fetch voices if not loaded yet
+  if (!voicesLoaded && typeof window !== 'undefined' && 'speechSynthesis' in window) {
+    cachedVoices = window.speechSynthesis.getVoices();
+    if (cachedVoices.length > 0) voicesLoaded = true;
+  }
+
+  // Priority 1: Exact BCP47 match (e.g., "hi-IN")
+  const exact = cachedVoices.find(v => v.lang === bcp47);
+  if (exact) return exact;
+
+  // Priority 2: Short code prefix match (e.g., "hi" matches "hi-IN")
+  const prefixMatch = cachedVoices.find(v => v.lang.startsWith(shortLang + '-') || v.lang === shortLang);
+  if (prefixMatch) return prefixMatch;
+
+  // Priority 3: Loose match (lang contains the short code)
+  const looseMatch = cachedVoices.find(v => v.lang.toLowerCase().includes(shortLang.toLowerCase()));
+  if (looseMatch) return looseMatch;
+
+  return null;
+}
+
+/**
+ * TIER 1: Attempt native Web Speech API synthesis.
+ * Returns true if speech was successfully started, false otherwise.
+ */
+function tryNativeSpeech(
+  text: string,
+  bcp47: string,
+  shortLang: string,
+  rate: number,
+  onEnd?: () => void
+): boolean {
+  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return false;
+
+  try {
+    // Cancel any pending speech
+    window.speechSynthesis.cancel();
+
+    // Resume if browser has paused the audio context
+    if (window.speechSynthesis.paused) {
+      window.speechSynthesis.resume();
+    }
+
+    const voice = findVoiceForLanguage(bcp47, shortLang);
+
+    // Only attempt native speech if we have a matching voice
+    // (otherwise it will speak in the wrong language or stay silent)
+    if (!voice && shortLang !== 'en') {
+      console.log(`[JalSaathi TTS] No native voice found for ${bcp47}, skipping to fallback`);
+      return false;
+    }
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = bcp47;
+    utterance.rate = rate;
+    if (voice) utterance.voice = voice;
+
+    let ended = false;
+    const markEnd = () => {
+      if (!ended) {
+        ended = true;
+        onEnd?.();
+      }
+    };
+
+    utterance.onend = markEnd;
+    utterance.onerror = (e) => {
+      console.warn('[JalSaathi TTS] Native speech error:', e.error);
+      markEnd();
+    };
+
+    window.speechSynthesis.speak(utterance);
+
+    // Chrome bug: speechSynthesis pauses after ~15s. Workaround: keep it alive.
+    const keepAlive = setInterval(() => {
+      if (!window.speechSynthesis.speaking) {
+        clearInterval(keepAlive);
+        return;
+      }
+      window.speechSynthesis.pause();
+      window.speechSynthesis.resume();
+    }, 10000);
+
+    utterance.onend = () => {
+      clearInterval(keepAlive);
+      markEnd();
+    };
+
+    return true;
+  } catch (err) {
+    console.warn('[JalSaathi TTS] Native speech threw:', err);
+    return false;
+  }
+}
+
+/**
+ * TIER 2: Play TTS audio from our server-side proxy (bypasses CORS).
+ * Returns true if audio playback was initiated.
+ */
+function tryProxiedAudio(
+  text: string,
+  langCode: string,
+  rate: number,
+  onEnd?: () => void
+): boolean {
+  try {
+    // Use our Next.js API route proxy that fetches from Google Translate server-side
+    const truncated = text.slice(0, 200);
+    const ttsUrl = `/api/tts?text=${encodeURIComponent(truncated)}&lang=${langCode}`;
+
+    const audio = new Audio();
+    audio.crossOrigin = 'anonymous';
+    audio.preload = 'auto';
+    audio.src = ttsUrl;
+
+    let ended = false;
+    const markEnd = () => {
+      if (!ended) {
+        ended = true;
+        activeAudioElement = null;
+        onEnd?.();
+      }
+    };
+
+    audio.onended = markEnd;
+    audio.onerror = (err) => {
+      console.warn('[JalSaathi TTS] Proxied audio error:', err);
+      markEnd();
+    };
+
+    // Stop any previous audio
+    if (activeAudioElement) {
+      activeAudioElement.pause();
+      activeAudioElement = null;
+    }
+
+    activeAudioElement = audio;
+
+    // Wait for enough data to play
+    audio.oncanplaythrough = () => {
+      audio.playbackRate = rate;
+      const playPromise = audio.play();
+      if (playPromise) {
+        playPromise.catch((e) => {
+          console.warn('[JalSaathi TTS] Proxied audio play blocked:', e);
+          markEnd();
+        });
+      }
+    };
+
+    // If canplaythrough doesn't fire fast enough, try playing anyway after loading
+    audio.onloadeddata = () => {
+      audio.playbackRate = rate;
+    };
+
+    audio.load();
+
+    return true;
+  } catch (err) {
+    console.error('[JalSaathi TTS] Proxied audio creation error:', err);
+    return false;
+  }
+}
+
+/**
+ * TIER 3: Ultimate fallback — speak in English using Web Speech API.
+ * This should always work since every browser has at least one English voice.
+ */
+function fallbackEnglishSpeech(text: string, rate: number, onEnd?: () => void): boolean {
+  if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+    onEnd?.();
+    return false;
+  }
+  try {
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'en-IN';
+    utterance.rate = rate;
+
+    // Find an English voice
+    const enVoice = cachedVoices.find(v => v.lang.startsWith('en'));
+    if (enVoice) utterance.voice = enVoice;
+
+    utterance.onend = () => onEnd?.();
+    utterance.onerror = () => onEnd?.();
+    window.speechSynthesis.speak(utterance);
+    return true;
+  } catch (_) {
+    onEnd?.();
+    return false;
+  }
+}
+
+/**
+ * Main entry point: Speaks advisory text aloud with 3-tier fallback:
+ * 1. Native Web Speech API (if system has voice for the language)
+ * 2. Server-proxied Google Translate TTS audio (bypasses CORS)
+ * 3. English Web Speech API (always available)
  */
 export function speakVernacularAdvisory(
   text: string,
@@ -237,122 +475,27 @@ export function speakVernacularAdvisory(
   const shortLang = getLanguageShortCode(languageName);
   const translatedText = translateAdvisory(text, languageName);
 
-  let nativeSpeechSuccess = false;
+  console.log(`[JalSaathi TTS] Speaking in ${languageName} (${bcp47}/${shortLang}), text: "${translatedText.slice(0, 60)}..."`);
 
-  // 1. TRY NATIVE BROWSER WEB SPEECH SYNTHESIS API FIRST
-  if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-    try {
-      // Resume synthesis if browser paused audio context
-      if (window.speechSynthesis.paused) {
-        window.speechSynthesis.resume();
-      }
-
-      const voices = window.speechSynthesis.getVoices();
-      const matchedVoice = voices.find(
-        v => v.lang === bcp47 || v.lang.startsWith(shortLang) || v.lang.includes(shortLang)
-      );
-
-      // If a matching native voice exists for the language, use Web Speech API
-      if (matchedVoice || shortLang === 'en' || shortLang === 'hi') {
-        const utterance = new SpeechSynthesisUtterance(translatedText);
-        utterance.lang = bcp47;
-        utterance.rate = rate;
-
-        if (matchedVoice) {
-          utterance.voice = matchedVoice;
-        }
-
-        utterance.onend = () => {
-          activeSpeechUtterance = null;
-          onEnd?.();
-        };
-
-        utterance.onerror = (e) => {
-          console.warn('[ORCA TTS] WebSpeech error, falling back to Audio Stream:', e);
-          activeSpeechUtterance = null;
-          playHtml5AudioFallback(translatedText, shortLang, rate, onEnd);
-        };
-
-        activeSpeechUtterance = utterance;
-        window.speechSynthesis.speak(utterance);
-        nativeSpeechSuccess = true;
-        return true;
-      }
-    } catch (err) {
-      console.warn('[ORCA TTS] Native speech failed, triggering Audio Stream fallback:', err);
-    }
-  }
-
-  // 2. HTML5 AUDIO TTS FALLBACK FOR REGIONAL LANGUAGES WITHOUT INSTALLED SYSTEM VOICES
-  if (!nativeSpeechSuccess) {
-    return playHtml5AudioFallback(translatedText, shortLang, rate, onEnd);
-  }
-
-  return true;
-}
-
-/**
- * Plays speech audio via Google Translate TTS API Stream fallback when native voices are missing.
- */
-function playHtml5AudioFallback(
-  text: string,
-  langCode: string,
-  rate: number,
-  onEnd?: () => void
-): boolean {
-  try {
-    const cleanText = encodeURIComponent(text.slice(0, 200));
-    // Public Google Translate TTS API audio stream
-    const ttsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${cleanText}&tl=${langCode}&client=tw-ob`;
-
-    const audio = new Audio(ttsUrl);
-    audio.playbackRate = rate;
-
-    audio.onended = () => {
-      activeAudioFallback = null;
-      onEnd?.();
-    };
-
-    audio.onerror = (err) => {
-      console.warn('[ORCA TTS] Audio fallback playback error, using backup English speech:', err);
-      activeAudioFallback = null;
-      // Ultimate fallback: Speak text in English voice so audio NEVER fails silently
-      fallbackToEnglishSpeech(text, rate, onEnd);
-    };
-
-    activeAudioFallback = audio;
-    const playPromise = audio.play();
-    if (playPromise !== undefined) {
-      playPromise.catch(() => {
-        fallbackToEnglishSpeech(text, rate, onEnd);
-      });
-    }
+  // TIER 1: Try native Web Speech API
+  const nativeSuccess = tryNativeSpeech(translatedText, bcp47, shortLang, rate, onEnd);
+  if (nativeSuccess) {
+    console.log('[JalSaathi TTS] ✓ Using native Web Speech API');
     return true;
-  } catch (err) {
-    console.error('[ORCA TTS] Audio creation error:', err);
-    return fallbackToEnglishSpeech(text, rate, onEnd);
   }
-}
 
-/**
- * Ultimate Fallback: Speaks text in standard English voice if system has zero regional TTS engines.
- */
-function fallbackToEnglishSpeech(text: string, rate: number, onEnd?: () => void): boolean {
-  if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+  // TIER 2: Try server-proxied Google Translate TTS
+  const proxySuccess = tryProxiedAudio(translatedText, shortLang, rate, () => {
+    // If proxy audio fails during playback, try English fallback
+    console.log('[JalSaathi TTS] Proxy audio ended');
     onEnd?.();
-    return false;
-  }
-  try {
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'en-IN';
-    utterance.rate = rate;
-    utterance.onend = () => onEnd?.();
-    utterance.onerror = () => onEnd?.();
-    window.speechSynthesis.speak(utterance);
+  });
+  if (proxySuccess) {
+    console.log('[JalSaathi TTS] ✓ Using server-proxied TTS audio');
     return true;
-  } catch (_) {
-    onEnd?.();
-    return false;
   }
+
+  // TIER 3: English fallback
+  console.log('[JalSaathi TTS] ✓ Using English fallback');
+  return fallbackEnglishSpeech(text, rate, onEnd);
 }
