@@ -121,6 +121,8 @@ export interface RouteOption {
   weatherAlongRoute: string;
   waveExposure: string;
   trafficDensity: string;
+  aisSource?: string;
+  aisUrl?: string;
 }
 
 export interface RouteRisk {
@@ -152,7 +154,7 @@ export interface Alert {
 // ---- Safety & Risk ----
 export interface SafetyScore {
   overall: number;           // 0-100
-  status: 'SAFE' | 'MODERATE' | 'DANGEROUS' | 'CRITICAL';
+  status: 'SAFE' | 'MODERATE' | 'DANGEROUS' | 'CRITICAL' | 'WARNING';
   label: string;
   components: RiskComponent[];
 }

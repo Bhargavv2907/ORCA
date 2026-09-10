@@ -181,6 +181,22 @@ export function RouteCard({ route, index = 0 }: { route: RouteOption; index?: nu
           ))}
         </div>
       )}
+      {route.aisUrl && (
+        <div className="mt-4 pt-3 border-t border-navy-700/50 flex items-center justify-between text-xs">
+          <span className="flex items-center gap-1.5 text-cyan-400 font-medium">
+            <Ship className="w-3.5 h-3.5" />
+            {route.aisSource || 'MarineTraffic AIS'}
+          </span>
+          <a
+            href={route.aisUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-xs text-slate-400 hover:text-cyan-300 transition-colors font-medium underline underline-offset-2"
+          >
+            View Live MarineTraffic AIS Map ↗
+          </a>
+        </div>
+      )}
     </motion.div>
   );
 }
