@@ -121,7 +121,7 @@ export default function SettingsPage() {
         <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2"><Gauge className="w-4 h-4 text-teal-400" /> {t('Units', language)}</h3>
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <span className="text-sm text-slate-400">Speed</span>
+            <span className="text-sm text-slate-400">{t('Speed', language)}</span>
             <div className="flex gap-2">
               {['km/h', 'knots', 'mph'].map(u => (
                 <button key={u} onClick={() => handleSpeedUnitChange(u)} className={cn('px-3 py-1 rounded-lg text-xs font-medium transition-colors', speedUnit === u ? 'bg-teal-500/20 text-teal-300 border border-teal-500/30' : 'text-slate-400 bg-navy-800/50 hover:text-white')}>{u}</button>
@@ -129,7 +129,7 @@ export default function SettingsPage() {
             </div>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-sm text-slate-400">Distance</span>
+            <span className="text-sm text-slate-400">{t('Distance', language)}</span>
             <div className="flex gap-2">
               {['km', 'nm', 'miles'].map(u => (
                 <button key={u} onClick={() => handleDistanceUnitChange(u)} className={cn('px-3 py-1 rounded-lg text-xs font-medium transition-colors', distanceUnit === u ? 'bg-teal-500/20 text-teal-300 border border-teal-500/30' : 'text-slate-400 bg-navy-800/50 hover:text-white')}>{u}</button>
@@ -137,7 +137,7 @@ export default function SettingsPage() {
             </div>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-sm text-slate-400">Temperature</span>
+            <span className="text-sm text-slate-400">{t('Temperature', language)}</span>
             <div className="flex gap-2">
               {['°C', '°F'].map(u => (
                 <button key={u} onClick={() => handleTempUnitChange(u)} className={cn('px-3 py-1 rounded-lg text-xs font-medium transition-colors', tempUnit === u ? 'bg-teal-500/20 text-teal-300 border border-teal-500/30' : 'text-slate-400 bg-navy-800/50 hover:text-white')}>{u}</button>
@@ -151,12 +151,24 @@ export default function SettingsPage() {
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }} className="rounded-2xl border border-navy-600/20 bg-card p-5">
         <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2"><Layers className="w-4 h-4 text-teal-400" /> {t('Default Map Layers', language)}</h3>
         <div className="space-y-3">
-          {Object.entries(layers).map(([key, value]) => (
-            <div key={key} className="flex items-center justify-between">
-              <span className="text-sm text-slate-400 capitalize">{key.replace(/([A-Z])/g, ' $1')}</span>
-              <Toggle checked={value} onChange={() => setLayers(prev => ({ ...prev, [key]: !prev[key as keyof typeof prev] }))} />
-            </div>
-          ))}
+          {Object.entries(layers).map(([key, value]) => {
+            const layerLabelMap: Record<string, string> = {
+              weather: 'Weather',
+              waves: 'Waves',
+              currents: 'Currents',
+              fishingActivity: 'Fishing Activity',
+              vessels: 'Vessels',
+              routes: 'Routes',
+              depth: 'Depth',
+            };
+            const labelKey = layerLabelMap[key] || key;
+            return (
+              <div key={key} className="flex items-center justify-between">
+                <span className="text-sm text-slate-400 capitalize">{t(labelKey, language)}</span>
+                <Toggle checked={value} onChange={() => setLayers(prev => ({ ...prev, [key]: !prev[key as keyof typeof prev] }))} />
+              </div>
+            );
+          })}
         </div>
       </motion.div>
 
@@ -164,13 +176,16 @@ export default function SettingsPage() {
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.25 }} className="rounded-2xl border border-navy-600/20 bg-card p-5">
         <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2"><Shield className="w-4 h-4 text-teal-400" /> {t('Risk Sensitivity', language)}</h3>
         <div className="flex gap-3">
-          {['low', 'medium', 'high'].map(s => (
-            <button key={s} onClick={() => handleRiskSensitivityChange(s)} className={cn('flex-1 py-2 rounded-xl text-sm font-medium capitalize transition-all',
-              riskSensitivity === s ? 'bg-teal-500/15 text-teal-300 border border-teal-500/20' : 'text-slate-500 bg-navy-800/30 border border-navy-600/20'
-            )}>{s}</button>
-          ))}
+          {['low', 'medium', 'high'].map(s => {
+            const cap = s.charAt(0).toUpperCase() + s.slice(1);
+            return (
+              <button key={s} onClick={() => handleRiskSensitivityChange(s)} className={cn('flex-1 py-2 rounded-xl text-sm font-medium transition-all',
+                riskSensitivity === s ? 'bg-teal-500/20 text-teal-300 border border-teal-500/40' : 'text-slate-400 bg-navy-800/30 border border-navy-600/20 hover:text-white'
+              )}>{t(cap, language)}</button>
+            );
+          })}
         </div>
-        <p className="text-xs text-slate-500 mt-2">Higher sensitivity triggers alerts at lower risk thresholds.</p>
+        <p className="text-xs text-slate-500 mt-2">{t('Higher sensitivity triggers alerts at lower risk thresholds.', language)}</p>
       </motion.div>
 
       {/* Toggles */}
@@ -187,7 +202,7 @@ export default function SettingsPage() {
             <Database className="w-4 h-4 text-emerald-400" />
             <div>
               <span className="text-sm text-white font-medium">{t('Real-Time Data Pipeline', language)}</span>
-              <p className="text-xs text-slate-400">Stream live ISRO MOSDAC satellite and Open-Meteo weather data.</p>
+              <p className="text-xs text-slate-400">{t('Stream live ISRO MOSDAC satellite and Open-Meteo weather data.', language)}</p>
             </div>
           </div>
           <Toggle checked={!demoMode} onChange={() => setDemoMode(!demoMode)} />
@@ -199,15 +214,15 @@ export default function SettingsPage() {
         <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2"><MapPin className="w-4 h-4 text-teal-400" /> {t('Location', language)}</h3>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="text-xs text-slate-500 mb-1 block">Latitude</label>
+            <label className="text-xs text-slate-400 mb-1 block font-medium">{t('Latitude', language)}</label>
             <input defaultValue="18.95" className="w-full px-3 py-2 rounded-lg bg-navy-800/50 border border-navy-700/30 text-white text-sm outline-none focus:border-teal-500/40" />
           </div>
           <div>
-            <label className="text-xs text-slate-500 mb-1 block">Longitude</label>
+            <label className="text-xs text-slate-400 mb-1 block font-medium">{t('Longitude', language)}</label>
             <input defaultValue="72.82" className="w-full px-3 py-2 rounded-lg bg-navy-800/50 border border-navy-700/30 text-white text-sm outline-none focus:border-teal-500/40" />
           </div>
         </div>
-        <p className="text-xs text-slate-500 mt-2">Mumbai Coast, Arabian Sea</p>
+        <p className="text-xs text-slate-400 mt-2 font-medium">{t('Mumbai Coast, Arabian Sea', language)}</p>
       </motion.div>
     </div>
   );
