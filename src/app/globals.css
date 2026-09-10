@@ -72,6 +72,32 @@ body {
   background: #2563eb;
 }
 
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #1e3a5f transparent;
+}
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #1e3a5f;
+  border-radius: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #2dd4bf;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
 /* ---- Glassmorphism Utilities ---- */
 .glass {
   background: rgba(15, 29, 50, 0.7);

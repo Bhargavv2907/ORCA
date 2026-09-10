@@ -11,8 +11,10 @@ import { OceanMetric, SafetyScore, Alert } from '@/types/marine';
 import { getSelectedLocation, marineApiUrl, DEFAULT_LOCATION } from '@/lib/location-store';
 import type { CoastalLocation } from '@/lib/orchestrator';
 import { evaluateProactiveAlerts } from '@/lib/alert-engine';
+import { useLanguage } from '@/lib/language-store';
 
 export default function DashboardPage() {
+  const { t } = useLanguage();
   const [metrics, setMetrics] = useState<OceanMetric[]>([]);
   const [safety, setSafety] = useState<SafetyScore | null>(null);
   const [alerts, setAlerts] = useState<Alert[]>([]);
@@ -133,7 +135,7 @@ export default function DashboardPage() {
       >
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-white">
-            {getGreeting()}, <span className="text-teal-400">Fisherman</span>
+            {getGreeting()}, <span className="text-teal-400">{t('Fisherman')}</span>
           </h1>
           <div className="flex items-center gap-3 mt-1 text-sm text-slate-400">
             <div className="flex items-center gap-1.5">
@@ -157,7 +159,7 @@ export default function DashboardPage() {
             className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-teal-500 to-cyan-500 text-navy-950 font-semibold rounded-xl text-sm hover:shadow-lg hover:shadow-teal-500/25 transition-all"
           >
             <Bot className="w-4 h-4" />
-            Ask JalSaathi
+            {t('Ask JalSaathi')}
           </Link>
         </div>
       </motion.div>
@@ -229,7 +231,7 @@ export default function DashboardPage() {
 
       {/* Metrics Grid */}
       <div>
-        <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">Current Conditions</h3>
+        <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">{t('Current Conditions')}</h3>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           {metrics.map((metric, i) => (
             <OceanMetricCard key={metric.id} metric={metric} index={i} />
@@ -241,12 +243,12 @@ export default function DashboardPage() {
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Quick Actions */}
         <div className="lg:col-span-1 space-y-3">
-          <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">Quick Actions</h3>
+          <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">{t('Quick Actions')}</h3>
           {[
-            { href: '/assistant', icon: Bot, label: 'Ask JalSaathi a question', color: 'from-teal-500 to-cyan-500' },
-            { href: '/fishing-zones', icon: Anchor, label: 'View fishing zones', color: 'from-emerald-500 to-teal-500' },
-            { href: '/routes', icon: ArrowRight, label: 'Plan a safe route', color: 'from-blue-500 to-cyan-500' },
-            { href: '/map', icon: MapPin, label: 'Open marine map', color: 'from-violet-500 to-blue-500' },
+            { href: '/assistant', icon: Bot, label: t('Ask JalSaathi a question'), color: 'from-teal-500 to-cyan-500' },
+            { href: '/fishing-zones', icon: Anchor, label: t('View fishing zones'), color: 'from-emerald-500 to-teal-500' },
+            { href: '/routes', icon: ArrowRight, label: t('Plan a safe route'), color: 'from-blue-500 to-cyan-500' },
+            { href: '/map', icon: MapPin, label: t('Open marine map'), color: 'from-violet-500 to-blue-500' },
           ].map((action, i) => (
             <motion.div
               key={action.href}
@@ -271,8 +273,8 @@ export default function DashboardPage() {
         {/* Active Alerts */}
         <div className="lg:col-span-2 space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">Active Alerts</h3>
-            <Link href="/alerts" className="text-xs text-teal-400 hover:underline">View all</Link>
+            <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">{t('Active Alerts')}</h3>
+            <Link href="/alerts" className="text-xs text-teal-400 hover:underline">{t('View all')}</Link>
           </div>
           {alerts.map((alert, i) => (
             <motion.div
