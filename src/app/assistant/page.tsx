@@ -169,7 +169,7 @@ export default function AssistantPage() {
               <Bot className="w-5 h-5 text-navy-950" />
             </div>
             <div>
-              <h1 className="text-lg font-bold text-white">Ask JalSaathi</h1>
+              <h1 className="text-lg font-bold text-white">JalSaathi Assistant</h1>
               <p className="text-xs text-slate-400">Ask anything about the sea.</p>
             </div>
           </div>
