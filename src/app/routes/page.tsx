@@ -5,7 +5,8 @@ import dynamic from 'next/dynamic';
 import { motion } from 'framer-motion';
 import { Route, MapPin, Navigation, Search, WifiOff, Wifi, Ship, Layers, RefreshCw, Compass, Anchor, Radio, Fish, ArrowUpRight, Shield, X } from 'lucide-react';
 import { RouteCard, DemoModeBanner } from '@/components/cards';
-import { getMockRoutes, getMockFishingZones, getMockVessels } from '@/data/mock-data';
+import { getMockRoutes, getMockVessels } from '@/data/mock-data';
+import { generateRealTimeFishingZones } from '@/services/marine/pfz';
 import { RouteOption, Coordinates, FishingZone, Vessel } from '@/types/marine';
 import { generateOfflineRoutes } from '@/lib/offline-routing';
 import { MapAction } from '@/lib/agents/schemas';
@@ -71,15 +72,11 @@ export default function RoutesPage() {
   const [showVesselDetails, setShowVesselDetails] = useState(false);
   const [showHudOverlay, setShowHudOverlay] = useState(true);
 
-  // All Mock Fishing Zones
-  const allZones = getMockFishingZones();
-
   // Active Coastal Sector
   const currentSector = INDIAN_COASTAL_SECTORS.find(s => s.id === selectedSectorId) || INDIAN_COASTAL_SECTORS[1];
 
-  // Filter fishing zones ONLY for the selected Indian coast
-  const coastZones = allZones.filter(z => z.sectorId === selectedSectorId);
-  const displayZones = coastZones.length > 0 ? coastZones : allZones.slice(0, 3);
+  // Location-accurate real-time satellite Potential Fishing Zones for active coast
+  const displayZones = generateRealTimeFishingZones(currentSector.center.lat, currentSector.center.lon, undefined, currentSector.name);
 
   useEffect(() => {
     // Set initial online/offline status
@@ -91,9 +88,11 @@ export default function RoutesPage() {
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
-    // Initial search
-    const defaultRoutes = getMockRoutes();
-    setRoutes(defaultRoutes);
+    // Initial real-time route calculation anchored to coastal sector
+    const startPt = { lat: currentSector.center.lat, lon: currentSector.center.lon };
+    const destPt = displayZones[0].center;
+    const initialRoutes = generateOfflineRoutes(startPt, destPt);
+    setRoutes(initialRoutes);
     setHasSearched(true);
 
     // Fetch direct live AIS vessel telemetry API
@@ -118,9 +117,9 @@ export default function RoutesPage() {
     const sector = INDIAN_COASTAL_SECTORS.find(s => s.id === sectorId);
     if (!sector) return;
 
-    // Filter zones for new sector
-    const newCoastZones = allZones.filter(z => z.sectorId === sectorId);
-    const primaryZone = newCoastZones[0] || displayZones[0];
+    // Real-time PFZs for new sector
+    const newCoastZones = generateRealTimeFishingZones(sector.center.lat, sector.center.lon, undefined, sector.name);
+    const primaryZone = newCoastZones[0];
 
     // Default start location & target zone for selected coast
     const defaultStart = sector.name.split(' ')[0] + ' Coast';

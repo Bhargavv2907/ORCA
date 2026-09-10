@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Volume2, VolumeX, Globe, Play, Square, FastForward } from 'lucide-react';
 import { COASTAL_LANGUAGES, translateAdvisory, speakVernacularAdvisory, stopVernacularAdvisory } from '@/lib/i18n-engine';
-<<<<<<< HEAD
 import { getSelectedLanguage, useSelectedLanguage, setSelectedLanguage } from '@/lib/language-store';
 
 interface AudioAdvisoryPlayerProps {

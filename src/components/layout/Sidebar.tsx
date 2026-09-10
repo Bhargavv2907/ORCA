@@ -135,7 +135,7 @@ export function Sidebar() {
                 className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-red-600 via-rose-600 to-red-700 text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-lg shadow-red-600/30 border border-red-400/30 animate-pulse"
               >
                 <AlertOctagon className="w-4 h-4 text-white" />
-                <span>EMERGENCY SOS DISTRESS</span>
+                <span>{t('EMERGENCY SOS')}</span>
               </button>
             </div>
 
@@ -182,7 +182,7 @@ export function Sidebar() {
             )}
           >
             <AlertOctagon className="w-5 h-5 shrink-0 text-white" />
-            {!collapsed && <span className="truncate tracking-wider uppercase">EMERGENCY SOS</span>}
+            {!collapsed && <span className="truncate tracking-wider uppercase">{t('EMERGENCY SOS')}</span>}
           </button>
         </div>
 
@@ -192,7 +192,7 @@ export function Sidebar() {
             <Link
               key={item.href}
               href={item.href}
-              title={collapsed ? item.label : undefined}
+              title={collapsed ? t(item.label) : undefined}
               className={cn(
                 'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group relative',
                 collapsed && 'justify-center',
@@ -243,7 +243,7 @@ export function Sidebar() {
             )}
           >
             <Trophy className="w-4 h-4 shrink-0 text-amber-400" />
-            {!collapsed && <span className="truncate">SIH Pitch Deck</span>}
+            {!collapsed && <span className="truncate">{t('SIH Pitch Deck')}</span>}
           </button>
 
           <button
@@ -268,7 +268,7 @@ export function Sidebar() {
             )}
           >
             <item.icon className="w-5 h-5" />
-            <span>{item.label.split(' ')[0]}</span>
+            <span>{t(item.label.split(' ')[0])}</span>
           </Link>
         ))}
       </nav>

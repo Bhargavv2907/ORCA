@@ -15,6 +15,7 @@ import { Vessel, FishingZone, MarineConditions } from '@/types/marine';
 import { MapAction } from '@/lib/agents/schemas';
 import { INDIAN_COASTAL_SECTORS } from '@/components/world-map';
 import { getSelectedLocation, marineApiUrl } from '@/lib/location-store';
+import { generateRealTimeFishingZones } from '@/services/marine/pfz';
 
 // Dynamic Import for Leaflet World Map (SSR Disabled)
 const WorldMap = dynamic(() => import('@/components/world-map'), {
@@ -74,8 +75,16 @@ export default function MapPage() {
   }, []);
 
   useEffect(() => {
-    setVessels(getMockVessels());
-    setZones(getMockFishingZones());
+    const center = selectedRegion.center || getSelectedLocation();
+    setZones(generateRealTimeFishingZones(center.lat, center.lon, liveConditions || undefined, selectedRegion.name));
+
+    // Fetch live vessel telemetry from API
+    fetch(`/api/vessels?lat=${center.lat}&lon=${center.lon}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.data?.vessels) setVessels(data.data.vessels);
+      })
+      .catch(() => setVessels(getMockVessels()));
 
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
@@ -88,12 +97,14 @@ export default function MapPage() {
       }
     }
 
-    // Fetch initial live marine snapshot from ISRO MOSDAC & Open-Meteo
-    fetch(marineApiUrl(getSelectedLocation()))
+    // Fetch initial live marine snapshot & real-time fishing zones
+    fetch(`/api/fishing-zones?lat=${center.lat}&lon=${center.lon}&name=${encodeURIComponent(selectedRegion.name)}`)
       .then((res) => res.json())
-      .then((data) => setLiveConditions(data))
+      .then((data) => {
+        if (data.zones && data.zones.length > 0) setZones(data.zones);
+      })
       .catch(() => null);
-  }, []);
+  }, [selectedRegion]);
 
   const toggleLayer = (id: string) => {
     setActiveLayers((prev) => {

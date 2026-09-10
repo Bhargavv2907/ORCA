@@ -6,7 +6,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { COASTAL_LANGUAGES, LanguageVoiceConfig } from '@/lib/i18n-engine';
+import { COASTAL_LANGUAGES, LanguageVoiceConfig, translateAdvisory } from '@/lib/i18n-engine';
 
 const STORAGE_KEY = 'orca_selected_language';
 export const DEFAULT_LANGUAGE = 'English';
@@ -437,7 +437,6 @@ export const UI_TRANSLATIONS: Record<string, Record<string, string>> = {
     Bengali: 'মুম্বাই উপকূল, আরব সাগর',
   },
 };
-
 /**
  * Returns localized string for a UI key given current language.
  */
@@ -445,5 +444,19 @@ export function t(key: string, lang?: string): string {
   const currentLang = lang || getSelectedLanguage();
   if (currentLang === 'English') return key;
   return UI_TRANSLATIONS[key]?.[currentLang] || key;
->>>>>>> f12e0e539507ee70d180b3476e5915a5cef6bafa
+}
+
+/** React hook for accessing and updating selected language + translation helper */
+export function useLanguage() {
+  const language = useSelectedLanguage();
+
+  const setLanguage = (lang: LanguageVoiceConfig | string) => {
+    setSelectedLanguage(lang);
+  };
+
+  const tHelper = (text: string): string => {
+    return t(text, language);
+  };
+
+  return { language, setLanguage, t: tHelper };
 }

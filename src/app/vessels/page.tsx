@@ -14,7 +14,16 @@ export default function VesselsPage() {
   const [selectedVessel, setSelectedVessel] = useState<Vessel | null>(null);
 
   useEffect(() => {
-    setVessels(getMockVessels());
+    fetch('/api/vessels?lat=18.95&lon=72.82')
+      .then(res => res.json())
+      .then(json => {
+        if (json.success && json.data?.vessels) {
+          setVessels(json.data.vessels);
+        } else {
+          setVessels(getMockVessels());
+        }
+      })
+      .catch(() => setVessels(getMockVessels()));
   }, []);
 
   const filteredVessels = filter === 'all' ? vessels : vessels.filter(v => v.type === filter);

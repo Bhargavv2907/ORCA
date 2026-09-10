@@ -8,8 +8,8 @@ import {
   Shield, AlertTriangle, Compass, LifeBuoy, BatteryCharging
 } from 'lucide-react';
 import { getSelectedLocation } from '@/lib/location-store';
-import { speakVernacularAdvisory, COASTAL_LANGUAGES, LanguageVoiceConfig } from '@/lib/i18n-engine';
-import { getSelectedLanguage, setSelectedLanguage } from '@/lib/language-store';
+import { speakVernacularAdvisory, COASTAL_LANGUAGES } from '@/lib/i18n-engine';
+import { useLanguage } from '@/lib/language-store';
 import { getMarineConditions } from '@/services/marine/unified';
 import { checkGeofenceProximity } from '@/lib/geofence-engine';
 import { evaluateProactiveAlerts, ProactiveAlert } from '@/lib/alert-engine';
@@ -31,17 +31,8 @@ export function SOSEmergencyModal({ isOpen, onClose }: SOSEmergencyModalProps) {
   const [riskData, setRiskData] = useState<{ score: number; label: string; color: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [gpsActive, setGpsActive] = useState(false);
-  const [selectedLang, setSelectedLang] = useState<LanguageVoiceConfig>(COASTAL_LANGUAGES[0]);
-
-  useEffect(() => {
-    setSelectedLang(getSelectedLanguage());
-    const handler = (e: Event) => {
-      const lang = (e as CustomEvent<LanguageVoiceConfig>).detail;
-      if (lang) setSelectedLang(lang);
-    };
-    window.addEventListener('orca-language-changed', handler);
-    return () => window.removeEventListener('orca-language-changed', handler);
-  }, []);
+  const { language: selectedLang, setLanguage: setSelectedLang, t } = useLanguage();
+  const langConfig = COASTAL_LANGUAGES.find(l => l.name.toLowerCase() === (typeof selectedLang === 'string' ? selectedLang : (selectedLang as any)?.name || '').toLowerCase()) || COASTAL_LANGUAGES[0];
 
   const detectDeviceGPS = () => {
     if (typeof window !== 'undefined' && 'geolocation' in navigator) {
@@ -127,7 +118,7 @@ export function SOSEmergencyModal({ isOpen, onClose }: SOSEmergencyModalProps) {
         // Speak audio alert in chosen coastal language
         speakVernacularAdvisory(
           `MAYDAY MAYDAY MAYDAY. Emergency distress signal transmitted for vessel INF 2847 Sagar Mitra near ${location.name} at coordinates ${location.lat.toFixed(2)} North, ${location.lon.toFixed(2)} East. ${waveTxt} Indian Coast Guard alerted.`,
-          selectedLang.name
+          langConfig.name
         );
       }
     }, 1000);
@@ -151,20 +142,19 @@ export function SOSEmergencyModal({ isOpen, onClose }: SOSEmergencyModalProps) {
                 <AlertOctagon className="w-6 h-6 text-red-400" />
               </div>
               <div>
-                <h2 className="text-lg sm:text-xl font-extrabold text-white tracking-wide">EMERGENCY SOS & LIVE TELEMETRY</h2>
-                <p className="text-[11px] sm:text-xs text-red-300">Indian Coast Guard & Maritime Distress Dispatch</p>
+                <h2 className="text-lg sm:text-xl font-extrabold text-white tracking-wide">{t('EMERGENCY SOS & LIVE TELEMETRY')}</h2>
+                <p className="text-[11px] sm:text-xs text-red-300">{t('Indian Coast Guard & Maritime Distress Dispatch')}</p>
               </div>
             </div>
 
             <div className="flex items-center gap-2">
               {/* Language Selector Dropdown */}
               <select
-                value={selectedLang.code}
+                value={langConfig.code}
                 onChange={(e) => {
                   const found = COASTAL_LANGUAGES.find(l => l.code === e.target.value);
                   if (found) {
-                    setSelectedLang(found);
-                    setSelectedLanguage(found);
+                    setSelectedLang(found.name);
                   }
                 }}
                 className="bg-black/60 border border-red-500/40 text-white text-xs font-bold rounded-xl px-2.5 py-1.5 focus:outline-none hover:border-red-400 transition-colors"
@@ -194,15 +184,15 @@ export function SOSEmergencyModal({ isOpen, onClose }: SOSEmergencyModalProps) {
                   INF
                 </div>
                 <div>
-                  <p className="text-xs font-bold text-white">Vessel: INF-2847 (Sagar Mitra)</p>
+                  <p className="text-xs font-bold text-white">{t('Vessel')}: INF-2847 (Sagar Mitra)</p>
                   <p className="text-[11px] text-slate-400 flex items-center gap-2 flex-wrap">
                     <MapPin className="w-3 h-3 text-red-400 shrink-0" />
-                    <span>{location.lat.toFixed(4)}° N, {location.lon.toFixed(4)}° E ({location.name})</span>
+                    <span>{location.lat.toFixed(4)}° N, {location.lon.toFixed(4)}° E ({t(location.name)})</span>
                     <button
                       onClick={detectDeviceGPS}
                       className="px-2 py-0.5 rounded bg-teal-500/20 text-teal-300 text-[10px] font-bold border border-teal-500/30 hover:bg-teal-500/30 transition-colors"
                     >
-                      {gpsActive ? '✓ Hardware GPS Active' : '📍 Refresh GPS'}
+                      {gpsActive ? `✓ ${t('Hardware GPS Active')}` : `📍 ${t('Refresh GPS')}`}
                     </button>
                   </p>
                 </div>
@@ -221,10 +211,10 @@ export function SOSEmergencyModal({ isOpen, onClose }: SOSEmergencyModalProps) {
             {/* Live Emergency Marine Conditions Metrics Grid */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Live Environmental Danger Metrics</p>
+                <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">{t('Live Environmental Danger Metrics')}</p>
                 {riskData && (
                   <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border uppercase ${riskData.color}`}>
-                    Safety Score: {riskData.score}/100 — {riskData.label}
+                    {t('Safety Score')}: {riskData.score}/100 — {t(riskData.label)}
                   </span>
                 )}
               </div>
@@ -233,16 +223,16 @@ export function SOSEmergencyModal({ isOpen, onClose }: SOSEmergencyModalProps) {
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                   <div className="p-3 rounded-xl bg-navy-900/80 border border-red-500/20">
                     <div className="flex items-center justify-between text-slate-400 mb-1">
-                      <span className="text-[10px] font-semibold">Wave Swell</span>
+                      <span className="text-[10px] font-semibold">{t('Wave Swell')}</span>
                       <Waves className="w-3.5 h-3.5 text-blue-400" />
                     </div>
                     <p className="text-sm font-extrabold text-white">{conditions.waves.height.toFixed(1)} m</p>
-                    <p className="text-[10px] text-amber-400">{conditions.waves.height > 2.5 ? '⚠️ High Swell' : 'Moderate'}</p>
+                    <p className="text-[10px] text-amber-400">{conditions.waves.height > 2.5 ? `⚠️ ${t('High Swell')}` : t('Moderate')}</p>
                   </div>
 
                   <div className="p-3 rounded-xl bg-navy-900/80 border border-red-500/20">
                     <div className="flex items-center justify-between text-slate-400 mb-1">
-                      <span className="text-[10px] font-semibold">Wind Speed</span>
+                      <span className="text-[10px] font-semibold">{t('Wind Speed')}</span>
                       <Wind className="w-3.5 h-3.5 text-teal-400" />
                     </div>
                     <p className="text-sm font-extrabold text-white">{Math.round(conditions.weather.windSpeed)} km/h</p>
@@ -251,20 +241,20 @@ export function SOSEmergencyModal({ isOpen, onClose }: SOSEmergencyModalProps) {
 
                   <div className="p-3 rounded-xl bg-navy-900/80 border border-red-500/20">
                     <div className="flex items-center justify-between text-slate-400 mb-1">
-                      <span className="text-[10px] font-semibold">Sea Temp</span>
+                      <span className="text-[10px] font-semibold">{t('Sea Temp')}</span>
                       <Thermometer className="w-3.5 h-3.5 text-rose-400" />
                     </div>
                     <p className="text-sm font-extrabold text-white">{conditions.ocean.sst.toFixed(1)} °C</p>
-                    <p className="text-[10px] text-slate-400">ISRO Satellite</p>
+                    <p className="text-[10px] text-slate-400">{t('ISRO Satellite')}</p>
                   </div>
 
                   <div className="p-3 rounded-xl bg-navy-900/80 border border-red-500/20">
                     <div className="flex items-center justify-between text-slate-400 mb-1">
-                      <span className="text-[10px] font-semibold">Pressure</span>
+                      <span className="text-[10px] font-semibold">{t('Pressure')}</span>
                       <Compass className="w-3.5 h-3.5 text-purple-400" />
                     </div>
                     <p className="text-sm font-extrabold text-white">{Math.round(conditions.weather.pressure)} hPa</p>
-                    <p className="text-[10px] text-slate-400">{conditions.weather.pressure < 1000 ? '⚠️ Low Pressure' : 'Normal'}</p>
+                    <p className="text-[10px] text-slate-400">{conditions.weather.pressure < 1000 ? `⚠️ ${t('Low Pressure')}` : t('Normal')}</p>
                   </div>
                 </div>
               ) : (
@@ -279,7 +269,7 @@ export function SOSEmergencyModal({ isOpen, onClose }: SOSEmergencyModalProps) {
               <div className="space-y-2">
                 <p className="text-xs text-red-400 font-bold uppercase tracking-wider flex items-center gap-1.5">
                   <AlertTriangle className="w-3.5 h-3.5 text-red-400" />
-                  <span>Active Proactive Hazard Alerts ({alerts.length})</span>
+                  <span>{t('Active Proactive Hazard Alerts')} ({alerts.length})</span>
                 </p>
                 <div className="space-y-2 max-h-36 overflow-y-auto pr-1">
                   {alerts.map((alert) => (
@@ -294,12 +284,12 @@ export function SOSEmergencyModal({ isOpen, onClose }: SOSEmergencyModalProps) {
                       }`}
                     >
                       <div className="flex items-center justify-between font-bold mb-1">
-                        <span className="text-white">{alert.title}</span>
+                        <span className="text-white">{t(alert.title)}</span>
                         <span className="text-[9px] uppercase px-2 py-0.5 rounded-full bg-black/40 border border-white/10 font-black">
-                          {alert.severity}
+                          {t(alert.severity)}
                         </span>
                       </div>
-                      <p className="text-[11px] leading-relaxed opacity-90">{alert.description}</p>
+                      <p className="text-[11px] leading-relaxed opacity-90">{t(alert.description)}</p>
                     </div>
                   ))}
                 </div>
@@ -320,11 +310,11 @@ export function SOSEmergencyModal({ isOpen, onClose }: SOSEmergencyModalProps) {
                 >
                   <ShieldAlert className="w-6 h-6 sm:w-7 sm:h-7" />
                   <span>
-                    {broadcasting ? `TRANSMITTING MAYDAY (${countdown}s)...` : 'TRANSMIT MAYDAY DISTRESS BEACON'}
+                    {broadcasting ? `${t('TRANSMITTING MAYDAY')} (${countdown}s)...` : t('TRANSMIT MAYDAY DISTRESS BEACON')}
                   </span>
                 </button>
                 <p className="text-xs text-slate-400">
-                  Transmits automated MAYDAY distress beacon with telemetry & live GPS to Coast Guard MRCC & nearby AIS vessels.
+                  {t('Transmits automated MAYDAY distress beacon with telemetry & live GPS to Coast Guard MRCC & nearby AIS vessels.')}
                 </p>
               </div>
             ) : (
@@ -336,16 +326,16 @@ export function SOSEmergencyModal({ isOpen, onClose }: SOSEmergencyModalProps) {
                 <div className="w-12 h-12 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center mx-auto text-emerald-400">
                   <CheckCircle2 className="w-7 h-7" />
                 </div>
-                <h3 className="text-base font-bold text-white">MAYDAY DISTRESS BEACON ACTIVE</h3>
+                <h3 className="text-base font-bold text-white">{t('MAYDAY DISTRESS BEACON ACTIVE')}</h3>
                 <p className="text-xs text-emerald-200">
-                  Transmitted to Coast Guard MRCC Mumbai/Chennai & VHF Channel 16. Audio alert spoken in English & Vernacular.
+                  {t('Transmitted to Coast Guard MRCC Mumbai/Chennai & VHF Channel 16. Audio alert spoken in English & Vernacular.')}
                 </p>
                 <button
-                  onClick={() => speakVernacularAdvisory(`Mayday beacon active for Sagar Mitra near ${location.name}. Hold fast, rescue dispatched.`, selectedLang.name)}
+                  onClick={() => speakVernacularAdvisory(`Mayday beacon active for Sagar Mitra near ${location.name}. Hold fast, rescue dispatched.`, langConfig.name)}
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500/20 text-emerald-300 text-xs font-semibold hover:bg-emerald-500/30 transition-colors border border-emerald-500/30"
                 >
                   <Volume2 className="w-4 h-4" />
-                  <span>Replay Voice Distress Broadcast</span>
+                  <span>{t('Replay Voice Distress Broadcast')}</span>
                 </button>
               </motion.div>
             )}
@@ -354,27 +344,27 @@ export function SOSEmergencyModal({ isOpen, onClose }: SOSEmergencyModalProps) {
             <div className="p-3.5 rounded-2xl bg-navy-900 border border-navy-700/50 space-y-2 text-xs">
               <p className="font-bold text-slate-300 flex items-center gap-1.5">
                 <LifeBuoy className="w-4 h-4 text-teal-400" />
-                <span>Fisherman Emergency Checklist at Sea</span>
+                <span>{t('Fisherman Emergency Checklist at Sea')}</span>
               </p>
               <ul className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-[11px] text-slate-400">
                 <li className="flex items-center gap-1.5">
-                  <span className="text-teal-400 font-bold">1.</span> Put on life jackets immediately.
+                  <span className="text-teal-400 font-bold">1.</span> {t('Put on life jackets immediately.')}
                 </li>
                 <li className="flex items-center gap-1.5">
-                  <span className="text-teal-400 font-bold">2.</span> Drop sea anchor to steady vessel.
+                  <span className="text-teal-400 font-bold">2.</span> {t('Drop sea anchor to steady vessel.')}
                 </li>
                 <li className="flex items-center gap-1.5">
-                  <span className="text-teal-400 font-bold">3.</span> Set VHF radio to Channel 16.
+                  <span className="text-teal-400 font-bold">3.</span> {t('Set VHF radio to Channel 16.')}
                 </li>
                 <li className="flex items-center gap-1.5">
-                  <span className="text-teal-400 font-bold">4.</span> Turn on strobe beacon light.
+                  <span className="text-teal-400 font-bold">4.</span> {t('Turn on strobe beacon light.')}
                 </li>
               </ul>
             </div>
 
             {/* Direct Helplines */}
             <div className="space-y-2">
-              <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Emergency Helplines</p>
+              <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">{t('Emergency Helplines')}</p>
               <div className="grid grid-cols-2 gap-3">
                 <a
                   href="tel:1554"
@@ -382,8 +372,8 @@ export function SOSEmergencyModal({ isOpen, onClose }: SOSEmergencyModalProps) {
                 >
                   <PhoneCall className="w-4 h-4 text-red-400" />
                   <div>
-                    <p className="text-xs font-bold text-white">Indian Coast Guard</p>
-                    <p className="text-xs text-red-400 font-mono font-bold">1554 (Toll Free)</p>
+                    <p className="text-xs font-bold text-white">{t('Indian Coast Guard')}</p>
+                    <p className="text-xs text-red-400 font-mono font-bold">1554 ({t('Toll Free')})</p>
                   </div>
                 </a>
 
@@ -393,7 +383,7 @@ export function SOSEmergencyModal({ isOpen, onClose }: SOSEmergencyModalProps) {
                 >
                   <PhoneCall className="w-4 h-4 text-amber-400" />
                   <div>
-                    <p className="text-xs font-bold text-white">Coastal Police</p>
+                    <p className="text-xs font-bold text-white">{t('Coastal Police')}</p>
                     <p className="text-xs text-amber-400 font-mono font-bold">1093</p>
                   </div>
                 </a>
