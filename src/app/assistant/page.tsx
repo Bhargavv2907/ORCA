@@ -259,10 +259,15 @@ export default function AssistantPage() {
                       <div className={cn(
                         'inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold',
                         msg.safetyStatus.status === 'SAFE' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
-                        msg.safetyStatus.status === 'MODERATE' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'
+                        msg.safetyStatus.status === 'MODERATE' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
+                        msg.safetyStatus.status === 'WARNING' ? 'bg-red-500/15 text-red-400 border border-red-500/30 animate-pulse' :
+                        'bg-red-500/10 text-red-400 border border-red-500/20'
                       )}>
                         <Shield className="w-3.5 h-3.5" />
-                        {msg.safetyStatus.label} — {msg.safetyStatus.overall}/100
+                        {msg.safetyStatus.status === 'WARNING'
+                          ? `⚠️ ${msg.safetyStatus.label}`
+                          : `${msg.safetyStatus.label} — ${msg.safetyStatus.overall}/100`
+                        }
                       </div>
                     )}
 

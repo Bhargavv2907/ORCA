@@ -259,6 +259,9 @@ export default function WorldMapComponent({
     };
   }, [inspectPoint]);
 
+  // Serialize activeLayers into a stable string so useEffect deps work correctly
+  const activeLayersKey = useMemo(() => [...activeLayers].sort().join(','), [activeLayers]);
+
   const zonesList = useMemo(() => {
     return fishingZones.length > 0 ? fishingZones : getMockFishingZones();
   }, [fishingZones]);
@@ -461,12 +464,17 @@ export default function WorldMapComponent({
   useEffect(() => {
     if (!mapInstanceRef.current || !layerGroupRef.current || !isLoaded) return;
 
+    // Read current active layers from the serialized key
+    const currentLayers = new Set(activeLayersKey.split(',').filter(Boolean));
+    // Use ref so we don't depend on inspectPoint identity
+    const inspect = (...args: Parameters<typeof inspectPointRef.current>) => inspectPointRef.current(...args);
+
     import('leaflet').then((L) => {
       const layerGroup = layerGroupRef.current;
       layerGroup.clearLayers();
 
       // 1. HIGHLIGHT ALL 11 INDIAN COASTAL SECTORS
-      if (highlightCoasts || activeLayers.has('coastal_detect')) {
+      if (highlightCoasts || currentLayers.has('coastal_detect')) {
         INDIAN_COASTAL_SECTORS.forEach((sector) => {
           // Draw Coastline Polyline
           const polyline = L.polyline(sector.coordinates, {
@@ -487,7 +495,7 @@ export default function WorldMapComponent({
           polyline.on('click', (e: any) => {
             const lat = +e.latlng.lat.toFixed(3);
             const lon = +e.latlng.lng.toFixed(3);
-            inspectPoint(lat, lon, `${sector.name} Coastline`);
+            inspect(lat, lon, `${sector.name} Coastline`);
           });
 
           polyline.addTo(layerGroup);
@@ -505,7 +513,7 @@ export default function WorldMapComponent({
 
           const marker = L.marker([sector.center.lat, sector.center.lon], { icon: customIcon });
           marker.on('click', () => {
-            inspectPoint(sector.center.lat, sector.center.lon, sector.name);
+            inspect(sector.center.lat, sector.center.lon, sector.name);
           });
           marker.bindPopup(
             `<div style="padding:10px;font-size:12px;font-family:system-ui,sans-serif;color:#e2e8f0;">
@@ -532,7 +540,7 @@ export default function WorldMapComponent({
       }
 
       // 2. POTENTIAL FISHING ZONES (PFZ)
-      if (activeLayers.has('fishing')) {
+      if (currentLayers.has('fishing')) {
         zonesList.forEach((zone) => {
           const circle = L.circle([zone.center.lat, zone.center.lon], {
             color: zone.color || '#14b8a6',
@@ -542,7 +550,7 @@ export default function WorldMapComponent({
           });
 
           circle.on('click', () => {
-            inspectPoint(zone.center.lat, zone.center.lon, zone.name);
+            inspect(zone.center.lat, zone.center.lon, zone.name);
           });
 
           circle.bindPopup(
@@ -561,7 +569,7 @@ export default function WorldMapComponent({
       }
 
       // 3. LIVE VESSEL POSITIONS (AIS)
-      if (activeLayers.has('vessels')) {
+      if (currentLayers.has('vessels')) {
         vessels.forEach((vessel) => {
           const color = vessel.type === 'fishing' ? '#34d399' : vessel.type === 'commercial' ? '#fbbf24' : '#38bdf8';
           const vesselIcon = L.divIcon({
@@ -573,7 +581,7 @@ export default function WorldMapComponent({
 
           const marker = L.marker([vessel.position.lat, vessel.position.lon], { icon: vesselIcon });
           marker.on('click', () => {
-            inspectPoint(vessel.position.lat, vessel.position.lon, `${vessel.name} (${vessel.type})`);
+            inspect(vessel.position.lat, vessel.position.lon, `${vessel.name} (${vessel.type})`);
           });
           marker.bindTooltip(
             `<div class="px-2 py-1 bg-navy-900 text-white text-xs font-medium rounded shadow">
@@ -586,7 +594,7 @@ export default function WorldMapComponent({
         });
       }
     });
-  }, [highlightCoasts, activeLayers, zonesList, vessels, isLoaded]);
+  }, [highlightCoasts, activeLayersKey, zonesList, vessels, isLoaded]);
 
   // Handle AI-Controlled Map Actions (Phase 6)
   useEffect(() => {
