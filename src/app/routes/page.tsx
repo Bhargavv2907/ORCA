@@ -103,11 +103,16 @@ function RoutesContent() {
     setRoutes(initialRoutes);
     setHasSearched(true);
 
+    // Fetch live vessel data from Marine Map AIS Stream & recalculate routes
     fetch(`/api/vessels?lat=${currentSector.center.lat}&lon=${currentSector.center.lon}`)
       .then(res => res.json())
       .then(json => {
         if (json.success && json.data) {
           setVesselData(json.data);
+          if (json.data.vessels && json.data.vessels.length > 0) {
+            const updatedRoutes = generateOfflineRoutes(startPt, destPt, json.data.vessels);
+            setRoutes(updatedRoutes);
+          }
         }
       })
       .catch(() => null);
@@ -169,17 +174,25 @@ function RoutesContent() {
 
     const startPt = { lat: sector.center.lat, lon: sector.center.lon };
     const destPt = primaryZone.center;
-    const newRoutes = generateOfflineRoutes(startPt, destPt);
-    setRoutes(newRoutes);
-    setSelectedRouteIndex(1);
-    setHasSearched(true);
 
     fetch(`/api/vessels?lat=${sector.center.lat}&lon=${sector.center.lon}`)
       .then(res => res.json())
       .then(json => {
-        if (json.success && json.data) setVesselData(json.data);
+        if (json.success && json.data) {
+          setVesselData(json.data);
+          const newRoutes = generateOfflineRoutes(startPt, destPt, json.data.vessels || []);
+          setRoutes(newRoutes);
+        } else {
+          const newRoutes = generateOfflineRoutes(startPt, destPt, []);
+          setRoutes(newRoutes);
+        }
       })
-      .catch(() => null);
+      .catch(() => {
+        const newRoutes = generateOfflineRoutes(startPt, destPt, []);
+        setRoutes(newRoutes);
+      });
+    setSelectedRouteIndex(1);
+    setHasSearched(true);
   };
 
   const handleSearch = async (targetDest?: string) => {
@@ -194,7 +207,7 @@ function RoutesContent() {
     const startCoord = getCoordsForInput(start, currentSector.center);
     const endCoord = selectedZone ? selectedZone.center : getCoordsForInput(destName, { lat: currentSector.center.lat - 0.3, lon: currentSector.center.lon - 0.4 });
 
-    const calculatedRoutes = generateOfflineRoutes(startCoord, endCoord);
+    const calculatedRoutes = generateOfflineRoutes(startCoord, endCoord, vesselData?.vessels || []);
     setRoutes(calculatedRoutes);
     setSelectedRouteIndex(1);
 

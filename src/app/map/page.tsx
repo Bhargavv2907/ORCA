@@ -6,12 +6,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Layers, X, MapPin, Wind, Waves, Navigation, Thermometer,
   Fish, Route, Eye, Anchor, Globe, Radio, Shield, RefreshCw,
-  Droplets, CheckCircle2, ChevronRight, Compass
+  Droplets, CheckCircle2, ChevronRight, Compass, Ship
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { getMockFishingZones, getMockRoutes } from '@/data/mock-data';
+import { getMockFishingZones, getMockRoutes, getMockVessels } from '@/data/mock-data';
 import { DemoModeBanner } from '@/components/cards';
-import { FishingZone, MarineConditions } from '@/types/marine';
+import { FishingZone, MarineConditions, Vessel } from '@/types/marine';
 import { MapAction } from '@/lib/agents/schemas';
 import { INDIAN_COASTAL_SECTORS } from '@/components/world-map';
 import { getSelectedLocation, marineApiUrl } from '@/lib/location-store';
@@ -52,6 +52,7 @@ const SATELLITE_MODES = [
 ];
 
 const LAYERS = [
+  { id: 'vessels', label: 'Live AIS Vessels & MMSI Stream', icon: Ship, color: 'text-cyan-400' },
   { id: 'ports', label: 'Indian Major & Minor Ports (70+ Ports)', icon: Anchor, color: 'text-amber-400' },
   { id: 'coastal_detect', label: 'India Coastline Detector (11 Sectors)', icon: Shield, color: 'text-emerald-400' },
   { id: 'fishing', label: 'Potential Fishing Zones (PFZ)', icon: Fish, color: 'text-teal-400' },
@@ -62,11 +63,12 @@ const LAYERS = [
 export default function MapPage() {
   const [selectedRegion, setSelectedRegion] = useState(REGIONS[0]);
   const [satelliteMode, setSatelliteMode] = useState('esri_satellite');
-  const [activeLayers, setActiveLayers] = useState<Set<string>>(new Set(['ports', 'coastal_detect', 'fishing', 'winds']));
+  const [activeLayers, setActiveLayers] = useState<Set<string>>(new Set(['vessels', 'ports', 'coastal_detect', 'fishing', 'winds']));
   const [showLayerPanel, setShowLayerPanel] = useState(false);
   const [showCoastListPanel, setShowCoastListPanel] = useState(true);
 
   const [zones, setZones] = useState<FishingZone[]>([]);
+  const [vessels, setVessels] = useState<Vessel[]>([]);
   const [liveConditions, setLiveConditions] = useState<MarineConditions | null>(null);
   const [mapActionPayload, setMapActionPayload] = useState<MapAction | undefined>(undefined);
 
@@ -97,6 +99,18 @@ export default function MapPage() {
         if (data.zones && data.zones.length > 0) setZones(data.zones);
       })
       .catch(() => null);
+
+    // Fetch live vessel data from marine map API
+    fetch(`/api/vessels?lat=${center.lat}&lon=${center.lon}`)
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.success && json.data && json.data.vessels) {
+          setVessels(json.data.vessels);
+        } else {
+          setVessels(getMockVessels());
+        }
+      })
+      .catch(() => setVessels(getMockVessels()));
   }, [selectedRegion]);
 
   const toggleLayer = (id: string) => {
@@ -210,6 +224,7 @@ export default function MapPage() {
       <div className="relative flex-1 w-full h-full overflow-hidden">
         <WorldMap
           fishingZones={zones}
+          vessels={vessels}
           satelliteMode={satelliteMode}
           activeLayers={activeLayers}
           highlightCoasts={activeLayers.has('coastal_detect')}
