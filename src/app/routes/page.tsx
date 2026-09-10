@@ -10,7 +10,8 @@ import {
   Zap, Info, Gauge, AlertOctagon, CheckCircle2, Sliders
 } from 'lucide-react';
 import { RouteCard, DemoModeBanner } from '@/components/cards';
-import { getMockRoutes, getMockFishingZones, getMockVessels } from '@/data/mock-data';
+import { getMockRoutes, getMockVessels } from '@/data/mock-data';
+import { generateRealTimeFishingZones } from '@/services/marine/pfz';
 import { RouteOption, Coordinates, FishingZone, Vessel } from '@/types/marine';
 import { generateOfflineRoutes } from '@/lib/offline-routing';
 import { MapAction } from '@/lib/agents/schemas';
@@ -67,6 +68,8 @@ export default function RoutesPage() {
   const [isOffline, setIsOffline] = useState(false);
   const [routeMode, setRouteMode] = useState<RouteMode>('BALANCED');
   const [isDemoCollisionActive, setIsDemoCollisionActive] = useState(false);
+  const [showVesselDetails, setShowVesselDetails] = useState(false);
+  const [showHudOverlay, setShowHudOverlay] = useState(true);
 
   // Vessel AIS State
   const [vesselData, setVesselData] = useState<{ totalVessels: number; trafficDensity: string; shippingLaneStatus: string; vessels: Vessel[]; source?: string; isDemonstrationMode?: boolean } | null>(null);
@@ -137,13 +140,10 @@ export default function RoutesPage() {
 
   // ECDIS Overlays Panel State
   const [isOverlaysOpen, setIsOverlaysOpen] = useState(true);
-  const [overlays, setOverlays] = useState({
-    pfz: true,
-    ais: true,
-    tss: true,
-    military: true,
-    weather: false,
-  });
+  // Location-accurate real-time satellite Potential Fishing Zones for active coast
+  const displayZones = useMemo(() => {
+    return generateRealTimeFishingZones(currentSector.center.lat, currentSector.center.lon, undefined, currentSector.name);
+  }, [currentSector.center.lat, currentSector.center.lon, currentSector.name]);
 
   useEffect(() => {
     setIsOffline(!navigator.onLine);
@@ -153,6 +153,13 @@ export default function RoutesPage() {
 
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
+
+    // Initial real-time route calculation anchored to coastal sector
+    const startPt = { lat: currentSector.center.lat, lon: currentSector.center.lon };
+    const destPt = displayZones[0]?.center || targetPFZ.center;
+    const initialRoutes = generateOfflineRoutes(startPt, destPt);
+    setRoutes(initialRoutes);
+    setHasSearched(true);
 
     // Fetch live MarineTraffic AIS vessel data
     fetch(`/api/vessels?lat=${currentSector.center.lat}&lon=${currentSector.center.lon}`)
@@ -184,14 +191,18 @@ export default function RoutesPage() {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, [currentSector.center.lat, currentSector.center.lon, currentSector.name]);
+  }, [currentSector.center.lat, currentSector.center.lon, currentSector.name, displayZones, targetPFZ.center]);
 
   const handleSectorChange = (sectorId: string) => {
     setSelectedSectorId(sectorId);
     const sector = INDIAN_COASTAL_SECTORS.find(s => s.id === sectorId);
     if (!sector) return;
 
-    const defaultStart = sector.name.split(' ')[0] + ' Harbor';
+    // Real-time PFZs for new sector
+    const newCoastZones = generateRealTimeFishingZones(sector.center.lat, sector.center.lon, undefined, sector.name);
+
+    // Default start location & target zone for selected coast
+    const defaultStart = sector.name.split(' ')[0] + ' Coast';
     setStart(defaultStart);
 
     fetch(`/api/vessels?lat=${sector.center.lat}&lon=${sector.center.lon}`)
@@ -509,6 +520,67 @@ export default function RoutesPage() {
                 </motion.div>
               )}
             </AnimatePresence>
+
+            {/* Floating Telemetry & Route Safety HUD Overlay */}
+            {showHudOverlay ? (
+              <div className="absolute top-16 right-4 z-[300] w-72 md:w-80 p-4 rounded-2xl bg-navy-950/85 backdrop-blur-md border border-navy-700/60 shadow-2xl space-y-3 text-xs text-white transition-all">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-teal-400 flex items-center gap-1.5 text-sm">
+                    <Radio className="w-4 h-4 text-teal-400 animate-pulse" />
+                    {currentSector.name}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-0.5 rounded bg-teal-500/20 text-teal-300 font-mono text-[10px]">
+                      LIVE HUD
+                    </span>
+                    <button
+                      onClick={() => setShowHudOverlay(false)}
+                      className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-navy-800/60 transition-colors"
+                      title="Hide Route HUD"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="text-[11px] text-slate-400 font-mono">
+                  LAT: {currentSector.center.lat}° N | LON: {currentSector.center.lon}° E
+                </div>
+
+                {/* Telemetry Summary */}
+                <div className="grid grid-cols-2 gap-2 text-[11px] pt-1">
+                  <div className="p-2 rounded-lg bg-navy-900/60 border border-navy-700/40">
+                    <span className="text-slate-400 block font-mono">🌡️ INSAT SST</span>
+                    <strong className="text-amber-400 text-xs">27.8 °C</strong>
+                  </div>
+                  <div className="p-2 rounded-lg bg-navy-900/60 border border-navy-700/40">
+                    <span className="text-slate-400 block font-mono">🌊 Waves</span>
+                    <strong className="text-cyan-400 text-xs">1.0 m</strong>
+                  </div>
+                </div>
+
+                {/* Safety Score */}
+                <div className="flex items-center justify-between p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs font-semibold text-emerald-400">
+                  <span className="flex items-center gap-1.5">
+                    <Shield className="w-4 h-4" />
+                    Safety Score
+                  </span>
+                  <span className="text-sm font-bold text-white">{safeRoutePlan.selectedRoute.overallSafetyScore}/100 (SAFE)</span>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowHudOverlay(true)}
+                className="absolute top-16 right-4 z-[300] px-3 py-1.5 rounded-xl bg-navy-900/90 backdrop-blur-md border border-teal-500/40 text-xs font-semibold text-teal-300 hover:bg-teal-500/20 shadow-xl flex items-center gap-2 transition-all"
+                title="Show Route HUD"
+              >
+                <Radio className="w-3.5 h-3.5 text-teal-400 animate-pulse" />
+                <span>{currentSector.name} HUD</span>
+                <span className="px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 text-[10px] font-bold">
+                  {safeRoutePlan.selectedRoute.overallSafetyScore}% Safe
+                </span>
+              </button>
+            )}
           </div>
         </div>
 

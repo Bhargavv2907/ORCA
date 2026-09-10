@@ -4,10 +4,12 @@
 // ============================================================
 
 import { Agent, AgentType, OrcaResponse, MissionPlannerPayload } from '@/types/marine';
-import { getMockWeather, getMockWaves, getMockOcean, getMockFishingZones, getMockRoutes, getMockSafety } from '@/data/mock-data';
+import { getMockWeather, getMockWaves, getMockOcean, getMockRoutes, getMockSafety } from '@/data/mock-data';
+import { generateRealTimeFishingZones } from '@/services/marine/pfz';
 import { calculateSafetyScore, calculateMarineRisk } from '@/lib/risk-engine';
 import { checkGeofenceProximity } from '@/lib/geofence-engine';
 import { getMarineConditions } from '@/services/marine/unified';
+import { generateOfflineRoutes } from '@/lib/offline-routing';
 import { retrieveRelevantContext, RAGSearchResult } from '@/lib/rag-engine';
 import { getSessionContext, updateSessionContext, resolveFollowUpContext } from '@/lib/session-memory';
 import {
@@ -54,11 +56,40 @@ const DEFAULT_LOCATION = INDIAN_COASTAL_LOCATIONS[0]; // Mumbai fallback
 
 export function extractLocation(query: string): CoastalLocation {
   const q = query.toLowerCase();
+
+  // 1. Direct alias or city name match
   for (const loc of INDIAN_COASTAL_LOCATIONS) {
-    if (loc.aliases.some(alias => q.includes(alias))) {
+    if (
+      loc.name.toLowerCase() === q ||
+      loc.aliases.some(alias => q.includes(alias)) ||
+      q.includes(loc.name.toLowerCase())
+    ) {
       return loc;
     }
   }
+
+  // 2. State name / state alias match
+  const stateMap: Record<string, string> = {
+    kerala: 'Kochi',
+    gujarat: 'Veraval',
+    'tamil nadu': 'Chennai',
+    tamil: 'Chennai',
+    andhra: 'Visakhapatnam',
+    bengal: 'Kolkata',
+    karnataka: 'Mangalore',
+    goa: 'Goa',
+    odisha: 'Paradip',
+    maharashtra: 'Mumbai',
+    puducherry: 'Pondicherry',
+  };
+
+  for (const [stateKeyword, cityName] of Object.entries(stateMap)) {
+    if (q.includes(stateKeyword)) {
+      const match = INDIAN_COASTAL_LOCATIONS.find(l => l.name.toLowerCase() === cityName.toLowerCase());
+      if (match) return match;
+    }
+  }
+
   return DEFAULT_LOCATION;
 }
 
@@ -207,19 +238,13 @@ function normalizeAgentType(type: AgentType): AgentType {
 
 export async function executeAgent(agentType: AgentType, lat = 18.95, lon = 72.82): Promise<AgentOutput> {
   const normalized = normalizeAgentType(agentType);
-  await new Promise(r => setTimeout(r, 200 + Math.random() * 300));
 
   const conditions = await getMarineConditions(lat, lon);
   const weather = conditions.weather;
   const waves = conditions.waves;
   const ocean = conditions.ocean;
-  const zones = getMockFishingZones();
-  const routes = getMockRoutes();
-
-  zones.forEach(z => {
-    z.sst = +ocean.sst.toFixed(1);
-    z.chlorophyll = +ocean.chlorophyll.toFixed(2);
-  });
+  const zones = generateRealTimeFishingZones(lat, lon, conditions);
+  const routes = generateOfflineRoutes({ lat, lon }, zones[0].center);
 
   if (normalized === 'orchestrator') {
     return {
@@ -340,7 +365,7 @@ function generateResponse(
   const ocean = liveConditions?.ocean ?? getMockOcean();
   const safety = liveConditions?.safety ?? calculateSafetyScore(weather, waves, ocean);
   const cityName = location ? `${location.name}, ${location.state}` : 'Mumbai Coast';
-  const zones = getMockFishingZones();
+  const zones = generateRealTimeFishingZones(location?.lat ?? 18.95, location?.lon ?? 72.82, liveConditions, location?.name);
 
   const gisOutput = outputs.find(o => normalizeAgentType(o.agent.id) === 'gis_navigation')?.data as { mapAction?: MapAction } | undefined;
 
@@ -437,10 +462,24 @@ function generateResponse(
         ? `✅ Safe to go out. Waves ${waves.height.toFixed(1)}m · Wind ${Math.round(weather.windSpeed)} km/h from ${weather.windDirection} · Visibility ${weather.visibility?.toFixed(1) ?? 'good'} km. Safety score: ${safety.overall}/100. Return before evening.`
         : `⚠️ Do NOT go out — hazardous conditions. Waves: ${waves.height.toFixed(1)}m, Wind: ${Math.round(weather.windSpeed)} km/h from ${weather.windDirection}. Safety score: ${safety.overall}/100. Stay ashore.`,
     }),
-    fishing_recommendation: () => ({
-      safetyStatus: safety,
-      recommendation: `🐟 Best zone today: ${zones[0].name} — ${zones[0].distanceFromCoast} km offshore, suitability ${zones[0].suitabilityScore}%. Sea temp ${zones[0].sst}°C, chlorophyll ${zones[0].chlorophyll} mg/m³. Waves ${waves.height.toFixed(1)}m · Wind ${Math.round(weather.windSpeed)} km/h. Safety: ${safety.overall}/100 (${safety.label}). Take Route B (38 km, 96% safety).`,
-    }),
+    fishing_recommendation: () => {
+      const bestZone = zones[0];
+      return {
+        safetyStatus: safety,
+        recommendation: `🐟 Best zone today: ${bestZone.name} — ${bestZone.distanceFromCoast} km offshore, suitability ${bestZone.suitabilityScore}%. Sea temp ${bestZone.sst}°C, chlorophyll ${bestZone.chlorophyll} mg/m³. Waves ${waves.height.toFixed(1)}m · Wind ${Math.round(weather.windSpeed)} km/h. Safety: ${safety.overall}/100 (${safety.label}). Take Route B (38 km, 96% safety).`,
+        missionPlan: {
+          recommendedZone: bestZone.name,
+          suitabilityScore: bestZone.suitabilityScore,
+          safetyScore: safety.overall,
+          safetyLabel: safety.label,
+          recommendedTime: '05:30 AM',
+          recommendedRoute: 'Route B (Coastal Path)',
+          distanceKm: bestZone.distanceFromCoast,
+          warnings: safety.overall < 70 ? ['Marginal sea conditions — proceed with caution'] : [],
+          mapAction: 'FOCUS_PFZ_ZONE',
+        },
+      };
+    },
     route_planning: () => ({
       safetyStatus: safety,
       recommendation: `🗺️ Route B (Coastal Path) recommended — 38 km, 96% safety score. Current conditions: Waves ${waves.height.toFixed(1)}m, Wind ${Math.round(weather.windSpeed)} km/h ${weather.windDirection}. Route B avoids high swell and shipping lanes. ${safety.overall < 70 ? '⚠️ Conditions are marginal — sail with caution.' : '✅ Good conditions for the trip.'}`,

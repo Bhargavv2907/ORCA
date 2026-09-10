@@ -7,10 +7,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, Bot, Map, Fish, Route, CloudSun, Waves,
   AlertTriangle, Settings, ChevronLeft, ChevronRight, Brain,
-  Menu, X, Database, Info, Anchor, Ship
+  Menu, X, Database, Info, Anchor, Ship, Trophy, AlertOctagon, User
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
+import { PitchDeckDemoModal } from '@/components/cards/PitchDeckDemoModal';
+import { SOSEmergencyModal } from '@/components/cards/SOSEmergencyModal';
+import { useSelectedLanguage, t } from '@/lib/language-store';
 
 const NAV_ITEMS = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -25,8 +27,6 @@ const NAV_ITEMS = [
   { href: '/intelligence', label: 'JalSaathi Intelligence', icon: Brain },
 ];
 
-import { User } from 'lucide-react';
-
 const BOTTOM_ITEMS = [
   { href: '/login', label: 'Account / Firebase', icon: User },
   { href: '/data-sources', label: 'Data Sources', icon: Database },
@@ -36,9 +36,11 @@ const BOTTOM_ITEMS = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const language = useSelectedLanguage();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-
+  const [showPitchDeck, setShowPitchDeck] = useState(false);
+  const [showSOS, setShowSOS] = useState(false);
 
   const isActive = (href: string) => pathname === href;
 
@@ -62,7 +64,7 @@ export function Sidebar() {
       )}
       <item.icon className={cn('w-5 h-5 shrink-0', isActive(item.href) ? 'text-teal-400' : 'text-slate-500 group-hover:text-slate-300')} />
       {!collapsed && (
-        <span className="truncate">{item.label}</span>
+        <span className="truncate">{t(item.label, language)}</span>
       )}
     </Link>
   );
@@ -77,9 +79,18 @@ export function Sidebar() {
           </div>
           <span className="text-lg font-bold text-white">JalSaathi</span>
         </Link>
-        <button onClick={() => setMobileOpen(!mobileOpen)} className="p-2 rounded-lg hover:bg-white/10 text-slate-300">
-          {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowSOS(true)}
+            className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 text-white font-black text-xs flex items-center gap-1.5 shadow-lg shadow-red-600/30 animate-pulse border border-red-400/30"
+          >
+            <AlertOctagon className="w-4 h-4 text-white" />
+            <span>SOS</span>
+          </button>
+          <button onClick={() => setMobileOpen(!mobileOpen)} className="p-2 rounded-lg hover:bg-white/10 text-slate-300">
+            {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </button>
+        </div>
       </div>
 
       {/* Mobile overlay */}
@@ -114,6 +125,20 @@ export function Sidebar() {
                 <p className="text-[10px] text-teal-400/70 tracking-wider uppercase">Ocean Intelligence</p>
               </div>
             </div>
+
+            <div className="p-3">
+              <button
+                onClick={() => {
+                  setMobileOpen(false);
+                  setShowSOS(true);
+                }}
+                className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-red-600 via-rose-600 to-red-700 text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-lg shadow-red-600/30 border border-red-400/30 animate-pulse"
+              >
+                <AlertOctagon className="w-4 h-4 text-white" />
+                <span>{t('EMERGENCY SOS')}</span>
+              </button>
+            </div>
+
             <nav className="flex-1 p-3 space-y-1">
               {NAV_ITEMS.map((item) => <NavLink key={item.href} item={item} />)}
             </nav>
@@ -146,13 +171,28 @@ export function Sidebar() {
           </Link>
         </div>
 
+        {/* SOS Emergency persistent button in sidebar */}
+        <div className="p-3 pb-1">
+          <button
+            onClick={() => setShowSOS(true)}
+            title="EMERGENCY SOS DISTRESS"
+            className={cn(
+              'w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-black transition-all bg-gradient-to-r from-red-600 via-rose-600 to-red-700 hover:from-red-500 hover:to-rose-500 text-white shadow-lg shadow-red-600/25 border border-red-400/40 glow-danger animate-pulse',
+              collapsed && 'justify-center px-0'
+            )}
+          >
+            <AlertOctagon className="w-5 h-5 shrink-0 text-white" />
+            {!collapsed && <span className="truncate tracking-wider uppercase">{t('EMERGENCY SOS')}</span>}
+          </button>
+        </div>
+
         {/* Nav */}
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
           {NAV_ITEMS.map((item) => (
             <Link
               key={item.href}
               href={item.href}
-              title={collapsed ? item.label : undefined}
+              title={collapsed ? t(item.label) : undefined}
               className={cn(
                 'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group relative',
                 collapsed && 'justify-center',
@@ -169,7 +209,7 @@ export function Sidebar() {
                 />
               )}
               <item.icon className={cn('w-5 h-5 shrink-0', isActive(item.href) ? 'text-teal-400' : 'text-slate-500 group-hover:text-slate-300')} />
-              {!collapsed && <span className="truncate">{item.label}</span>}
+              {!collapsed && <span className="truncate">{t(item.label, language)}</span>}
             </Link>
           ))}
         </nav>
@@ -180,7 +220,7 @@ export function Sidebar() {
             <Link
               key={item.href}
               href={item.href}
-              title={collapsed ? item.label : undefined}
+              title={collapsed ? t(item.label, language) : undefined}
               className={cn(
                 'flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-all duration-200',
                 collapsed && 'justify-center',
@@ -190,9 +230,21 @@ export function Sidebar() {
               )}
             >
               <item.icon className="w-4 h-4 shrink-0" />
-              {!collapsed && <span className="truncate">{item.label}</span>}
+              {!collapsed && <span className="truncate">{t(item.label, language)}</span>}
             </Link>
           ))}
+
+          <button
+            onClick={() => setShowPitchDeck(true)}
+            title="SIH Pitch Deck & Demo Mode"
+            className={cn(
+              'w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-bold transition-all bg-gradient-to-r from-teal-500/20 to-cyan-500/20 hover:from-teal-500/30 hover:to-cyan-500/30 text-teal-300 border border-teal-500/30 mb-1',
+              collapsed && 'justify-center'
+            )}
+          >
+            <Trophy className="w-4 h-4 shrink-0 text-amber-400" />
+            {!collapsed && <span className="truncate">{t('SIH Pitch Deck')}</span>}
+          </button>
 
           <button
             onClick={() => setCollapsed(!collapsed)}
@@ -216,12 +268,22 @@ export function Sidebar() {
             )}
           >
             <item.icon className="w-5 h-5" />
-            <span>{item.label.split(' ')[0]}</span>
+            <span>{t(item.label.split(' ')[0])}</span>
           </Link>
         ))}
       </nav>
 
+      {/* Pitch Deck Modal */}
+      <PitchDeckDemoModal
+        isOpen={showPitchDeck}
+        onClose={() => setShowPitchDeck(false)}
+      />
 
+      {/* Emergency SOS Modal */}
+      <SOSEmergencyModal
+        isOpen={showSOS}
+        onClose={() => setShowSOS(false)}
+      />
     </>
   );
 }

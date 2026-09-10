@@ -8,6 +8,7 @@ import { orchestrate, AgentOutput } from '@/lib/orchestrator';
 import { ChatMessage, AgentType, EvidencePayload } from '@/types/marine';
 import { DemoModeBanner, WhyEvidenceModal, AudioAdvisoryPlayer, ProactiveAlertBanner } from '@/components/cards';
 import { translateAdvisory, speakVernacularAdvisory, preloadVoices, getLanguageBCP47 } from '@/lib/i18n-engine';
+import { useSelectedLanguage, setSelectedLanguage } from '@/lib/language-store';
 
 const EXAMPLE_QUESTIONS = [
   'Where is the nearest Potential Fishing Zone (PFZ) today?',
@@ -28,7 +29,7 @@ export default function AssistantPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [language, setLanguage] = useState('English');
+  const language = useSelectedLanguage();
   const [showLangMenu, setShowLangMenu] = useState(false);
   const [activeAgents, setActiveAgents] = useState<Set<AgentType>>(new Set());
   const [completedAgents, setCompletedAgents] = useState<Set<AgentType>>(new Set());
@@ -193,7 +194,7 @@ export default function AssistantPage() {
                     {LANGUAGES.map((lang) => (
                       <button
                         key={lang}
-                        onClick={() => { setLanguage(lang); setShowLangMenu(false); }}
+                        onClick={() => { setSelectedLanguage(lang); setShowLangMenu(false); }}
                         className={cn(
                           'w-full text-left px-3 py-1.5 text-sm hover:bg-white/5 transition-colors',
                           lang === language ? 'text-teal-400' : 'text-slate-400'

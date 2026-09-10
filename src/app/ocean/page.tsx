@@ -17,16 +17,53 @@ export default function OceanPage() {
 
   const loadData = useCallback(async (loc?: CoastalLocation) => {
     try {
-      const res = await fetch(marineApiUrl(loc ?? getSelectedLocation()));
+      const targetLoc = loc ?? getSelectedLocation();
+      const res = await fetch(marineApiUrl(targetLoc));
       if (res.ok) {
         const live = await res.json();
         const baseParams = getMockOceanParameters();
         if (live.ocean) {
           baseParams.forEach(p => {
-            if (p.id === 'sst') p.value = +live.ocean.sst.toFixed(1);
-            if (p.id === 'chlorophyll') p.value = +live.ocean.chlorophyll.toFixed(2);
-            if (p.id === 'salinity') p.value = +live.ocean.salinity.toFixed(1);
-            if (p.id === 'current_speed') p.value = +live.ocean.currentSpeed.toFixed(1);
+            if (p.id === 'sst') {
+              p.value = +live.ocean.sst.toFixed(1);
+              p.forecast = [
+                { time: 'Current', value: p.value },
+                { time: '+6h', value: +(p.value + 0.1).toFixed(1) },
+                { time: '+12h', value: +(p.value - 0.2).toFixed(1) },
+                { time: '+24h', value: +(p.value - 0.4).toFixed(1) },
+                { time: '+48h', value: +(p.value + 0.2).toFixed(1) },
+              ];
+            }
+            if (p.id === 'chlorophyll') {
+              p.value = +live.ocean.chlorophyll.toFixed(2);
+              p.forecast = [
+                { time: 'Current', value: p.value },
+                { time: '+6h', value: +(p.value * 1.05).toFixed(2) },
+                { time: '+12h', value: +(p.value * 1.02).toFixed(2) },
+                { time: '+24h', value: +(p.value * 0.98).toFixed(2) },
+                { time: '+48h', value: +(p.value * 1.08).toFixed(2) },
+              ];
+            }
+            if (p.id === 'salinity') {
+              p.value = +live.ocean.salinity.toFixed(1);
+              p.forecast = [
+                { time: 'Current', value: p.value },
+                { time: '+6h', value: p.value },
+                { time: '+12h', value: +(p.value + 0.1).toFixed(1) },
+                { time: '+24h', value: +(p.value + 0.2).toFixed(1) },
+                { time: '+48h', value: p.value },
+              ];
+            }
+            if (p.id === 'current_speed') {
+              p.value = +live.ocean.currentSpeed.toFixed(1);
+              p.forecast = [
+                { time: 'Current', value: p.value },
+                { time: '+6h', value: +(p.value * 1.1).toFixed(1) },
+                { time: '+12h', value: +(p.value * 0.9).toFixed(1) },
+                { time: '+24h', value: +(p.value * 1.2).toFixed(1) },
+                { time: '+48h', value: +(p.value * 1.0).toFixed(1) },
+              ];
+            }
           });
         }
         setParams(baseParams);

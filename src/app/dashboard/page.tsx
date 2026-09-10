@@ -10,6 +10,7 @@ import { getGreeting, formatCoordinate } from '@/lib/utils';
 import { OceanMetric, SafetyScore, Alert } from '@/types/marine';
 import { getSelectedLocation, marineApiUrl, DEFAULT_LOCATION } from '@/lib/location-store';
 import type { CoastalLocation } from '@/lib/orchestrator';
+import { evaluateProactiveAlerts } from '@/lib/alert-engine';
 
 export default function DashboardPage() {
   const [metrics, setMetrics] = useState<OceanMetric[]>([]);
@@ -74,6 +75,27 @@ export default function DashboardPage() {
           },
         ];
         setMetrics(liveMetrics);
+
+        // Evaluate live proactive alerts
+        const liveProactive = evaluateProactiveAlerts(data);
+        if (liveProactive.length > 0) {
+          setAlerts(liveProactive.map(pa => ({
+            id: pa.id,
+            type: pa.type === 'cyclone' ? 'storm' : pa.type === 'high_waves' ? 'high_waves' : pa.type === 'strong_wind' ? 'strong_wind' : pa.type === 'geofence' ? 'restricted_zone' : 'storm',
+            severity: pa.severity === 'CRITICAL' ? 'CRITICAL' : pa.severity === 'HIGH' ? 'HIGH' : pa.severity === 'MEDIUM' ? 'MEDIUM' : 'LOW',
+            title: pa.title,
+            description: pa.description,
+            location: pa.location,
+            area: { lat: loc.lat, lon: loc.lon },
+            startTime: pa.timestamp,
+            endTime: new Date(Date.now() + 86400000).toISOString(),
+            recommendation: pa.recommendation,
+            isActive: true,
+            source: 'ORCA Live Real-Time Hazard Pipeline',
+          })));
+        } else {
+          setAlerts(getMockAlerts().filter(a => a.isActive).slice(0, 3));
+        }
       } else {
         setMetrics(getMockDashboardMetrics());
         setSafety(getMockSafety());
@@ -86,7 +108,6 @@ export default function DashboardPage() {
 
   useEffect(() => {
     loadLiveMarineData();
-    setAlerts(getMockAlerts().filter(a => a.isActive).slice(0, 3));
     setTime(new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }));
 
     const interval = setInterval(() => {

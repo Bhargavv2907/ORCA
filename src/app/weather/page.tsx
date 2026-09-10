@@ -16,32 +16,88 @@ export default function WeatherPage() {
   const [activeChart, setActiveChart] = useState('wind');
 
   const loadLiveWeather = useCallback(async () => {
+    const loc = getSelectedLocation();
     try {
-      const res = await fetch(marineApiUrl(getSelectedLocation()));
-      if (res.ok) {
-        const live = await res.json();
-        const baseForecast = getMockForecast();
-        if (baseForecast.length > 0 && live.weather && live.waves) {
-          baseForecast[0].windSpeed = live.weather.windSpeed;
-          baseForecast[0].windDirection = live.weather.windDirection;
-          baseForecast[0].waveHeight = live.waves.height;
-          baseForecast[0].wavePeriod = live.waves.period;
-          baseForecast[0].temperature = live.weather.temperature;
-          baseForecast[0].pressure = live.weather.pressure;
-          baseForecast[0].rainfall = live.weather.rainfall;
+      const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${loc.lat}&longitude=${loc.lon}&hourly=temperature_2m,relative_humidity_2m,surface_pressure,wind_speed_10m,wind_direction_10m,rain&daily=temperature_2m_max,wind_speed_10m_max,rain_sum&forecast_days=7`;
+      const marineUrl = `https://marine-api.open-meteo.com/v1/marine?latitude=${loc.lat}&longitude=${loc.lon}&hourly=wave_height,wave_period,wave_direction,swell_wave_height&daily=wave_height_max&forecast_days=7`;
+
+      const [wRes, mRes] = await Promise.all([
+        fetch(weatherUrl).then(r => r.json()).catch(() => null),
+        fetch(marineUrl).then(r => r.json()).catch(() => null),
+      ]);
+
+      if (wRes?.hourly && mRes?.hourly) {
+        const hourlyPoints: ForecastPoint[] = [];
+        for (let i = 0; i < 24; i++) {
+          const timeIso = wRes.hourly.time[i] || new Date().toISOString();
+          const hourLabel = new Date(timeIso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+          const windSpeed = +(wRes.hourly.wind_speed_10m[i] || 10).toFixed(1);
+          const waveHeight = +(mRes.hourly.wave_height[i] || 0.8).toFixed(1);
+          const isDangerous = windSpeed > 30 || waveHeight > 2.5;
+
+          const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+          const windDeg = wRes.hourly.wind_direction_10m?.[i] || 225;
+          const windDir = dirs[Math.round(windDeg / 45) % 8];
+
+          hourlyPoints.push({
+            time: timeIso,
+            label: hourLabel,
+            windSpeed,
+            windDirection: windDir,
+            waveHeight,
+            wavePeriod: +(mRes.hourly.wave_period[i] || 6).toFixed(1),
+            temperature: +(wRes.hourly.temperature_2m[i] || 28).toFixed(1),
+            pressure: +(wRes.hourly.surface_pressure[i] || 1012).toFixed(0),
+            rainfall: +(wRes.hourly.rain[i] || 0).toFixed(1),
+            isDangerous,
+          });
         }
-        setForecast(baseForecast);
+        setForecast(hourlyPoints);
       } else {
         setForecast(getMockForecast());
       }
+
+      if (wRes?.daily && mRes?.daily) {
+        const weekPoints: WeatherForecast[] = [];
+        for (let i = 0; i < 7; i++) {
+          const timeIso = wRes.daily.time[i] || new Date(Date.now() + i * 86400000).toISOString();
+          const windSpeed = +(wRes.daily.wind_speed_10m_max[i] || 15).toFixed(1);
+          const waveHeight = +(mRes.daily.wave_height_max[i] || 1.2).toFixed(1);
+
+          weekPoints.push({
+            time: timeIso,
+            weather: {
+              windSpeed,
+              windDirection: 'SW',
+              windDegrees: 225,
+              temperature: +(wRes.daily.temperature_2m_max[i] || 29).toFixed(1),
+              humidity: 80,
+              pressure: 1012,
+              visibility: 10,
+              cloudCover: 20,
+              rainfall: +(wRes.daily.rain_sum?.[i] || 0).toFixed(1),
+              uvIndex: 6,
+              description: waveHeight > 2.5 ? 'Rough seas forecast' : 'Moderate ocean conditions',
+              icon: waveHeight > 2.5 ? 'cloud-rain' : 'sun',
+            },
+            waveHeight,
+            wavePeriod: 7,
+            swellHeight: +(waveHeight * 0.8).toFixed(1),
+            swellDirection: 'SW',
+          });
+        }
+        setWeekForecast(weekPoints);
+      } else {
+        setWeekForecast(getMock7DayForecast());
+      }
     } catch {
       setForecast(getMockForecast());
+      setWeekForecast(getMock7DayForecast());
     }
   }, []);
 
   useEffect(() => {
     loadLiveWeather();
-    setWeekForecast(getMock7DayForecast());
   }, [loadLiveWeather]);
 
   const chartConfigs: Record<string, { key: string; color: string; label: string; unit: string }> = {

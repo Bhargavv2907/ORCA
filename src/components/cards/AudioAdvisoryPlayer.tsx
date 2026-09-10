@@ -4,15 +4,17 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Volume2, VolumeX, Globe, Play, Square, FastForward } from 'lucide-react';
 import { COASTAL_LANGUAGES, translateAdvisory, speakVernacularAdvisory, stopVernacularAdvisory, preloadVoices } from '@/lib/i18n-engine';
+import { getSelectedLanguage, useSelectedLanguage, setSelectedLanguage } from '@/lib/language-store';
 
 interface AudioAdvisoryPlayerProps {
   text: string;
   defaultLanguage?: string;
 }
 
-export function AudioAdvisoryPlayer({ text, defaultLanguage = 'English' }: AudioAdvisoryPlayerProps) {
+export function AudioAdvisoryPlayer({ text, defaultLanguage }: AudioAdvisoryPlayerProps) {
+  const globalLanguage = useSelectedLanguage();
   const [isPlaying, setIsPlaying] = useState(false);
-  const [language, setLanguage] = useState(defaultLanguage);
+  const [language, setLanguage] = useState(defaultLanguage || globalLanguage);
   const [speed, setSpeed] = useState(1.0);
   const [translatedPreview, setTranslatedPreview] = useState(text);
 
@@ -21,10 +23,23 @@ export function AudioAdvisoryPlayer({ text, defaultLanguage = 'English' }: Audio
     preloadVoices();
   }, []);
 
+  // Sync with global store if defaultLanguage wasn't explicitly forced
   useEffect(() => {
-    setLanguage(defaultLanguage);
-  }, [defaultLanguage]);
+    if (!defaultLanguage && globalLanguage) {
+      setLanguage(globalLanguage);
+    }
+  }, [globalLanguage, defaultLanguage]);
 
+  useEffect(() => {
+    setLanguage(getSelectedLanguage());
+    const handler = (e: Event) => {
+      const lang = (e as CustomEvent<any>).detail;
+      if (lang && lang.name) setLanguage(lang.name);
+      else if (typeof lang === 'string') setLanguage(lang);
+    };
+    window.addEventListener('orca-language-changed', handler);
+    return () => window.removeEventListener('orca-language-changed', handler);
+  }, []);
   useEffect(() => {
     setTranslatedPreview(translateAdvisory(text, language));
   }, [text, language]);
@@ -82,9 +97,11 @@ export function AudioAdvisoryPlayer({ text, defaultLanguage = 'English' }: Audio
           <select
             value={language}
             onChange={(e) => {
+              const newLang = e.target.value;
               stopVernacularAdvisory();
               setIsPlaying(false);
-              setLanguage(e.target.value);
+              setLanguage(newLang);
+              setSelectedLanguage(newLang);
             }}
             className="bg-navy-800 text-slate-200 text-[11px] font-semibold px-2 py-1 rounded-lg border border-navy-700 outline-none cursor-pointer hover:border-teal-500/40"
           >

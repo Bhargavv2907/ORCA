@@ -11,6 +11,8 @@ import { MapAction } from '@/lib/agents/schemas';
 import { cn } from '@/lib/utils';
 import { getMockFishingZones, getMockRoutes, getMockVessels } from '@/data/mock-data';
 import { ALL_INDIAN_PORTS } from '@/data/indian-ports';
+import { generateOfflineRoutes } from '@/lib/offline-routing';
+import { generateRealTimeFishingZones } from '@/services/marine/pfz';
 
 // Import Leaflet CSS dynamically in client component
 import 'leaflet/dist/leaflet.css';
@@ -264,9 +266,12 @@ export default function WorldMapComponent({
   // Serialize activeLayers into a stable string so useEffect deps work correctly
   const activeLayersKey = useMemo(() => [...activeLayers].sort().join(','), [activeLayers]);
 
+  const centerLat = selectedRegion?.center?.lat ?? 18.95;
+  const centerLon = selectedRegion?.center?.lon ?? 72.82;
+
   const zonesList = useMemo(() => {
-    return fishingZones.length > 0 ? fishingZones : getMockFishingZones();
-  }, [fishingZones]);
+    return fishingZones.length > 0 ? fishingZones : generateRealTimeFishingZones(centerLat, centerLon);
+  }, [fishingZones, centerLat, centerLon]);
 
   const vesselsList = useMemo(() => {
     return vessels && vessels.length > 0 ? vessels : getMockVessels();
@@ -832,7 +837,7 @@ export default function WorldMapComponent({
       }
 
       if (route && route.length > 1) {
-        const coords: [number, number][] = route.map(r => [r.lat, r.lon]);
+        const coords: [number, number][] = route.map((r: { lat: number; lon: number }) => [r.lat, r.lon]);
 
         // Outer Glow Buffer (Google Maps marine style)
         L.polyline(coords, {
@@ -918,15 +923,17 @@ export default function WorldMapComponent({
       }
 
       if (mapAction === 'compare_routes') {
-        const mockRoutes = getMockRoutes();
-        const r1Coords: [number, number][] = mockRoutes[1].waypoints.map(w => [w.lat, w.lon]);
-        const r2Coords: [number, number][] = mockRoutes[2].waypoints.map(w => [w.lat, w.lon]);
+        const centerLat = zonesList[0]?.center.lat || 18.95;
+        const centerLon = zonesList[0]?.center.lon || 72.82;
+        const generatedRoutes = generateOfflineRoutes({ lat: centerLat, lon: centerLon }, { lat: centerLat - 0.2, lon: centerLon - 0.4 });
+        const r1Coords: [number, number][] = generatedRoutes[0].waypoints.map((w: { lat: number; lon: number }) => [w.lat, w.lon]);
+        const r2Coords: [number, number][] = generatedRoutes[1].waypoints.map((w: { lat: number; lon: number }) => [w.lat, w.lon]);
 
         const polylineSafest = L.polyline(r1Coords, { color: '#10b981', weight: 5, opacity: 0.9 }).addTo(layerGroup);
-        polylineSafest.bindTooltip('🟢 Route B (Safest - 38 km, Safety 96%)', { sticky: true });
+        polylineSafest.bindTooltip(`🟢 ${generatedRoutes[0].name} (${generatedRoutes[0].distance} km)`, { sticky: true });
 
         const polylineShortest = L.polyline(r2Coords, { color: '#f59e0b', weight: 4, dashArray: '6, 8', opacity: 0.8 }).addTo(layerGroup);
-        polylineShortest.bindTooltip('🟡 Route C (Shortest - 29 km, Safety 72%, Higher Waves)', { sticky: true });
+        polylineShortest.bindTooltip(`🟡 ${generatedRoutes[1].name} (${generatedRoutes[1].distance} km)`, { sticky: true });
 
         map.flyToBounds([...r1Coords, ...r2Coords], { padding: [60, 60], duration: 1.5 });
       }
