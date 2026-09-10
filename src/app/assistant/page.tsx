@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import { orchestrate, AgentOutput } from '@/lib/orchestrator';
 import { ChatMessage, AgentType, EvidencePayload } from '@/types/marine';
 import { DemoModeBanner, WhyEvidenceModal, AudioAdvisoryPlayer, ProactiveAlertBanner } from '@/components/cards';
-import { translateAdvisory } from '@/lib/i18n-engine';
+import { translateAdvisory, speakVernacularAdvisory } from '@/lib/i18n-engine';
 
 const EXAMPLE_QUESTIONS = [
   'Where is the nearest Potential Fishing Zone (PFZ) today?',
@@ -79,6 +79,11 @@ export default function AssistantPage() {
         geofenceResult: response.geofenceResult,
       };
       setMessages(prev => [...prev, assistantMsg]);
+
+      // Automatically speak answer aloud in active language
+      if (response.recommendation) {
+        speakVernacularAdvisory(response.recommendation, language);
+      }
     } catch {
       const errorMsg: ChatMessage = {
         id: (Date.now() + 1).toString(),
