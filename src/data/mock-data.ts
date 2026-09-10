@@ -684,13 +684,13 @@ export function getMockDataSources(): DataSource[] {
     },
     {
       id: 'marinetraffic',
-      name: 'MarineTraffic AIS',
+      name: 'MarineTraffic AIS Stream',
       description: 'Real-time global Automatic Identification System (AIS) vessel tracking, live vessel positions, shipping lane density, and route collision avoidance.',
       dataProvided: ['Live Vessel Positions', 'Shipping Lane Density', 'Vessel Speed & Heading', 'Commercial Traffic Channels', 'AIS Route Avoidance'],
       updateFrequency: 'Real-time AIS Stream',
-      dataType: 'AIS Live Feed',
+      dataType: 'AIS Live Feed (Direct API)',
       status: 'LIVE',
-      url: 'https://www.marinetraffic.com/en/ais/home/centerx:-12.0/centery:25.0/zoom:4',
+      url: '/api/vessels',
       isConfigured: true,
     },
     {
