@@ -173,27 +173,67 @@ export function getMockFishingZones(): FishingZone[] {
 
 // ---- Vessels ----
 export function getMockVessels(): Vessel[] {
+  const now = new Date().toISOString();
   return [
-    { id: 'INF-2847', name: 'Sagar Mitra', type: 'fishing', position: { lat: 18.88, lon: 72.70 }, speed: 4.2, heading: 215, activity: 'Fishing', lastUpdated: new Date().toISOString(), flag: 'IN', length: 12 },
-    { id: 'INF-3102', name: 'Matsya Rani', type: 'fishing', position: { lat: 18.72, lon: 72.45 }, speed: 6.1, heading: 180, activity: 'Transit', lastUpdated: new Date().toISOString(), flag: 'IN', length: 15 },
-    { id: 'INF-1965', name: 'Deep Blue', type: 'fishing', position: { lat: 18.95, lon: 72.15 }, speed: 0.3, heading: 90, activity: 'Anchored', lastUpdated: new Date().toISOString(), flag: 'IN', length: 18 },
-    { id: 'INC-8841', name: 'Mumbai Express', type: 'commercial', position: { lat: 18.82, lon: 72.88 }, speed: 12.5, heading: 270, activity: 'Transit', lastUpdated: new Date().toISOString(), flag: 'IN', length: 185 },
-    { id: 'INF-4420', name: 'Samudra', type: 'fishing', position: { lat: 18.65, lon: 72.30 }, speed: 3.8, heading: 165, activity: 'Fishing', lastUpdated: new Date().toISOString(), flag: 'IN', length: 14 },
-    { id: 'INF-5591', name: 'Neel Kamal', type: 'fishing', position: { lat: 19.02, lon: 72.60 }, speed: 5.5, heading: 200, activity: 'Transit', lastUpdated: new Date().toISOString(), flag: 'IN', length: 11 },
-    { id: 'INC-7723', name: 'Arabian Star', type: 'cargo', position: { lat: 18.50, lon: 72.95 }, speed: 14.2, heading: 310, activity: 'Transit', lastUpdated: new Date().toISOString(), flag: 'PA', length: 220 },
-    { id: 'INF-6678', name: 'Meenakshi', type: 'fishing', position: { lat: 18.78, lon: 72.55 }, speed: 2.1, heading: 45, activity: 'Fishing', lastUpdated: new Date().toISOString(), flag: 'IN', length: 13 },
-    { id: 'INP-3340', name: 'Mandovi Queen', type: 'passenger', position: { lat: 18.92, lon: 72.83 }, speed: 8.0, heading: 0, activity: 'Docked', lastUpdated: new Date().toISOString(), flag: 'IN', length: 42 },
-    { id: 'INF-8892', name: 'Sagari', type: 'fishing', position: { lat: 18.55, lon: 72.20 }, speed: 4.7, heading: 190, activity: 'Fishing', lastUpdated: new Date().toISOString(), flag: 'IN', length: 16 },
-    { id: 'INF-2215', name: 'Jal Devi', type: 'fishing', position: { lat: 19.10, lon: 72.48 }, speed: 0.5, heading: 120, activity: 'Anchored', lastUpdated: new Date().toISOString(), flag: 'IN', length: 10 },
-    { id: 'INC-4456', name: 'Coastal Runner', type: 'commercial', position: { lat: 18.40, lon: 72.78 }, speed: 10.8, heading: 255, activity: 'Transit', lastUpdated: new Date().toISOString(), flag: 'SG', length: 95 },
-    { id: 'INF-7734', name: 'Varuna', type: 'fishing', position: { lat: 18.68, lon: 72.38 }, speed: 3.2, heading: 175, activity: 'Fishing', lastUpdated: new Date().toISOString(), flag: 'IN', length: 14 },
-    { id: 'INF-9901', name: 'Priya', type: 'fishing', position: { lat: 18.85, lon: 72.62 }, speed: 5.9, heading: 230, activity: 'Transit', lastUpdated: new Date().toISOString(), flag: 'IN', length: 12 },
-    { id: 'INF-1123', name: 'Ocean Pearl', type: 'fishing', position: { lat: 18.58, lon: 72.28 }, speed: 1.8, heading: 300, activity: 'Fishing', lastUpdated: new Date().toISOString(), flag: 'IN', length: 17 },
-    { id: 'INC-6609', name: 'Bharat Sagar', type: 'cargo', position: { lat: 18.45, lon: 73.05 }, speed: 11.5, heading: 180, activity: 'Transit', lastUpdated: new Date().toISOString(), flag: 'IN', length: 165 },
-    { id: 'INF-3367', name: 'Lakshmi', type: 'fishing', position: { lat: 19.05, lon: 72.42 }, speed: 4.0, heading: 210, activity: 'Fishing', lastUpdated: new Date().toISOString(), flag: 'IN', length: 13 },
-    { id: 'INF-5548', name: 'Sindhu', type: 'fishing', position: { lat: 18.75, lon: 72.50 }, speed: 0.2, heading: 0, activity: 'Anchored', lastUpdated: new Date().toISOString(), flag: 'IN', length: 15 },
-    { id: 'INF-8870', name: 'Triton', type: 'fishing', position: { lat: 18.62, lon: 72.18 }, speed: 6.3, heading: 195, activity: 'Transit', lastUpdated: new Date().toISOString(), flag: 'IN', length: 19 },
-    { id: 'INO-2244', name: 'Sea Breeze', type: 'other', position: { lat: 18.98, lon: 72.75 }, speed: 7.5, heading: 135, activity: 'Patrol', lastUpdated: new Date().toISOString(), flag: 'IN', length: 28 },
+    // 1. Gujarat / Kutch & Saurashtra Coast
+    { id: 'INC-1001', name: 'Kandla Star', type: 'cargo', position: { lat: 22.85, lon: 70.05 }, speed: 14.5, heading: 240, activity: 'Transit', lastUpdated: now, flag: 'IN', length: 195 },
+    { id: 'INF-1002', name: 'Saurashtra Queen', type: 'fishing', position: { lat: 20.90, lon: 70.36 }, speed: 5.2, heading: 180, activity: 'Fishing', lastUpdated: now, flag: 'IN', length: 15 },
+    { id: 'INC-1003', name: 'Mundra Express', type: 'commercial', position: { lat: 22.35, lon: 69.75 }, speed: 16.0, heading: 290, activity: 'Transit', lastUpdated: now, flag: 'MH', length: 240 },
+    { id: 'INF-1004', name: 'Dwarka Sea King', type: 'fishing', position: { lat: 21.80, lon: 68.90 }, speed: 4.1, heading: 150, activity: 'Fishing', lastUpdated: now, flag: 'IN', length: 14 },
+
+    // 2. Konkan / Maharashtra Coast
+    { id: 'INC-8841', name: 'Mumbai Express', type: 'commercial', position: { lat: 18.82, lon: 72.88 }, speed: 12.5, heading: 270, activity: 'Transit', lastUpdated: now, flag: 'IN', length: 185 },
+    { id: 'INF-2847', name: 'Sagar Mitra', type: 'fishing', position: { lat: 18.88, lon: 72.70 }, speed: 4.2, heading: 215, activity: 'Fishing', lastUpdated: now, flag: 'IN', length: 12 },
+    { id: 'INC-7723', name: 'Arabian Star', type: 'cargo', position: { lat: 18.50, lon: 72.95 }, speed: 14.2, heading: 310, activity: 'Transit', lastUpdated: now, flag: 'PA', length: 220 },
+    { id: 'INF-3102', name: 'Matsya Rani', type: 'fishing', position: { lat: 18.72, lon: 72.45 }, speed: 6.1, heading: 180, activity: 'Transit', lastUpdated: now, flag: 'IN', length: 15 },
+    { id: 'INP-3340', name: 'Mandovi Queen', type: 'passenger', position: { lat: 18.92, lon: 72.83 }, speed: 8.0, heading: 0, activity: 'Docked', lastUpdated: now, flag: 'IN', length: 42 },
+    { id: 'INF-8892', name: 'Sagari', type: 'fishing', position: { lat: 18.55, lon: 72.20 }, speed: 4.7, heading: 190, activity: 'Fishing', lastUpdated: now, flag: 'IN', length: 16 },
+
+    // 3. Goa Coast
+    { id: 'INC-3001', name: 'Zuari Trader', type: 'cargo', position: { lat: 15.42, lon: 73.75 }, speed: 11.8, heading: 210, activity: 'Transit', lastUpdated: now, flag: 'IN', length: 140 },
+    { id: 'INF-3002', name: 'Goa Sea Princess', type: 'fishing', position: { lat: 15.25, lon: 73.65 }, speed: 3.9, heading: 140, activity: 'Fishing', lastUpdated: now, flag: 'IN', length: 13 },
+    { id: 'INO-3003', name: 'Mandovi Patrol', type: 'other', position: { lat: 15.50, lon: 73.78 }, speed: 18.0, heading: 320, activity: 'Patrol', lastUpdated: now, flag: 'IN', length: 32 },
+
+    // 4. Kanara / Karnataka Coast
+    { id: 'INC-4001', name: 'Mangalore Pride', type: 'commercial', position: { lat: 12.92, lon: 74.75 }, speed: 13.4, heading: 260, activity: 'Transit', lastUpdated: now, flag: 'SG', length: 175 },
+    { id: 'INF-4002', name: 'Karwar Fisher', type: 'fishing', position: { lat: 14.80, lon: 74.05 }, speed: 5.0, heading: 190, activity: 'Fishing', lastUpdated: now, flag: 'IN', length: 14 },
+    { id: 'INF-4003', name: 'Netravati', type: 'fishing', position: { lat: 13.34, lon: 74.60 }, speed: 4.6, heading: 220, activity: 'Fishing', lastUpdated: now, flag: 'IN', length: 15 },
+
+    // 5. Malabar / Kerala Coast
+    { id: 'INC-5001', name: 'Cochin Express', type: 'cargo', position: { lat: 9.96, lon: 76.20 }, speed: 15.1, heading: 280, activity: 'Transit', lastUpdated: now, flag: 'IN', length: 210 },
+    { id: 'INF-5002', name: 'Kollam Pearl', type: 'fishing', position: { lat: 8.89, lon: 76.45 }, speed: 5.8, heading: 170, activity: 'Fishing', lastUpdated: now, flag: 'IN', length: 16 },
+    { id: 'INC-5003', name: 'Vizhinjam Titan', type: 'commercial', position: { lat: 8.38, lon: 76.90 }, speed: 17.5, heading: 130, activity: 'Transit', lastUpdated: now, flag: 'LR', length: 280 },
+    { id: 'INF-5004', name: 'Malabar Queen', type: 'fishing', position: { lat: 9.50, lon: 76.10 }, speed: 3.5, heading: 200, activity: 'Fishing', lastUpdated: now, flag: 'IN', length: 14 },
+
+    // 6. Coromandel / Tamil Nadu Coast
+    { id: 'INC-6001', name: 'Chennai Pioneer', type: 'cargo', position: { lat: 13.12, lon: 80.32 }, speed: 13.8, heading: 90, activity: 'Transit', lastUpdated: now, flag: 'IN', length: 205 },
+    { id: 'INC-6002', name: 'Tuticorin Liner', type: 'commercial', position: { lat: 8.75, lon: 78.22 }, speed: 14.9, heading: 160, activity: 'Transit', lastUpdated: now, flag: 'IN', length: 190 },
+    { id: 'INF-6003', name: 'Kanyakumari Wave', type: 'fishing', position: { lat: 8.08, lon: 77.60 }, speed: 4.8, heading: 210, activity: 'Fishing', lastUpdated: now, flag: 'IN', length: 17 },
+    { id: 'INF-6004', name: 'Ennore Fisher', type: 'fishing', position: { lat: 13.25, lon: 80.35 }, speed: 3.2, heading: 75, activity: 'Fishing', lastUpdated: now, flag: 'IN', length: 12 },
+
+    // 7. Andhra Coast
+    { id: 'INC-7001', name: 'Vizag Giant', type: 'cargo', position: { lat: 17.65, lon: 83.32 }, speed: 12.9, heading: 110, activity: 'Transit', lastUpdated: now, flag: 'IN', length: 230 },
+    { id: 'INF-7002', name: 'Kakinada Sea King', type: 'fishing', position: { lat: 16.98, lon: 82.35 }, speed: 4.3, heading: 145, activity: 'Fishing', lastUpdated: now, flag: 'IN', length: 15 },
+    { id: 'INC-7003', name: 'Krishnapatnam Trader', type: 'commercial', position: { lat: 14.25, lon: 80.20 }, speed: 11.2, heading: 85, activity: 'Transit', lastUpdated: now, flag: 'MH', length: 160 },
+    { id: 'INF-7004', name: 'Godavari Ray', type: 'fishing', position: { lat: 16.50, lon: 82.50 }, speed: 5.1, heading: 195, activity: 'Fishing', lastUpdated: now, flag: 'IN', length: 13 },
+
+    // 8. Utkal / Odisha Coast
+    { id: 'INC-8001', name: 'Paradip Titan', type: 'cargo', position: { lat: 20.25, lon: 86.72 }, speed: 13.0, heading: 120, activity: 'Transit', lastUpdated: now, flag: 'IN', length: 245 },
+    { id: 'INF-8002', name: 'Dhamra Fisherman', type: 'fishing', position: { lat: 20.80, lon: 87.05 }, speed: 4.5, heading: 165, activity: 'Fishing', lastUpdated: now, flag: 'IN', length: 14 },
+    { id: 'INO-8003', name: 'Gopalpur Coast Guard', type: 'other', position: { lat: 19.25, lon: 84.95 }, speed: 21.0, heading: 45, activity: 'Patrol', lastUpdated: now, flag: 'IN', length: 35 },
+
+    // 9. Bengal / West Bengal Coast
+    { id: 'INC-9001', name: 'Haldia Runner', type: 'cargo', position: { lat: 22.02, lon: 88.12 }, speed: 10.5, heading: 180, activity: 'Transit', lastUpdated: now, flag: 'IN', length: 180 },
+    { id: 'INF-9002', name: 'Digha Matsya', type: 'fishing', position: { lat: 21.55, lon: 87.60 }, speed: 5.4, heading: 150, activity: 'Fishing', lastUpdated: now, flag: 'IN', length: 15 },
+    { id: 'INC-9003', name: 'Hooghly Navigator', type: 'commercial', position: { lat: 21.75, lon: 88.00 }, speed: 8.9, heading: 200, activity: 'Transit', lastUpdated: now, flag: 'IN', length: 150 },
+
+    // 10. Lakshadweep Archipelago
+    { id: 'INP-10001', name: 'Kavaratti Island Ferry', type: 'passenger', position: { lat: 10.56, lon: 72.64 }, speed: 12.0, heading: 270, activity: 'Transit', lastUpdated: now, flag: 'IN', length: 55 },
+    { id: 'INF-10002', name: 'Minicoy Tuna Hunter', type: 'fishing', position: { lat: 8.28, lon: 73.05 }, speed: 6.2, heading: 180, activity: 'Fishing', lastUpdated: now, flag: 'IN', length: 18 },
+
+    // 11. Andaman & Nicobar Islands
+    { id: 'INP-11001', name: 'Port Blair Sentinel', type: 'passenger', position: { lat: 11.62, lon: 92.75 }, speed: 11.5, heading: 45, activity: 'Transit', lastUpdated: now, flag: 'IN', length: 65 },
+    { id: 'INO-11002', name: 'Nicobar Patrol', type: 'other', position: { lat: 9.15, lon: 92.80 }, speed: 19.0, heading: 190, activity: 'Patrol', lastUpdated: now, flag: 'IN', length: 38 },
   ];
 }
 
