@@ -2,11 +2,12 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
+import Link from 'next/link';
 import {
   Wind, Waves, Thermometer, Navigation, Eye, Anchor,
   TrendingUp, TrendingDown, Minus, Fish, CloudSun, ShieldCheck,
   Map as MapIcon, Languages, Gauge, Droplets, CloudLightning,
-  Ship, AlertTriangle, Globe, Database, Brain, BarChart3, Compass
+  Ship, AlertTriangle, Globe, Database, Brain, BarChart3, Compass, ArrowUpRight
 } from 'lucide-react';
 import { cn, getMetricStatusColor, getMetricBgColor } from '@/lib/utils';
 import { OceanMetric, FishingZone, RouteOption, Alert, Agent, DataSource } from '@/types/marine';
@@ -116,6 +117,16 @@ export function FishingZoneCard({ zone, index = 0 }: { zone: FishingZone; index?
         <div className="flex justify-between"><span className="text-slate-400">Depth</span><span className="text-white font-medium">{zone.depth} m</span></div>
         <div className="flex justify-between"><span className="text-slate-400">Activity</span><span className="text-white font-medium">{zone.historicalActivity}</span></div>
         <div className="flex justify-between"><span className="text-slate-400">Distance</span><span className="text-white font-medium">{zone.distanceFromCoast} km</span></div>
+      </div>
+      <div className="mt-4 pt-3 border-t border-navy-700/40">
+        <Link
+          href={`/routes?dest=${encodeURIComponent(zone.name)}`}
+          className="w-full py-2 px-3 rounded-xl bg-teal-500/15 hover:bg-teal-500/25 border border-teal-500/30 text-teal-300 font-bold text-xs flex items-center justify-center gap-1.5 transition-all"
+        >
+          <Navigation className="w-3.5 h-3.5" />
+          <span>Plot Safe Route to {zone.name.split('—')[0].trim()}</span>
+          <ArrowUpRight className="w-3.5 h-3.5" />
+        </Link>
       </div>
     </motion.div>
   );

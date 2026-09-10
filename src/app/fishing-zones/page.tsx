@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Fish, Info, MapPin, Thermometer, Droplets, Navigation, Anchor, BarChart3, RefreshCw, Compass, Shield, Radio, ArrowUpRight } from 'lucide-react';
 import { FishingZoneCard, DemoModeBanner, LocationBadge } from '@/components/cards';
@@ -151,14 +152,14 @@ export default function FishingZonesPage() {
               </div>
 
               <div className="flex items-center justify-between pt-1">
-                <a
+                <Link
                   href={`/routes?dest=${encodeURIComponent(activeZone.name)}`}
                   className="w-full py-1.5 px-3 rounded-lg bg-gradient-to-r from-teal-500 to-cyan-500 text-navy-950 font-bold text-[11px] flex items-center justify-center gap-1 hover:shadow-lg transition-all"
                 >
                   <Navigation className="w-3.5 h-3.5" />
                   <span>Plot Safe Route to {activeZone.name.split('—')[0].trim()}</span>
                   <ArrowUpRight className="w-3.5 h-3.5" />
-                </a>
+                </Link>
               </div>
             </div>
           )}

@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -57,7 +58,8 @@ function getCoordsForInput(input: string, fallback: Coordinates): Coordinates {
   return OFFLINE_LOCATIONS[normalized] || fallback;
 }
 
-export default function RoutesPage() {
+function RoutesContent() {
+  const searchParams = useSearchParams();
   const [routes, setRoutes] = useState<RouteOption[]>([]);
   const [selectedSectorId, setSelectedSectorId] = useState('konkan'); // Konkan (Mumbai) default
   const [start, setStart] = useState('Sassoon Dock, Colaba');
@@ -70,6 +72,42 @@ export default function RoutesPage() {
   const [isDemoCollisionActive, setIsDemoCollisionActive] = useState(false);
   const [showVesselDetails, setShowVesselDetails] = useState(false);
   const [showHudOverlay, setShowHudOverlay] = useState(true);
+
+  // Sync destination, start & sector from URL query params (e.g. /routes?dest=Zone%20A)
+  useEffect(() => {
+    if (!searchParams) return;
+    const destParam = searchParams.get('dest') || searchParams.get('zone') || searchParams.get('target') || searchParams.get('destination');
+    const sectorParam = searchParams.get('sector');
+    const startParam = searchParams.get('start') || searchParams.get('origin');
+
+    if (destParam) {
+      const decoded = decodeURIComponent(destParam);
+      const matched = MOCK_INCOIS_PFZ_LIST.find(p =>
+        p.name.toLowerCase().includes(decoded.toLowerCase()) ||
+        decoded.toLowerCase().includes(p.name.toLowerCase()) ||
+        p.id.toLowerCase().includes(decoded.toLowerCase())
+      );
+      if (matched) {
+        setDestination(matched.name);
+      } else {
+        setDestination(decoded);
+      }
+    }
+
+    if (sectorParam) {
+      const matchedSector = INDIAN_COASTAL_SECTORS.find(s =>
+        s.id === sectorParam.toLowerCase() ||
+        s.name.toLowerCase().includes(sectorParam.toLowerCase())
+      );
+      if (matchedSector) {
+        setSelectedSectorId(matchedSector.id);
+      }
+    }
+
+    if (startParam) {
+      setStart(decodeURIComponent(startParam));
+    }
+  }, [searchParams]);
 
   // Vessel AIS State
   const [vesselData, setVesselData] = useState<{ totalVessels: number; trafficDensity: string; shippingLaneStatus: string; vessels: Vessel[]; source?: string; isDemonstrationMode?: boolean } | null>(null);
@@ -711,5 +749,18 @@ export default function RoutesPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function RoutesPage() {
+  return (
+    <Suspense fallback={
+      <div className="w-full h-screen bg-[#0a1628] flex flex-col items-center justify-center gap-3 text-teal-400">
+        <RefreshCw className="w-8 h-8 animate-spin" />
+        <p className="text-sm font-semibold tracking-wide">Loading ECDIS Nautical Chart Plotter...</p>
+      </div>
+    }>
+      <RoutesContent />
+    </Suspense>
   );
 }
