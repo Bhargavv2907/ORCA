@@ -636,15 +636,41 @@ export default function WorldMapComponent({
         map.flyTo(p, 8.5, { duration: 1.5 });
       }
 
-      if (mapAction === 'draw_route' && route && route.length > 1) {
+      if (route && route.length > 1) {
         const coords: [number, number][] = route.map(r => [r.lat, r.lon]);
         const polyline = L.polyline(coords, {
           color: '#10b981',
           weight: 5,
-          opacity: 0.9,
+          opacity: 0.95,
         }).addTo(layerGroup);
 
-        polyline.bindTooltip('✨ AI Recommended Safe Route (96% Safety Rating)', { sticky: true });
+        // Add Start marker (Green pin)
+        const startPt = coords[0];
+        const startIcon = L.divIcon({
+          className: 'custom-start-marker',
+          html: `<div class="relative flex items-center justify-center">
+            <span class="animate-ping absolute inline-flex h-6 w-6 rounded-full bg-emerald-400 opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-4 w-4 bg-emerald-400 border-2 border-navy-950 shadow-lg"></span>
+          </div>`,
+          iconSize: [24, 24],
+          iconAnchor: [12, 12],
+        });
+        L.marker(startPt, { icon: startIcon }).addTo(layerGroup).bindPopup('<b>🚩 Start Location</b>');
+
+        // Add Destination marker (Teal glowing target)
+        const endPt = coords[coords.length - 1];
+        const endIcon = L.divIcon({
+          className: 'custom-end-marker',
+          html: `<div class="relative flex items-center justify-center">
+            <span class="animate-ping absolute inline-flex h-8 w-8 rounded-full bg-cyan-400 opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-5 w-5 bg-cyan-400 border-2 border-navy-950 shadow-lg"></span>
+          </div>`,
+          iconSize: [28, 28],
+          iconAnchor: [14, 14],
+        });
+        L.marker(endPt, { icon: endIcon }).addTo(layerGroup).bindPopup(`<b>🎯 Destination: ${selectedZone || 'PFZ Target'}</b>`);
+
+        polyline.bindTooltip(`✨ Safe Navigation Route to ${selectedZone || 'Destination'}`, { sticky: true });
         lineLayerRef.current = polyline;
         map.flyToBounds(coords, { padding: [60, 60], duration: 1.5 });
       }

@@ -1,12 +1,25 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import { motion } from 'framer-motion';
-import { Route, MapPin, Navigation, Search, WifiOff, Wifi, Ship, ExternalLink } from 'lucide-react';
+import { Route, MapPin, Navigation, Search, WifiOff, Wifi, Ship, Layers, RefreshCw, Compass, ArrowRight } from 'lucide-react';
 import { RouteCard, DemoModeBanner } from '@/components/cards';
-import { getMockRoutes } from '@/data/mock-data';
-import { RouteOption, Coordinates } from '@/types/marine';
+import { getMockRoutes, getMockFishingZones, getMockVessels } from '@/data/mock-data';
+import { RouteOption, Coordinates, FishingZone, Vessel } from '@/types/marine';
 import { generateOfflineRoutes } from '@/lib/offline-routing';
+import { MapAction } from '@/lib/agents/schemas';
+
+// Dynamic import for Leaflet WorldMap (SSR disabled)
+const WorldMap = dynamic(() => import('@/components/world-map'), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-[450px] rounded-2xl bg-navy-950 flex flex-col items-center justify-center gap-3 text-teal-400 border border-navy-700/50">
+      <RefreshCw className="w-8 h-8 animate-spin" />
+      <p className="text-sm font-semibold tracking-wide">Loading Interactive Ocean Navigation Map...</p>
+    </div>
+  ),
+});
 
 const OFFLINE_LOCATIONS: Record<string, Coordinates> = {
   'mumbai': { lat: 18.95, lon: 72.82 },
@@ -19,7 +32,18 @@ const OFFLINE_LOCATIONS: Record<string, Coordinates> = {
   'zone c': { lat: 19.15, lon: 72.55 },
   'alibag': { lat: 18.64, lon: 72.87 },
   'vasai': { lat: 19.33, lon: 72.80 },
+  'dwarka': { lat: 21.80, lon: 69.10 },
+  'goa': { lat: 15.25, lon: 73.50 },
+  'kochi': { lat: 9.85, lon: 75.80 },
 };
+
+const DESTINATION_PRESETS = [
+  { label: '🎯 Fishing Zone A (Mumbai Shelf)', value: 'Fishing Zone A', coords: { lat: 18.62, lon: 72.15 } },
+  { label: '📍 Fishing Zone B (Alibag Shelf)', value: 'Fishing Zone B', coords: { lat: 18.80, lon: 72.40 } },
+  { label: '⚠️ Fishing Zone C (Offshore Deep)', value: 'Fishing Zone C', coords: { lat: 19.15, lon: 72.55 } },
+  { label: '🌊 Dwarka Thermal Front PFZ', value: 'Dwarka', coords: { lat: 21.80, lon: 69.10 } },
+  { label: '⚓ Marmagao Upwelling PFZ (Goa)', value: 'Goa', coords: { lat: 15.25, lon: 73.50 } },
+];
 
 function getCoordsForInput(input: string, fallback: Coordinates): Coordinates {
   const normalized = input.trim().toLowerCase();
@@ -30,11 +54,13 @@ export default function RoutesPage() {
   const [routes, setRoutes] = useState<RouteOption[]>([]);
   const [start, setStart] = useState('Mumbai Coast');
   const [destination, setDestination] = useState('Fishing Zone A');
+  const [selectedRouteIndex, setSelectedRouteIndex] = useState(1); // Default to recommended
   const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [isOffline, setIsOffline] = useState(false);
-  const [vesselData, setVesselData] = useState<{ totalVessels: number; trafficDensity: string; shippingLaneStatus: string; vessels: any[] } | null>(null);
+  const [vesselData, setVesselData] = useState<{ totalVessels: number; trafficDensity: string; shippingLaneStatus: string; vessels: Vessel[] } | null>(null);
   const [showVesselDetails, setShowVesselDetails] = useState(false);
+  const [fishingZones, setFishingZones] = useState<FishingZone[]>([]);
 
   useEffect(() => {
     // Set initial online/offline status
@@ -46,8 +72,10 @@ export default function RoutesPage() {
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
-    // Initial search
-    setRoutes(getMockRoutes());
+    // Initial search and fishing zones
+    const defaultRoutes = getMockRoutes();
+    setRoutes(defaultRoutes);
+    setFishingZones(getMockFishingZones());
     setHasSearched(true);
 
     // Fetch direct live AIS vessel telemetry API
@@ -66,33 +94,64 @@ export default function RoutesPage() {
     };
   }, []);
 
-  const handleSearch = async () => {
+  const handleSearch = async (targetDest?: string) => {
+    const destName = targetDest || destination;
+    if (targetDest) setDestination(targetDest);
+
     setIsSearching(true);
     setHasSearched(false);
-    await new Promise(r => setTimeout(r, 1200));
+    await new Promise(r => setTimeout(r, 800));
+
+    const startCoord = getCoordsForInput(start, { lat: 18.95, lon: 72.82 });
+    const endCoord = getCoordsForInput(destName, { lat: 18.62, lon: 72.15 });
 
     if (isOffline) {
-      const startCoord = getCoordsForInput(start, { lat: 18.95, lon: 72.82 });
-      const endCoord = getCoordsForInput(destination, { lat: 18.62, lon: 72.15 });
       const offlineRoutes = generateOfflineRoutes(startCoord, endCoord);
       setRoutes(offlineRoutes);
+      setSelectedRouteIndex(1);
     } else {
-      setRoutes(getMockRoutes());
+      // Generate dynamic waypoints targeting selected coordinates
+      const calculatedRoutes = generateOfflineRoutes(startCoord, endCoord);
+      setRoutes(calculatedRoutes);
+      setSelectedRouteIndex(1);
     }
-    
+
     setIsSearching(false);
     setHasSearched(true);
   };
 
+  const startCoord = getCoordsForInput(start, { lat: 18.95, lon: 72.82 });
+  const endCoord = getCoordsForInput(destination, { lat: 18.62, lon: 72.15 });
+  const activeRoute = routes[selectedRouteIndex] || routes[0];
+
+  // Map Action Payload for Interactive Leaflet Map
+  const mapActionPayload: MapAction = {
+    mapAction: 'draw_route',
+    selectedZone: destination,
+    layers: ['pfz_zones', 'vessels', 'recommended_route'],
+    markers: [
+      { lat: startCoord.lat, lon: startCoord.lon, label: `Start: ${start}`, type: 'coastal' },
+      { lat: endCoord.lat, lon: endCoord.lon, label: `Destination: ${destination}`, type: 'pfz' },
+    ],
+    route: activeRoute?.waypoints || [
+      startCoord,
+      { lat: (startCoord.lat + endCoord.lat) / 2, lon: (startCoord.lon + endCoord.lon) / 2 - 0.05 },
+      endCoord,
+    ],
+  };
+
   return (
-    <div className="p-4 md:p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
+    <div className="p-4 md:p-6 lg:p-8 max-w-6xl mx-auto space-y-6">
+      {/* Header */}
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-white flex items-center gap-3">
             <Route className="w-7 h-7 text-teal-400" />
-            Safe Route Planner
+            Ocean Navigation & Safe Route Planner
           </h1>
-          <p className="text-sm text-slate-400 mt-1">Plan the safest and most efficient route with direct live AIS vessel tracking telemetry.</p>
+          <p className="text-sm text-slate-400 mt-1">
+            Google Maps-style vessel navigation with live AIS vessel positions & PFZ zone targeting.
+          </p>
         </div>
         <div className="flex items-center gap-3">
           {isOffline ? (
@@ -138,7 +197,7 @@ export default function RoutesPage() {
             onClick={() => setShowVesselDetails(!showVesselDetails)}
             className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/30 text-xs font-semibold transition-all whitespace-nowrap"
           >
-            {showVesselDetails ? 'Hide Vessel Telemetry ▲' : 'Inspect Live Vessels (' + (vesselData?.totalVessels || 7) + ') ▼'}
+            {showVesselDetails ? 'Hide Vessel Telemetry ▲' : 'Inspect Live Vessels (' + (vesselData?.totalVessels || 20) + ') ▼'}
           </button>
         </div>
 
@@ -146,15 +205,15 @@ export default function RoutesPage() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 border-t border-navy-700/60 text-xs">
           <div>
             <span className="text-slate-400 block">Vessels Tracked</span>
-            <span className="text-sm font-bold text-white">{vesselData?.totalVessels || 7} Vessels</span>
+            <span className="text-sm font-bold text-white">{vesselData?.totalVessels || 20} Vessels</span>
           </div>
           <div>
             <span className="text-slate-400 block">Traffic Density</span>
-            <span className="text-sm font-bold text-cyan-400">{vesselData?.trafficDensity || 'MEDIUM'}</span>
+            <span className="text-sm font-bold text-cyan-400">{vesselData?.trafficDensity || 'EXTREME'}</span>
           </div>
           <div>
             <span className="text-slate-400 block">Shipping Corridor</span>
-            <span className="text-sm font-bold text-emerald-400">{vesselData?.shippingLaneStatus || 'CLEAR'}</span>
+            <span className="text-sm font-bold text-amber-400">{vesselData?.shippingLaneStatus || 'CONGESTED'}</span>
           </div>
           <div>
             <span className="text-slate-400 block">Data Mode</span>
@@ -208,14 +267,14 @@ export default function RoutesPage() {
         </motion.div>
       )}
 
-      {/* Route Input */}
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }} className="rounded-2xl border border-navy-600/20 bg-card p-6">
+      {/* Route & Zone Target Input Controls */}
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }} className="rounded-2xl border border-navy-600/20 bg-card p-6 space-y-4">
         <div className="grid md:grid-cols-[1fr,auto,1fr,auto] items-end gap-4">
           <div>
             <label className="text-xs text-slate-400 uppercase tracking-wider font-semibold mb-2 block">Start Location</label>
             <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-navy-800/50 border border-navy-700/30 focus-within:border-teal-500/40 transition-colors">
               <MapPin className="w-4 h-4 text-teal-400 shrink-0" />
-              <input value={start} onChange={e => setStart(e.target.value)} className="bg-transparent text-white text-sm outline-none flex-1" placeholder="Enter start location" />
+              <input value={start} onChange={e => setStart(e.target.value)} className="bg-transparent text-white text-sm outline-none flex-1" placeholder="Enter start location (e.g. Mumbai)" />
             </div>
           </div>
 
@@ -224,15 +283,15 @@ export default function RoutesPage() {
           </div>
 
           <div>
-            <label className="text-xs text-slate-400 uppercase tracking-wider font-semibold mb-2 block">Destination</label>
+            <label className="text-xs text-slate-400 uppercase tracking-wider font-semibold mb-2 block">Target Destination Zone</label>
             <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-navy-800/50 border border-navy-700/30 focus-within:border-teal-500/40 transition-colors">
               <MapPin className="w-4 h-4 text-amber-400 shrink-0" />
-              <input value={destination} onChange={e => setDestination(e.target.value)} className="bg-transparent text-white text-sm outline-none flex-1" placeholder="Enter destination" />
+              <input value={destination} onChange={e => setDestination(e.target.value)} className="bg-transparent text-white text-sm outline-none flex-1" placeholder="Enter destination (e.g. Fishing Zone A)" />
             </div>
           </div>
 
           <button
-            onClick={handleSearch}
+            onClick={() => handleSearch()}
             disabled={isSearching}
             className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-500 to-cyan-500 text-navy-950 font-bold rounded-xl hover:shadow-lg hover:shadow-teal-500/25 transition-all disabled:opacity-50"
           >
@@ -241,68 +300,110 @@ export default function RoutesPage() {
             ) : (
               <Search className="w-5 h-5" />
             )}
-            Find Safe Route
+            Calculate Safe Route
           </button>
         </div>
-        {isOffline && (
-          <p className="text-[10px] text-slate-500 mt-2">
-            Try typing: &quot;Mumbai Coast&quot;, &quot;Zone A&quot;, &quot;Vasai&quot;, or &quot;Alibag&quot; to test offline location coordinates.
-          </p>
-        )}
+
+        {/* Quick Destination Presets (Google Maps style quick destination chips) */}
+        <div>
+          <span className="text-xs text-slate-400 font-semibold block mb-2">Target Destination Quick Presets:</span>
+          <div className="flex flex-wrap gap-2">
+            {DESTINATION_PRESETS.map((p) => (
+              <button
+                key={p.value}
+                onClick={() => handleSearch(p.value)}
+                className={`text-xs px-3 py-1.5 rounded-xl border transition-all font-medium flex items-center gap-1.5 ${
+                  destination.toLowerCase().includes(p.value.toLowerCase())
+                    ? 'bg-teal-500/20 text-teal-300 border-teal-500/50 shadow-md'
+                    : 'bg-navy-800/40 text-slate-300 border-navy-700/40 hover:bg-navy-700/50'
+                }`}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+        </div>
       </motion.div>
 
-      {/* Route Map Visualization */}
+      {/* Interactive Leaflet Navigation Map (Google Maps Style) */}
       {hasSearched && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="rounded-2xl border border-navy-600/20 bg-card overflow-hidden">
-          <div className="relative h-52 md:h-64 bg-navy-900 overflow-hidden">
-            <div className="absolute inset-0 ocean-gradient-animated opacity-40" />
-            <svg className="absolute inset-0 w-full h-full opacity-10">
-              {Array.from({ length: 15 }).map((_, i) => (
-                <React.Fragment key={i}>
-                  <line x1={`${i * 7}%`} y1="0" x2={`${i * 7}%`} y2="100%" stroke="#2dd4bf" strokeWidth="0.5" strokeDasharray="4,8" />
-                </React.Fragment>
-              ))}
-            </svg>
-            <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 60" preserveAspectRatio="none">
-              {/* Route C - Offshore */}
-              <motion.path d="M85,10 Q60,25 20,40" fill="none" stroke="#ef4444" strokeWidth="0.3" strokeDasharray="2,2" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 1.5, delay: 0.3 }} />
-              {/* Route A - Direct */}
-              <motion.path d="M85,10 Q65,20 45,30 Q30,37 20,40" fill="none" stroke="#f59e0b" strokeWidth="0.3" strokeDasharray="1,1" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 1.5, delay: 0.6 }} />
-              {/* Route B - Recommended */}
-              <motion.path d="M85,10 Q80,15 70,20 Q60,28 50,33 Q40,38 30,40 Q25,41 20,40" fill="none" stroke="#2dd4bf" strokeWidth="0.5" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 2, delay: 0.9 }} />
-              {/* Start */}
-              <circle cx="85" cy="10" r="1.5" fill="#2dd4bf" />
-              <text x="85" y="7" fill="#94a3b8" fontSize="2.5" textAnchor="middle">Start</text>
-              {/* End */}
-              <circle cx="20" cy="40" r="1.5" fill="#10b981" />
-              <text x="20" y="45" fill="#94a3b8" fontSize="2.5" textAnchor="middle">Destination</text>
-              {/* Route labels */}
-              <text x="68" y="17" fill="#2dd4bf" fontSize="2" fontWeight="bold">B (Rec.)</text>
-              <text x="55" y="22" fill="#f59e0b" fontSize="1.8">A</text>
-              <text x="50" y="30" fill="#ef4444" fontSize="1.8">C</text>
-            </svg>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl border border-teal-500/30 bg-card overflow-hidden shadow-2xl space-y-0">
+          {/* Map Header HUD Bar */}
+          <div className="p-4 bg-navy-900/90 border-b border-navy-700/60 flex flex-col md:flex-row md:items-center md:justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2">
+              <Compass className="w-4 h-4 text-teal-400" />
+              <span className="font-bold text-white text-sm">Interactive Ocean Route Map</span>
+              <span className="px-2 py-0.5 rounded bg-teal-500/10 text-teal-300 border border-teal-500/20 font-mono">
+                {activeRoute?.name || 'Route B Coastal Safe'}
+              </span>
+            </div>
+            <div className="flex items-center gap-4 text-slate-300">
+              <span>Distance: <strong className="text-white">{activeRoute?.distance || 38} km</strong></span>
+              <span>ETA: <strong className="text-white">{activeRoute?.eta || '1h 40m'}</strong></span>
+              <span>Safety Rating: <strong className="text-emerald-400">{activeRoute?.safetyScore || 96}%</strong></span>
+            </div>
+          </div>
+
+          {/* Interactive Leaflet Map Canvas */}
+          <div className="w-full h-[520px] relative z-0">
+            <WorldMap
+              vessels={vesselData?.vessels || getMockVessels()}
+              fishingZones={fishingZones}
+              mapActionPayload={mapActionPayload}
+              activeLayers={new Set(['mosdac_overlay', 'winds', 'fishing', 'vessels'])}
+            />
+          </div>
+
+          {/* Turn-by-turn Route Selection Tabs directly below map */}
+          <div className="p-4 bg-navy-950/80 border-t border-navy-700/60 grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {routes.map((r, i) => (
+              <button
+                key={r.id}
+                onClick={() => setSelectedRouteIndex(i)}
+                className={`p-3 rounded-xl border text-left transition-all text-xs flex flex-col justify-between gap-1 ${
+                  selectedRouteIndex === i
+                    ? 'bg-teal-500/20 border-teal-400 text-white shadow-lg'
+                    : 'bg-navy-900/40 border-navy-700/40 text-slate-400 hover:border-navy-600/60'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-white text-[11px] truncate">{r.name}</span>
+                  {r.isRecommended && <span className="px-1.5 py-0.2 bg-teal-500 text-navy-950 text-[9px] font-extrabold rounded">REC</span>}
+                </div>
+                <div className="flex items-baseline justify-between">
+                  <span className="text-slate-300">{r.distance} km ({r.eta})</span>
+                  <span className={`font-bold ${r.safetyScore >= 90 ? 'text-emerald-400' : 'text-amber-400'}`}>{r.safetyScore}%</span>
+                </div>
+              </button>
+            ))}
           </div>
         </motion.div>
       )}
 
-      {/* Route Cards */}
+      {/* Detailed Route Cards */}
       {hasSearched && (
         <div className="space-y-4">
           <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">
-            {isOffline ? 'Offline Route Options (A* Computed)' : 'Route Options'}
+            {isOffline ? 'Offline Route Options (A* Pathfinder Computed)' : 'Detailed Route Options & Safety Analysis'}
           </h3>
           {routes.map((route, i) => (
-            <RouteCard key={route.id} route={route} index={i} />
+            <div
+              key={route.id}
+              onClick={() => setSelectedRouteIndex(i)}
+              className={`cursor-pointer transition-transform ${selectedRouteIndex === i ? 'ring-2 ring-teal-400 rounded-2xl' : ''}`}
+            >
+              <RouteCard route={route} index={i} />
+            </div>
           ))}
         </div>
       )}
 
-      {/* Scoring factors */}
+      {/* Safety Engine Factors */}
       {hasSearched && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="rounded-2xl border border-navy-600/20 bg-card p-5">
-          <h4 className="text-sm font-semibold text-white mb-3">Route Safety Scoring Considers</h4>
+          <h4 className="text-sm font-semibold text-white mb-3">Deterministic Safety Engine Parameters</h4>
           <div className="flex flex-wrap gap-2">
-            {['Distance', 'Wind', 'Waves', 'Ocean currents', 'Vessel traffic', 'Water depth', 'Restricted areas', 'Storms', 'Fishing activity', 'Fuel efficiency'].map((p) => (
+            {['Distance', 'Wind Speed & Dir', 'Wave Swell & Height', 'Ocean currents', 'Live AIS Vessels', 'Bathymetry Depth', 'IMBL Geofencing', 'Cyclone Alerts', 'PFZ Thermal Gradient', 'Fuel Efficiency'].map((p) => (
               <span key={p} className="text-xs px-2.5 py-1 rounded-lg bg-navy-700/30 text-slate-400 border border-navy-600/20">{p}</span>
             ))}
           </div>
