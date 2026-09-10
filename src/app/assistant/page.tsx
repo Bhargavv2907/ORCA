@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { orchestrate, AgentOutput } from '@/lib/orchestrator';
 import { ChatMessage, AgentType, EvidencePayload } from '@/types/marine';
 import { DemoModeBanner, WhyEvidenceModal, AudioAdvisoryPlayer, ProactiveAlertBanner } from '@/components/cards';
+import { useSelectedLanguage, setSelectedLanguage } from '@/lib/language-store';
 
 const EXAMPLE_QUESTIONS = [
   'Where is the nearest Potential Fishing Zone (PFZ) today?',
@@ -27,7 +28,7 @@ export default function AssistantPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [language, setLanguage] = useState('English');
+  const language = useSelectedLanguage();
   const [showLangMenu, setShowLangMenu] = useState(false);
   const [activeAgents, setActiveAgents] = useState<Set<AgentType>>(new Set());
   const [completedAgents, setCompletedAgents] = useState<Set<AgentType>>(new Set());
@@ -182,7 +183,7 @@ export default function AssistantPage() {
                     {LANGUAGES.map((lang) => (
                       <button
                         key={lang}
-                        onClick={() => { setLanguage(lang); setShowLangMenu(false); }}
+                        onClick={() => { setSelectedLanguage(lang); setShowLangMenu(false); }}
                         className={cn(
                           'w-full text-left px-3 py-1.5 text-sm hover:bg-white/5 transition-colors',
                           lang === language ? 'text-teal-400' : 'text-slate-400'
@@ -259,10 +260,15 @@ export default function AssistantPage() {
                       <div className={cn(
                         'inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold',
                         msg.safetyStatus.status === 'SAFE' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
-                        msg.safetyStatus.status === 'MODERATE' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'
+                        msg.safetyStatus.status === 'MODERATE' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
+                        msg.safetyStatus.status === 'WARNING' ? 'bg-red-500/15 text-red-400 border border-red-500/30 animate-pulse' :
+                        'bg-red-500/10 text-red-400 border border-red-500/20'
                       )}>
                         <Shield className="w-3.5 h-3.5" />
-                        {msg.safetyStatus.label} — {msg.safetyStatus.overall}/100
+                        {msg.safetyStatus.status === 'WARNING'
+                          ? `⚠️ ${msg.safetyStatus.label}`
+                          : `${msg.safetyStatus.label} — ${msg.safetyStatus.overall}/100`
+                        }
                       </div>
                     )}
 

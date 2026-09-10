@@ -91,6 +91,34 @@ export function extractLocation(query: string): CoastalLocation {
   return DEFAULT_LOCATION;
 }
 
+// ---- Abusive Language Filter ----
+const ABUSIVE_WORDS = new Set([
+  // English profanity
+  'fuck', 'fucker', 'fucking', 'fucked', 'fucks',
+  'shit', 'shitty', 'bullshit',
+  'ass', 'asshole', 'assholes',
+  'bitch', 'bitches',
+  'damn', 'damned', 'dammit',
+  'bastard', 'bastards',
+  'dick', 'dicks', 'dickhead',
+  'crap', 'crappy',
+  'piss', 'pissed',
+  'cunt', 'cunts',
+  'slut', 'whore',
+  'idiot', 'idiots', 'stupid', 'dumb', 'moron', 'retard', 'retarded',
+  'stfu', 'wtf', 'lmao', 'gtfo',
+  // Hindi profanity
+  'madarchod', 'behenchod', 'chutiya', 'chutiye', 'bhenchod',
+  'gaand', 'gandu', 'lund', 'bhosdike', 'bsdk', 'mc', 'bc',
+  'harami', 'haramkhor', 'sala', 'saala', 'saale', 'kamina', 'kamine',
+  'randi', 'raand',
+]);
+
+export function containsAbusiveLanguage(text: string): boolean {
+  const tokens = text.toLowerCase().replace(/[^\w\s]/g, '').split(/\s+/);
+  return tokens.some(token => ABUSIVE_WORDS.has(token));
+}
+
 
 // ---- Reconciled 5-Agent Query Classification ----
 export interface QueryClassification {
@@ -100,6 +128,20 @@ export interface QueryClassification {
 }
 
 const QUERY_PATTERNS: { pattern: RegExp; agents: AgentType[]; intent: string; category: QueryClassification['category'] }[] = [
+  // Greeting / conversational
+  {
+    pattern: /^\s*(hello|hi|hey|hii+|namaste|namaskar|vanakkam|hola|good\s*(morning|afternoon|evening|night)|howdy|yo\b|sup\b|greetings|jai\s*hind)/i,
+    agents: ['weather_hazard', 'safety_decision'],
+    intent: 'greeting',
+    category: 'general',
+  },
+  // Fish species / catch prediction
+  {
+    pattern: /what\s*(fish|fishes)|which\s*(fish|fishes)|expect.*today|species|catch\s*today|fish.*expect|fish.*available|fish.*season|types?\s*of\s*fish|sardine|mackerel|tuna|pomfret|hilsa|prawns?|shrimp/i,
+    agents: ['ocean_pfz', 'weather_hazard', 'safety_decision'],
+    intent: 'fish_species',
+    category: 'fishing',
+  },
   {
     pattern: /geofence|restricted|boundary|limit|zone.*avoid|dangerous.*area|prohibited/i,
     agents: ['gis_navigation', 'safety_decision'],
@@ -148,15 +190,18 @@ const QUERY_PATTERNS: { pattern: RegExp; agents: AgentType[]; intent: string; ca
     intent: 'whatif_query',
     category: 'safety',
   },
-  {
-    pattern: /geofence|restricted|boundary|limit|zone.*avoid|dangerous.*area|prohibited/i,
-    agents: ['gis_navigation', 'safety_decision'],
-    intent: 'geofence_query',
-    category: 'route',
-  },
 ];
 
 export function classifyQuery(question: string): QueryClassification {
+  // Abusive language check — highest priority, skips all agents
+  if (containsAbusiveLanguage(question)) {
+    return {
+      agents: [],
+      intent: 'abusive',
+      category: 'general',
+    };
+  }
+
   for (const pattern of QUERY_PATTERNS) {
     if (pattern.pattern.test(question)) {
       return { agents: pattern.agents, intent: pattern.intent, category: pattern.category };
@@ -328,28 +373,117 @@ function generateResponse(
 
   const gisOutput = outputs.find(o => normalizeAgentType(o.agent.id) === 'gis_navigation')?.data as { mapAction?: MapAction } | undefined;
 
+  // ---- Fish species prediction based on SST, chlorophyll & season ----
+  const month = new Date().getMonth(); // 0-indexed
+  const sst = ocean.sst;
+  const chl = ocean.chlorophyll;
+
+  function predictFishSpecies(): { species: string; depth: string; note: string }[] {
+    const results: { species: string; depth: string; note: string }[] = [];
+
+    // Indian Oil Sardine & Mackerel: surface, SST 27-29°C, coastal upwelling
+    if (sst >= 26.5 && sst <= 30.0) {
+      results.push({ species: 'Indian Oil Sardine', depth: 'Surface – 20m', note: `SST ${sst.toFixed(1)}°C is ideal for sardine aggregation near thermal fronts` });
+      results.push({ species: 'Indian Mackerel', depth: 'Surface – 30m', note: 'Schools alongside sardines in coastal upwelling zones' });
+    }
+
+    // Ribbonfish & Croakers: demersal, moderate chlorophyll
+    if (chl >= 1.5) {
+      results.push({ species: 'Ribbonfish (Hairtail)', depth: '30 – 70m (Demersal)', note: `Chlorophyll ${chl.toFixed(2)} mg/m³ — nutrient-rich bottom attracts demersal feeders` });
+      results.push({ species: 'Croakers (Ghol)', depth: '30 – 60m', note: 'Active near high-nutrient sediment zones' });
+    }
+
+    // Yellowfin & Skipjack Tuna: deep oceanic, warm SST
+    if (sst >= 27.0 && chl >= 0.5) {
+      results.push({ species: 'Yellowfin Tuna', depth: '> 100m (Oceanic)', note: 'Found around oceanic eddies and seamounts in warm waters' });
+      results.push({ species: 'Skipjack Tuna', depth: '50 – 150m', note: 'Pelagic predator following baitfish schools' });
+    }
+
+    // Pomfret: post-monsoon season (Oct-Feb)
+    if (month >= 9 || month <= 1) {
+      results.push({ species: 'Silver Pomfret', depth: '15 – 40m', note: `Post-monsoon season (${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][month]}) — peak pomfret availability` });
+    }
+
+    // Prawns/Shrimp: monsoon & post-monsoon, estuarine
+    if (month >= 5 && month <= 11) {
+      results.push({ species: 'Tiger Prawns', depth: '5 – 30m (Estuarine/Coastal)', note: 'Peak catch during and after monsoon near river mouths' });
+    }
+
+    // Hilsa: monsoon season in east coast (Jun-Sep)
+    if (month >= 5 && month <= 8 && location && ['West Bengal', 'Odisha'].includes(location.state)) {
+      results.push({ species: 'Hilsa (Ilish)', depth: 'Surface – 15m (Estuarine)', note: 'Monsoon migration upstream — peak season for Hilsa' });
+    }
+
+    // Seer Fish (Surmai): winter months
+    if (month >= 10 || month <= 2) {
+      results.push({ species: 'Seer Fish (Surmai)', depth: '20 – 60m', note: 'Active predator in cooler post-monsoon waters' });
+    }
+
+    // Fallback if nothing matched
+    if (results.length === 0) {
+      results.push({ species: 'Mixed pelagic catch', depth: 'Surface – 50m', note: `Current SST ${sst.toFixed(1)}°C and Chl ${chl.toFixed(2)} mg/m³ — moderate conditions` });
+    }
+
+    return results.slice(0, 5); // Top 5 species
+  }
+
   const responses: Record<string, () => Partial<OrcaResponse>> = {
+    // ---- Abusive language warning ----
+    abusive: () => ({
+      safetyStatus: { overall: 0, status: 'WARNING' as any, label: 'Inappropriate Language', components: [] },
+      recommendation: `⚠️ Please use respectful language. ORCA is a marine safety assistant designed to help fishermen stay safe at sea. I'm here to help you with fishing zones, weather conditions, route safety, and ocean data. Please rephrase your question and I'll be happy to assist.`,
+    }),
+
+    // ---- Greeting response ----
+    greeting: () => {
+      const timeHour = new Date().getHours();
+      const timeGreeting = timeHour < 12 ? 'Good morning' : timeHour < 17 ? 'Good afternoon' : 'Good evening';
+      const conditionBrief = safety.overall >= 70
+        ? `Sea conditions look ${safety.overall >= 85 ? 'excellent' : 'good'} right now`
+        : `⚠️ Caution — sea conditions are rough right now`;
+
+      return {
+        safetyStatus: safety,
+        recommendation: `${timeGreeting}! 🌊 Welcome to ORCA — your marine intelligence assistant for ${cityName}. ${conditionBrief} (Safety: ${safety.overall}/100, Waves: ${waves.height.toFixed(1)}m, Wind: ${Math.round(weather.windSpeed)} km/h).\n\nHere's what I can help you with:\n• 🐟 "What fish can I expect today?" — species forecast\n• 🗺️ "Where is the nearest fishing zone?" — PFZ advisory\n• ⛵ "Is it safe to go out?" — safety assessment\n• 🌤️ "What's the weather like?" — live conditions\n• 🧭 "Which route is safest?" — navigation\n\nJust ask me anything about the sea!`,
+      };
+    },
+
+    // ---- Fish species prediction ----
+    fish_species: () => {
+      const predicted = predictFishSpecies();
+      const speciesList = predicted.map((sp, i) => `${i + 1}. **${sp.species}** (${sp.depth}) — ${sp.note}`).join('\n');
+      const bestZone = zones[0];
+
+      return {
+        safetyStatus: safety,
+        recommendation: `🐟 **Fish Species Forecast for ${cityName}** (based on current ocean conditions):\n\nSST: ${sst.toFixed(1)}°C | Chlorophyll: ${chl.toFixed(2)} mg/m³ | Season: ${['January','February','March','April','May','June','July','August','September','October','November','December'][month]}\n\n${speciesList}\n\n📍 Best fishing zone: ${bestZone.name} — ${bestZone.distanceFromCoast} km offshore, ${bestZone.suitabilityScore}% suitability. Safety: ${safety.overall}/100 (${safety.label}).`,
+      };
+    },
+
     safety_assessment: () => ({
       safetyStatus: safety,
       recommendation: safety.overall >= 70
         ? `✅ Safe to go out. Waves ${waves.height.toFixed(1)}m · Wind ${Math.round(weather.windSpeed)} km/h from ${weather.windDirection} · Visibility ${weather.visibility?.toFixed(1) ?? 'good'} km. Safety score: ${safety.overall}/100. Return before evening.`
         : `⚠️ Do NOT go out — hazardous conditions. Waves: ${waves.height.toFixed(1)}m, Wind: ${Math.round(weather.windSpeed)} km/h from ${weather.windDirection}. Safety score: ${safety.overall}/100. Stay ashore.`,
     }),
-    fishing_recommendation: () => ({
-      safetyStatus: safety,
-      recommendation: `🐟 Best zone today: ${zones[0].name} — ${zones[0].distanceFromCoast} km offshore, suitability ${zones[0].suitabilityScore}%. Sea temp ${zones[0].sst}°C, chlorophyll ${zones[0].chlorophyll} mg/m³. Waves ${waves.height.toFixed(1)}m · Wind ${Math.round(weather.windSpeed)} km/h. Safety: ${safety.overall}/100 (${safety.label}). Take Route B (38 km, 96% safety).`,
-      missionPlan: {
-        recommendedZone: zones[0].name,
-        suitabilityScore: zones[0].suitabilityScore,
-        safetyScore: safety.overall,
-        safetyLabel: safety.label,
-        recommendedTime: '05:30 AM',
-        recommendedRoute: 'Route B (Coastal Path)',
-        distanceKm: zones[0].distanceFromCoast,
-        warnings: safety.overall < 70 ? ['Marginal sea state — exercise caution.'] : [],
-        mapAction: 'show_pfz',
-      },
-    }),
+    fishing_recommendation: () => {
+      const bestZone = zones[0];
+      return {
+        safetyStatus: safety,
+        recommendation: `🐟 Best zone today: ${bestZone.name} — ${bestZone.distanceFromCoast} km offshore, suitability ${bestZone.suitabilityScore}%. Sea temp ${bestZone.sst}°C, chlorophyll ${bestZone.chlorophyll} mg/m³. Waves ${waves.height.toFixed(1)}m · Wind ${Math.round(weather.windSpeed)} km/h. Safety: ${safety.overall}/100 (${safety.label}). Take Route B (38 km, 96% safety).`,
+        missionPlan: {
+          recommendedZone: bestZone.name,
+          suitabilityScore: bestZone.suitabilityScore,
+          safetyScore: safety.overall,
+          safetyLabel: safety.label,
+          recommendedTime: '05:30 AM',
+          recommendedRoute: 'Route B (Coastal Path)',
+          distanceKm: bestZone.distanceFromCoast,
+          warnings: safety.overall < 70 ? ['Marginal sea conditions — proceed with caution'] : [],
+          mapAction: 'FOCUS_PFZ_ZONE',
+        },
+      };
+    },
     route_planning: () => ({
       safetyStatus: safety,
       recommendation: `🗺️ Route B (Coastal Path) recommended — 38 km, 96% safety score. Current conditions: Waves ${waves.height.toFixed(1)}m, Wind ${Math.round(weather.windSpeed)} km/h ${weather.windDirection}. Route B avoids high swell and shipping lanes. ${safety.overall < 70 ? '⚠️ Conditions are marginal — sail with caution.' : '✅ Good conditions for the trip.'}`,
@@ -436,6 +570,21 @@ export async function orchestrate(
   onAgentComplete?: (agent: AgentType, output: AgentOutput) => void,
 ): Promise<OrcaResponse> {
   const classification = classifyQuery(question);
+
+  // ---- Short-circuit for abusive language — no agent execution ----
+  if (classification.intent === 'abusive') {
+    return {
+      query: question,
+      agentsUsed: [],
+      safetyStatus: { overall: 0, status: 'WARNING' as any, label: 'Inappropriate Language', components: [] },
+      reasoning: [],
+      recommendation: `⚠️ Please use respectful language. ORCA is a marine safety assistant designed to help fishermen stay safe at sea. I'm here to help you with fishing zones, weather conditions, route safety, and ocean data. Please rephrase your question and I'll be happy to assist.`,
+      dataSources: [],
+      timestamp: new Date().toISOString(),
+      confidence: 100,
+    };
+  }
+
   const location = extractLocation(question);          // ← detect city from query
   const { lat, lon } = location;
 

@@ -18,7 +18,7 @@ export default function AlertsPage() {
 
   const filteredAlerts = filter === 'all' ? alerts :
     filter === 'active' ? alerts.filter(a => a.isActive) :
-    alerts.filter(a => a.severity === filter.toUpperCase());
+      alerts.filter(a => a.severity === filter.toUpperCase());
 
   return (
     <div className="p-4 md:p-6 lg:p-8 max-w-5xl mx-auto space-y-6">

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -68,6 +68,10 @@ export default function MapPage() {
   const [zones, setZones] = useState<FishingZone[]>([]);
   const [liveConditions, setLiveConditions] = useState<MarineConditions | null>(null);
   const [mapActionPayload, setMapActionPayload] = useState<MapAction | undefined>(undefined);
+
+  const handlePointClick = useCallback((_lat: number, _lon: number, data: MarineConditions | null) => {
+    if (data) setLiveConditions(data);
+  }, []);
 
   useEffect(() => {
     setVessels(getMockVessels());
@@ -208,9 +212,7 @@ export default function MapPage() {
           highlightCoasts={activeLayers.has('coastal_detect')}
           mapActionPayload={mapActionPayload}
           selectedRegion={selectedRegion}
-          onPointClick={(lat, lon, data) => {
-            if (data) setLiveConditions(data);
-          }}
+          onPointClick={handlePointClick}
         />
       </div>
 

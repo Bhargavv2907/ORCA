@@ -181,6 +181,22 @@ export function RouteCard({ route, index = 0 }: { route: RouteOption; index?: nu
           ))}
         </div>
       )}
+      {/* Direct Inline AIS Vessel Stream */}
+      <div className="mt-4 pt-3 border-t border-navy-700/50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs">
+        <div className="flex items-center gap-2 text-cyan-400 font-medium">
+          <Ship className="w-3.5 h-3.5" />
+          <span>ORCA Live AIS Stream</span>
+          <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping" />
+        </div>
+        <div className="flex items-center gap-3 text-slate-300">
+          <span className="px-2 py-0.5 rounded-md bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 font-medium">
+            Traffic: {route.trafficDensity}
+          </span>
+          <span className="text-slate-400 font-mono text-[11px]">
+            Direct AIS Telemetry Active
+          </span>
+        </div>
+      </div>
     </motion.div>
   );
 }

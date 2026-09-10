@@ -222,6 +222,7 @@ export default function WorldMapComponent({
   const layerGroupRef = useRef<any>(null);
   const lineLayerRef = useRef<any>(null);
   const [isLoaded, setIsLoaded] = useState(false);
+  const inspectPointRef = useRef<(lat: number, lon: number, label?: string) => void>(() => {});
   const [clickedPoint, setClickedPoint] = useState<{ lat: number; lon: number; data?: MarineConditions; loading: boolean; label?: string } | null>(null);
 
   const inspectPoint = React.useCallback((lat: number, lon: number, label?: string) => {
@@ -243,6 +244,11 @@ export default function WorldMapComponent({
       });
   }, [onPointClick]);
 
+  // Keep ref in sync so the map click handler always calls the latest inspectPoint
+  useEffect(() => {
+    inspectPointRef.current = inspectPoint;
+  }, [inspectPoint]);
+
   // Expose global inspector trigger for Leaflet popups
   useEffect(() => {
     (window as any).orcaInspectLocation = (lat: number, lon: number, label: string) => {
@@ -252,6 +258,9 @@ export default function WorldMapComponent({
       delete (window as any).orcaInspectLocation;
     };
   }, [inspectPoint]);
+
+  // Serialize activeLayers into a stable string so useEffect deps work correctly
+  const activeLayersKey = useMemo(() => [...activeLayers].sort().join(','), [activeLayers]);
 
   const zonesList = useMemo(() => {
     return fishingZones.length > 0 ? fishingZones : getMockFishingZones();
@@ -305,7 +314,8 @@ export default function WorldMapComponent({
     });
   };
 
-  // Initialize Leaflet Map
+  // Initialize Leaflet Map — runs once on mount only
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!containerRef.current || mapInstanceRef.current) return;
 
@@ -333,6 +343,13 @@ export default function WorldMapComponent({
         zoomControl: false,
       });
 
+      // Add initial tile layer immediately so tiles show right away
+      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        attribution: '&copy; Esri World Imagery & ISRO MOSDAC',
+        maxZoom: 18,
+        noWrap: false,
+      }).addTo(map);
+
       // Add Zoom Control at top right
       L.control.zoom({ position: 'topright' }).addTo(map);
 
@@ -341,11 +358,11 @@ export default function WorldMapComponent({
       layerGroupRef.current = layerGroup;
       mapInstanceRef.current = map;
 
-      // Handle map click for live sampling
+      // Handle map click for live sampling — use ref so we don't depend on onPointClick
       map.on('click', (e: any) => {
         const lat = +e.latlng.lat.toFixed(3);
         const lon = +e.latlng.lng.toFixed(3);
-        inspectPoint(lat, lon, `Ocean Point (${lat}°N, ${lon}°E)`);
+        inspectPointRef.current(lat, lon, `Ocean Point (${lat}°N, ${lon}°E)`);
       });
 
       setTimeout(() => {
@@ -362,7 +379,7 @@ export default function WorldMapComponent({
         mapInstanceRef.current = null;
       }
     };
-  }, [onPointClick]);
+  }, []);
 
   // Update Basemap Tiles based on satelliteMode
   useEffect(() => {
@@ -431,9 +448,13 @@ export default function WorldMapComponent({
   useEffect(() => {
     if (!containerRef.current || !mapInstanceRef.current || !isLoaded) return;
     const map = mapInstanceRef.current;
-    setTimeout(() => { map.invalidateSize(); }, 200);
+    setTimeout(() => {
+      if (mapInstanceRef.current) map.invalidateSize();
+    }, 200);
     const ro = new ResizeObserver(() => {
-      map.invalidateSize();
+      if (mapInstanceRef.current) {
+        try { map.invalidateSize(); } catch (_) { /* map may have been removed */ }
+      }
     });
     ro.observe(containerRef.current);
     return () => ro.disconnect();
@@ -443,12 +464,17 @@ export default function WorldMapComponent({
   useEffect(() => {
     if (!mapInstanceRef.current || !layerGroupRef.current || !isLoaded) return;
 
+    // Read current active layers from the serialized key
+    const currentLayers = new Set(activeLayersKey.split(',').filter(Boolean));
+    // Use ref so we don't depend on inspectPoint identity
+    const inspect = (...args: Parameters<typeof inspectPointRef.current>) => inspectPointRef.current(...args);
+
     import('leaflet').then((L) => {
       const layerGroup = layerGroupRef.current;
       layerGroup.clearLayers();
 
       // 1. HIGHLIGHT ALL 11 INDIAN COASTAL SECTORS
-      if (highlightCoasts || activeLayers.has('coastal_detect')) {
+      if (highlightCoasts || currentLayers.has('coastal_detect')) {
         INDIAN_COASTAL_SECTORS.forEach((sector) => {
           // Draw Coastline Polyline
           const polyline = L.polyline(sector.coordinates, {
@@ -469,7 +495,7 @@ export default function WorldMapComponent({
           polyline.on('click', (e: any) => {
             const lat = +e.latlng.lat.toFixed(3);
             const lon = +e.latlng.lng.toFixed(3);
-            inspectPoint(lat, lon, `${sector.name} Coastline`);
+            inspect(lat, lon, `${sector.name} Coastline`);
           });
 
           polyline.addTo(layerGroup);
@@ -487,17 +513,17 @@ export default function WorldMapComponent({
 
           const marker = L.marker([sector.center.lat, sector.center.lon], { icon: customIcon });
           marker.on('click', () => {
-            inspectPoint(sector.center.lat, sector.center.lon, sector.name);
+            inspect(sector.center.lat, sector.center.lon, sector.name);
           });
           marker.bindPopup(
-            `<div class="p-2.5 text-xs font-sans">
-              <div class="flex items-center justify-between mb-1">
-                <h4 class="font-bold text-teal-600 text-sm">🇮🇳 ${sector.name}</h4>
-                <span class="text-[9px] px-1.5 py-0.5 rounded bg-teal-100 text-teal-800 font-semibold">${sector.type}</span>
+            `<div style="padding:10px;font-size:12px;font-family:system-ui,sans-serif;color:#e2e8f0;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                <h4 style="font-weight:700;color:#2dd4bf;font-size:14px;margin:0;">🇮🇳 ${sector.name}</h4>
+                <span style="font-size:9px;padding:2px 6px;border-radius:4px;background:rgba(13,148,136,0.2);color:#5eead4;font-weight:600;border:1px solid rgba(45,212,191,0.3);">${sector.type}</span>
               </div>
-              <p class="text-slate-600 mb-1"><strong>State/UT:</strong> ${sector.state}</p>
-              <p class="text-slate-500 mb-2">${sector.description}</p>
-              <div class="text-[10px] bg-slate-100 p-1.5 rounded font-mono mb-2">
+              <p style="color:#94a3b8;margin:0 0 4px 0;"><strong style="color:#cbd5e1;">State/UT:</strong> ${sector.state}</p>
+              <p style="color:#64748b;margin:0 0 8px 0;">${sector.description}</p>
+              <div style="font-size:10px;background:rgba(30,58,95,0.5);padding:6px 8px;border-radius:6px;font-family:monospace;margin-bottom:8px;color:#5eead4;border:1px solid rgba(30,58,95,0.6);">
                 Lat: ${sector.center.lat}°N | Lon: ${sector.center.lon}°E
               </div>
               <button
@@ -514,52 +540,84 @@ export default function WorldMapComponent({
       }
 
       // 2. POTENTIAL FISHING ZONES (PFZ)
-      if (activeLayers.has('fishing')) {
+      if (currentLayers.has('fishing')) {
         zonesList.forEach((zone) => {
+          const color = zone.color || '#14b8a6';
+          const radiusMeters = (zone.radius || 15) * 1000;
+
           const circle = L.circle([zone.center.lat, zone.center.lon], {
-            color: zone.color || '#14b8a6',
-            fillColor: zone.color || '#14b8a6',
-            fillOpacity: 0.25,
-            radius: 35000,
+            color: color,
+            fillColor: color,
+            fillOpacity: 0.22,
+            radius: radiusMeters,
+            weight: 2,
           });
 
           circle.on('click', () => {
-            inspectPoint(zone.center.lat, zone.center.lon, zone.name);
+            inspect(zone.center.lat, zone.center.lon, zone.name);
           });
 
           circle.bindPopup(
-            `<div class="p-2 text-xs font-sans">
-              <div class="flex items-center justify-between mb-1">
-                <strong class="text-teal-600 text-sm">${zone.name}</strong>
-                <span class="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-bold">${zone.suitabilityScore}% Match</span>
+            `<div style="padding:8px;font-size:12px;font-family:system-ui,sans-serif;color:#e2e8f0;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                <strong style="color:${color};font-size:14px;">${zone.name}</strong>
+                <span style="padding:2px 6px;border-radius:4px;background:rgba(16,185,129,0.2);color:#6ee7b7;font-size:10px;font-weight:700;border:1px solid rgba(16,185,129,0.3);">${zone.suitabilityScore}% Match</span>
               </div>
-              <p class="text-slate-600 mb-1">Activity Level: <strong>${zone.historicalActivity}</strong></p>
-              <p class="text-slate-500">SST: ${zone.sst}°C | Chlorophyll: ${zone.chlorophyll} mg/m³</p>
+              <p style="color:#94a3b8;margin:0 0 4px 0;">Activity Level: <strong style="color:#cbd5e1;">${zone.historicalActivity}</strong> | Radius: ${zone.radius} km</p>
+              <p style="color:#64748b;margin:0;">SST: ${zone.sst}°C | Chlorophyll: ${zone.chlorophyll} mg/m³</p>
             </div>`
           );
 
           circle.addTo(layerGroup);
+
+          // Add Zone Label Badge at Circle Center
+          const shortName = zone.name.includes('Zone A') ? 'Zone A' :
+                            zone.name.includes('Zone B') ? 'Zone B' :
+                            zone.name.includes('Zone C') ? 'Zone C' : zone.name.split(' ')[0];
+          const badgeIcon = L.divIcon({
+            className: 'custom-zone-badge',
+            html: `<div style="background:${color}22;border:1.5px solid ${color};color:${color};padding:2px 6px;border-radius:12px;font-size:10px;font-weight:bold;white-space:nowrap;backdrop-filter:blur(4px);box-shadow:0 2px 6px rgba(0,0,0,0.4);">
+              📍 ${shortName} (${zone.suitabilityScore}%)
+            </div>`,
+            iconSize: [80, 20],
+            iconAnchor: [40, 10],
+          });
+          const badgeMarker = L.marker([zone.center.lat, zone.center.lon], { icon: badgeIcon });
+          badgeMarker.on('click', () => inspect(zone.center.lat, zone.center.lon, zone.name));
+          badgeMarker.addTo(layerGroup);
         });
       }
 
       // 3. LIVE VESSEL POSITIONS (AIS)
-      if (activeLayers.has('vessels')) {
+      if (currentLayers.has('vessels')) {
         vessels.forEach((vessel) => {
           const color = vessel.type === 'fishing' ? '#34d399' : vessel.type === 'commercial' ? '#fbbf24' : '#38bdf8';
+          const heading = vessel.heading || 0;
           const vesselIcon = L.divIcon({
             className: 'custom-vessel-marker',
-            html: `<div style="background-color: ${color}; width: 10px; height: 10px; border-radius: 50%; border: 2px solid #030712; box-shadow: 0 0 8px ${color}; cursor: pointer;"></div>`,
-            iconSize: [12, 12],
-            iconAnchor: [6, 6],
+            html: `<div style="position:relative;display:flex;align-items:center;cursor:pointer;">
+              <div style="transform:rotate(${heading}deg);width:16px;height:16px;display:flex;align-items:center;justify-content:center;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="${color}" stroke="#030712" stroke-width="1.5">
+                  <path d="M12 2L19 21L12 17L5 21L12 2Z"/>
+                </svg>
+              </div>
+              <span style="margin-left:4px;font-size:9px;font-weight:bold;color:#f8fafc;background:rgba(15,23,42,0.85);padding:1px 4px;border-radius:4px;white-space:nowrap;border:1px solid ${color}66;">
+                ${vessel.name.split(' ')[0]} (${vessel.speed}kn)
+              </span>
+            </div>`,
+            iconSize: [80, 18],
+            iconAnchor: [8, 9],
           });
 
           const marker = L.marker([vessel.position.lat, vessel.position.lon], { icon: vesselIcon });
           marker.on('click', () => {
-            inspectPoint(vessel.position.lat, vessel.position.lon, `${vessel.name} (${vessel.type})`);
+            inspect(vessel.position.lat, vessel.position.lon, `${vessel.name} (${vessel.type}) — Speed ${vessel.speed} kn, Heading ${heading}°`);
           });
           marker.bindTooltip(
-            `<div class="px-2 py-1 bg-navy-900 text-white text-xs font-medium rounded shadow">
-              🚢 ${vessel.name} (${vessel.type}) — ${vessel.speed} kts
+            `<div style="padding:4px 8px;background:#0f172a;color:#fff;font-size:11px;font-family:sans-serif;border-radius:6px;border:1px solid ${color};">
+              🚢 <strong>${vessel.name}</strong> (${vessel.type.toUpperCase()})<br/>
+              Speed: <strong>${vessel.speed} knots</strong> | Heading: <strong>${heading}°</strong><br/>
+              Flag: ${vessel.flag || 'IN'} | Length: ${vessel.length || 20}m
             </div>`,
             { sticky: true }
           );
@@ -568,7 +626,7 @@ export default function WorldMapComponent({
         });
       }
     });
-  }, [highlightCoasts, activeLayers, zonesList, vessels, isLoaded]);
+  }, [highlightCoasts, activeLayersKey, zonesList, vessels, isLoaded]);
 
   // Handle AI-Controlled Map Actions (Phase 6)
   useEffect(() => {
@@ -600,25 +658,76 @@ export default function WorldMapComponent({
         }).addTo(layerGroup);
 
         highlightCircle.bindPopup(`
-          <div class="p-2 font-sans text-xs">
-            <h4 class="font-bold text-teal-600 text-sm mb-1">🎯 Highlighted PFZ: ${targetZone.name}</h4>
-            <p class="text-slate-600">Suitability Score: <strong>${targetZone.suitabilityScore}% Match</strong></p>
-            <p class="text-slate-500 font-mono">SST: ${targetZone.sst}°C | Chlorophyll: ${targetZone.chlorophyll} mg/m³</p>
+          <div style="padding:8px;font-size:12px;font-family:system-ui,sans-serif;color:#e2e8f0;">
+            <h4 style="font-weight:700;color:#2dd4bf;font-size:14px;margin:0 0 6px 0;">🎯 Highlighted PFZ: ${targetZone.name}</h4>
+            <p style="color:#94a3b8;margin:0 0 4px 0;">Suitability Score: <strong style="color:#6ee7b7;">${targetZone.suitabilityScore}% Match</strong></p>
+            <p style="color:#64748b;font-family:monospace;margin:0;">SST: ${targetZone.sst}°C | Chlorophyll: ${targetZone.chlorophyll} mg/m³</p>
           </div>
         `).openPopup();
 
         map.flyTo(p, 8.5, { duration: 1.5 });
       }
 
-      if (mapAction === 'draw_route' && route && route.length > 1) {
+      if (route && route.length > 1) {
         const coords: [number, number][] = route.map(r => [r.lat, r.lon]);
-        const polyline = L.polyline(coords, {
-          color: '#10b981',
-          weight: 5,
-          opacity: 0.9,
+
+        // Outer Glow Buffer (Google Maps marine style)
+        L.polyline(coords, {
+          color: '#0d9488',
+          weight: 10,
+          opacity: 0.35,
         }).addTo(layerGroup);
 
-        polyline.bindTooltip('✨ AI Recommended Safe Route (96% Safety Rating)', { sticky: true });
+        // Main Navigation Line
+        const polyline = L.polyline(coords, {
+          color: '#2dd4bf',
+          weight: 5,
+          opacity: 0.95,
+          dashArray: '8, 4',
+        }).addTo(layerGroup);
+
+        // Add Waypoint Leg Pins along the sea route
+        coords.forEach((pt, idx) => {
+          if (idx > 0 && idx < coords.length - 1) {
+            const wayIcon = L.divIcon({
+              className: 'custom-way-marker',
+              html: `<div style="background:#0f172a;border:1.5px solid #2dd4bf;color:#2dd4bf;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:bold;box-shadow:0 0 6px rgba(45,212,191,0.6);">
+                ${idx}
+              </div>`,
+              iconSize: [18, 18],
+              iconAnchor: [9, 9],
+            });
+            L.marker(pt, { icon: wayIcon }).addTo(layerGroup).bindTooltip(`📍 Sea Waypoint ${idx} (${pt[0].toFixed(2)}°N, ${pt[1].toFixed(2)}°E)`, { sticky: true });
+          }
+        });
+
+        // Add Start marker (Green pin)
+        const startPt = coords[0];
+        const startIcon = L.divIcon({
+          className: 'custom-start-marker',
+          html: `<div class="relative flex items-center justify-center">
+            <span class="animate-ping absolute inline-flex h-6 w-6 rounded-full bg-emerald-400 opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-4 w-4 bg-emerald-400 border-2 border-navy-950 shadow-lg"></span>
+          </div>`,
+          iconSize: [24, 24],
+          iconAnchor: [12, 12],
+        });
+        L.marker(startPt, { icon: startIcon }).addTo(layerGroup).bindPopup('<b>🚩 Start Location</b>');
+
+        // Add Destination marker (Teal glowing target)
+        const endPt = coords[coords.length - 1];
+        const endIcon = L.divIcon({
+          className: 'custom-end-marker',
+          html: `<div class="relative flex items-center justify-center">
+            <span class="animate-ping absolute inline-flex h-8 w-8 rounded-full bg-cyan-400 opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-5 w-5 bg-cyan-400 border-2 border-navy-950 shadow-lg"></span>
+          </div>`,
+          iconSize: [28, 28],
+          iconAnchor: [14, 14],
+        });
+        L.marker(endPt, { icon: endIcon }).addTo(layerGroup).bindPopup(`<b>🎯 Destination: ${selectedZone || 'PFZ Target'}</b>`);
+
+        polyline.bindTooltip(`✨ Google-Maps Sea Navigation Route to ${selectedZone || 'Destination'}`, { sticky: true });
         lineLayerRef.current = polyline;
         map.flyToBounds(coords, { padding: [60, 60], duration: 1.5 });
       }
@@ -636,9 +745,9 @@ export default function WorldMapComponent({
         }).addTo(layerGroup);
 
         polygon.bindPopup(`
-          <div class="p-2 font-sans text-xs text-red-600 font-bold">
-            ⚠️ Restricted Maritime Zone / IMBL Boundary<br/>
-            <span class="text-slate-600 text-[11px] font-normal">Prohibited waters for commercial fishing without clearance.</span>
+          <div style="padding:8px;font-size:12px;font-family:system-ui,sans-serif;">
+            <strong style="color:#f87171;font-size:13px;">⚠️ Restricted Maritime Zone / IMBL Boundary</strong><br/>
+            <span style="color:#94a3b8;font-size:11px;font-weight:400;">Prohibited waters for commercial fishing without clearance.</span>
           </div>
         `).openPopup();
 
