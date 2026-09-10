@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { motion } from 'framer-motion';
-import { Route, MapPin, Navigation, Search, WifiOff, Wifi, Ship, Layers, RefreshCw, Compass, Anchor } from 'lucide-react';
+import { Route, MapPin, Navigation, Search, WifiOff, Wifi, Ship, Layers, RefreshCw, Compass, Anchor, Radio, Fish, ArrowUpRight, Shield } from 'lucide-react';
 import { RouteCard, DemoModeBanner } from '@/components/cards';
 import { getMockRoutes, getMockFishingZones, getMockVessels } from '@/data/mock-data';
 import { RouteOption, Coordinates, FishingZone, Vessel } from '@/types/marine';
@@ -424,7 +424,7 @@ export default function RoutesPage() {
           </div>
 
           {/* Interactive Leaflet Map Canvas */}
-          <div className="w-full h-[520px] relative z-0">
+          <div className="w-full h-[540px] relative z-0">
             <WorldMap
               vessels={vesselData?.vessels || getMockVessels()}
               fishingZones={displayZones}
@@ -432,6 +432,67 @@ export default function RoutesPage() {
               selectedRegion={currentSector}
               activeLayers={new Set(['mosdac_overlay', 'winds', 'fishing', 'vessels'])}
             />
+
+            {/* Floating Right-Side Telemetry HUD Overlay Panel (Matching user screenshot) */}
+            <div className="absolute top-4 right-4 z-[400] w-72 md:w-80 p-4 rounded-2xl bg-navy-950/85 backdrop-blur-md border border-navy-700/60 shadow-2xl space-y-3 text-xs text-white">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-teal-400 flex items-center gap-1.5 text-sm">
+                  <Radio className="w-4 h-4 text-teal-400 animate-pulse" />
+                  {currentSector.name}
+                </span>
+                <span className="px-2 py-0.5 rounded bg-teal-500/20 text-teal-300 font-mono text-[10px]">
+                  LIVE HUD
+                </span>
+              </div>
+
+              <div className="text-[11px] text-slate-400 font-mono">
+                LAT: {currentSector.center.lat}° N | LON: {currentSector.center.lon}° E
+              </div>
+
+              {/* Nearest Fishing Zone Box */}
+              <div className="p-3 rounded-xl bg-teal-500/10 border border-teal-500/20 space-y-1.5">
+                <span className="text-teal-300 font-semibold text-[11px] flex items-center gap-1">
+                  <Fish className="w-3.5 h-3.5 text-teal-400" />
+                  Nearest Fishing Zone Target:
+                </span>
+                <div className="font-bold text-white text-xs truncate">
+                  {targetZoneObj?.name || 'Fishing Zone B — Alibag Coastal Shelf'}
+                </div>
+                <div className="flex items-center gap-2 text-[11px] text-slate-300 font-mono">
+                  <span>🧭 {activeRoute?.distance || 38} km</span>
+                  <span>({((activeRoute?.distance || 38) * 0.539957).toFixed(1)} NM)</span>
+                  <span className="text-emerald-400 font-bold">{targetZoneObj?.suitabilityScore || 96}% Match</span>
+                </div>
+                <button
+                  onClick={() => handleSearch(targetZoneObj?.name)}
+                  className="w-full mt-1.5 py-1.5 px-3 rounded-lg bg-teal-500 hover:bg-teal-400 text-navy-950 font-bold text-[11px] flex items-center justify-center gap-1 transition-all"
+                >
+                  <ArrowUpRight className="w-3.5 h-3.5" />
+                  Connect & Fly to Route
+                </button>
+              </div>
+
+              {/* Telemetry Summary */}
+              <div className="grid grid-cols-2 gap-2 text-[11px] pt-1">
+                <div className="p-2 rounded-lg bg-navy-900/60 border border-navy-700/40">
+                  <span className="text-slate-400 block font-mono">🌡️ INSAT SST</span>
+                  <strong className="text-amber-400 text-xs">{targetZoneObj?.sst || 27.8} °C</strong>
+                </div>
+                <div className="p-2 rounded-lg bg-navy-900/60 border border-navy-700/40">
+                  <span className="text-slate-400 block font-mono">🌊 Waves</span>
+                  <strong className="text-cyan-400 text-xs">1.0 m</strong>
+                </div>
+              </div>
+
+              {/* Safety Score */}
+              <div className="flex items-center justify-between p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs font-semibold text-emerald-400">
+                <span className="flex items-center gap-1.5">
+                  <Shield className="w-4 h-4" />
+                  Safety Score
+                </span>
+                <span className="text-sm font-bold text-white">{activeRoute?.safetyScore || 96}/100 (SAFE)</span>
+              </div>
+            </div>
           </div>
 
           {/* Turn-by-turn Route Selection Tabs directly below map */}
