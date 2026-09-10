@@ -6,11 +6,13 @@ import { usePathname } from 'next/navigation';
 import { Home, LayoutDashboard, Map, Bot, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/AuthContext';
+import { useSettings } from '@/lib/settings-store';
+import { t } from '@/lib/i18n-engine';
 
 const NAV_ITEMS = [
   { href: '/', label: 'Home', icon: Home },
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/map', label: 'World Map', icon: Map },
+  { href: '/map', label: 'Marine Map', icon: Map },
   { href: '/assistant', label: 'ORCA AI', icon: Bot },
   { href: '/login', label: 'Account', icon: User },
 ];
@@ -18,6 +20,7 @@ const NAV_ITEMS = [
 export function BottomNav() {
   const pathname = usePathname();
   const { user } = useAuth();
+  const { settings } = useSettings();
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-navy-950/95 backdrop-blur-md border-t border-navy-700/50 px-2 py-1.5 pb-safe">
@@ -44,7 +47,7 @@ export function BottomNav() {
                 )}
               </div>
               <span className="text-[10px] mt-0.5 tracking-tight font-medium">
-                {item.label}
+                {t(item.label, settings.language)}
               </span>
             </Link>
           );

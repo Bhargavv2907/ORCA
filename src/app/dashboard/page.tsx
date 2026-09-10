@@ -10,8 +10,11 @@ import { getGreeting, formatCoordinate } from '@/lib/utils';
 import { OceanMetric, SafetyScore, Alert } from '@/types/marine';
 import { getSelectedLocation, marineApiUrl, DEFAULT_LOCATION } from '@/lib/location-store';
 import type { CoastalLocation } from '@/lib/orchestrator';
+import { useSettings, formatSpeed, formatTemperature } from '@/lib/settings-store';
+import { t } from '@/lib/i18n-engine';
 
 export default function DashboardPage() {
+  const { settings } = useSettings();
   const [metrics, setMetrics] = useState<OceanMetric[]>([]);
   const [safety, setSafety] = useState<SafetyScore | null>(null);
   const [alerts, setAlerts] = useState<Alert[]>([]);
@@ -44,9 +47,9 @@ export default function DashboardPage() {
           },
           {
             id: 'wind',
-            label: 'Wind Speed',
-            value: `${data.weather.windSpeed.toFixed(1)} km/h`,
-            unit: 'km/h',
+            label: t('Speed', settings.language) === 'Speed' ? 'Wind Speed' : t('Speed', settings.language),
+            value: formatSpeed(data.weather.windSpeed, settings.speedUnit),
+            unit: settings.speedUnit,
             trend: data.weather.windSpeed > 25 ? 'up' : 'stable',
             status: data.weather.windSpeed > 35 ? 'danger' : data.weather.windSpeed > 22 ? 'moderate' : 'good',
             icon: 'wind',
@@ -55,8 +58,8 @@ export default function DashboardPage() {
           {
             id: 'sst',
             label: 'Sea Surface Temp (SST)',
-            value: `${data.ocean.sst.toFixed(1)} °C`,
-            unit: '°C',
+            value: formatTemperature(data.ocean.sst, settings.tempUnit),
+            unit: settings.tempUnit,
             trend: 'stable',
             status: 'good',
             icon: 'thermometer',
@@ -75,14 +78,52 @@ export default function DashboardPage() {
         ];
         setMetrics(liveMetrics);
       } else {
-        setMetrics(getMockDashboardMetrics());
+        const rawMock = getMockDashboardMetrics().map(m => {
+          if (m.id === 'wind') {
+            return {
+              ...m,
+              label: t('Speed', settings.language) === 'Speed' ? 'Wind Speed' : t('Speed', settings.language),
+              value: formatSpeed(28, settings.speedUnit),
+              unit: settings.speedUnit,
+            };
+          }
+          if (m.id === 'sst') {
+            return {
+              ...m,
+              label: t('Temperature', settings.language) === 'Temperature' ? 'Sea Surface Temp (SST)' : t('Temperature', settings.language),
+              value: formatTemperature(28.4, settings.tempUnit),
+              unit: settings.tempUnit,
+            };
+          }
+          return m;
+        });
+        setMetrics(rawMock);
         setSafety(getMockSafety());
       }
     } catch {
-      setMetrics(getMockDashboardMetrics());
+      const rawMock = getMockDashboardMetrics().map(m => {
+        if (m.id === 'wind') {
+          return {
+            ...m,
+            label: t('Speed', settings.language) === 'Speed' ? 'Wind Speed' : t('Speed', settings.language),
+            value: formatSpeed(28, settings.speedUnit),
+            unit: settings.speedUnit,
+          };
+        }
+        if (m.id === 'sst') {
+          return {
+            ...m,
+            label: t('Temperature', settings.language) === 'Temperature' ? 'Sea Surface Temp (SST)' : t('Temperature', settings.language),
+            value: formatTemperature(28.4, settings.tempUnit),
+            unit: settings.tempUnit,
+          };
+        }
+        return m;
+      });
+      setMetrics(rawMock);
       setSafety(getMockSafety());
     }
-  }, []);
+  }, [settings.speedUnit, settings.tempUnit, settings.language]);
 
   useEffect(() => {
     loadLiveMarineData();
@@ -112,7 +153,7 @@ export default function DashboardPage() {
       >
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-white">
-            {getGreeting()}, <span className="text-teal-400">Fisherman</span>
+            {getGreeting()}, <span className="text-teal-400">{t('Fisherman', settings.language)}</span>
           </h1>
           <div className="flex items-center gap-3 mt-1 text-sm text-slate-400">
             <div className="flex items-center gap-1.5">
@@ -136,7 +177,7 @@ export default function DashboardPage() {
             className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-teal-500 to-cyan-500 text-navy-950 font-semibold rounded-xl text-sm hover:shadow-lg hover:shadow-teal-500/25 transition-all"
           >
             <Bot className="w-4 h-4" />
-            Ask ORCA
+            {t('AI Assistant', settings.language)}
           </Link>
         </div>
       </motion.div>
@@ -179,7 +220,7 @@ export default function DashboardPage() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Bot className="w-5 h-5 text-teal-400" />
-            <h3 className="text-sm font-bold text-white uppercase tracking-wider">Ask ORCA Intelligence</h3>
+            <h3 className="text-sm font-bold text-white uppercase tracking-wider">{t('Ask ORCA Intelligence', settings.language)}</h3>
           </div>
           <Link href="/assistant" className="text-xs text-teal-400 hover:underline flex items-center gap-1">
             Full Chat Mode <ArrowRight className="w-3 h-3" />
@@ -208,7 +249,7 @@ export default function DashboardPage() {
 
       {/* Metrics Grid */}
       <div>
-        <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">Current Conditions</h3>
+        <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">{t('Current Conditions', settings.language)}</h3>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           {metrics.map((metric, i) => (
             <OceanMetricCard key={metric.id} metric={metric} index={i} />
@@ -220,7 +261,7 @@ export default function DashboardPage() {
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Quick Actions */}
         <div className="lg:col-span-1 space-y-3">
-          <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">Quick Actions</h3>
+          <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">{t('Quick Actions', settings.language)}</h3>
           {[
             { href: '/assistant', icon: Bot, label: 'Ask ORCA a question', color: 'from-teal-500 to-cyan-500' },
             { href: '/fishing-zones', icon: Anchor, label: 'View fishing zones', color: 'from-emerald-500 to-teal-500' },
@@ -250,7 +291,7 @@ export default function DashboardPage() {
         {/* Active Alerts */}
         <div className="lg:col-span-2 space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">Active Alerts</h3>
+            <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">{t('Active Alerts', settings.language)}</h3>
             <Link href="/alerts" className="text-xs text-teal-400 hover:underline">View all</Link>
           </div>
           {alerts.map((alert, i) => (

@@ -26,6 +26,8 @@ const NAV_ITEMS = [
 ];
 
 import { User } from 'lucide-react';
+import { useSettings } from '@/lib/settings-store';
+import { t } from '@/lib/i18n-engine';
 
 const BOTTOM_ITEMS = [
   { href: '/login', label: 'Account / Firebase', icon: User },
@@ -39,6 +41,7 @@ export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [showPitchDeck, setShowPitchDeck] = useState(false);
+  const { settings } = useSettings();
 
   const isActive = (href: string) => pathname === href;
 
@@ -62,7 +65,7 @@ export function Sidebar() {
       )}
       <item.icon className={cn('w-5 h-5 shrink-0', isActive(item.href) ? 'text-teal-400' : 'text-slate-500 group-hover:text-slate-300')} />
       {!collapsed && (
-        <span className="truncate">{item.label}</span>
+        <span className="truncate">{t(item.label, settings.language)}</span>
       )}
     </Link>
   );
@@ -103,9 +106,9 @@ export function Sidebar() {
             animate={{ x: 0 }}
             exit={{ x: -280 }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="lg:hidden fixed left-0 top-0 bottom-0 z-50 w-[280px] bg-navy-900 border-r border-navy-700/40 flex flex-col overflow-y-auto"
+            className="lg:hidden fixed left-0 top-0 bottom-0 z-50 w-[280px] bg-navy-900 border-r border-navy-700/40 flex flex-col"
           >
-            <div className="p-4 flex items-center gap-3 border-b border-navy-700/30">
+            <div className="p-4 flex items-center gap-3 border-b border-navy-700/30 shrink-0">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center">
                 <Anchor className="w-6 h-6 text-navy-950" />
               </div>
@@ -114,11 +117,13 @@ export function Sidebar() {
                 <p className="text-[10px] text-teal-400/70 tracking-wider uppercase">Ocean Intelligence</p>
               </div>
             </div>
-            <nav className="flex-1 p-3 space-y-1">
-              {NAV_ITEMS.map((item) => <NavLink key={item.href} item={item} />)}
-            </nav>
-            <div className="p-3 border-t border-navy-700/30 space-y-1">
-              {BOTTOM_ITEMS.map((item) => <NavLink key={item.href} item={item} />)}
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-3">
+              <nav className="space-y-1">
+                {NAV_ITEMS.map((item) => <NavLink key={item.href} item={item} />)}
+              </nav>
+              <div className="pt-2 border-t border-navy-700/30 space-y-1">
+                {BOTTOM_ITEMS.map((item) => <NavLink key={item.href} item={item} />)}
+              </div>
             </div>
           </motion.aside>
         )}
@@ -132,106 +137,106 @@ export function Sidebar() {
         )}
       >
         {/* Logo */}
-        <div className={cn('p-4 flex items-center border-b border-navy-700/20', collapsed ? 'justify-center' : 'gap-3')}>
-          <Link href="/" className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center shrink-0 glow-teal">
-              <Anchor className="w-6 h-6 text-navy-950" />
+        <div className={cn('p-3.5 px-4 flex items-center border-b border-navy-700/20 shrink-0', collapsed ? 'justify-center' : 'gap-3')}>
+          <Link href="/" className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center shrink-0 glow-teal">
+              <Anchor className="w-5 h-5 text-navy-950" />
             </div>
             {!collapsed && (
               <div>
-                <h1 className="text-lg font-bold text-white tracking-tight">ORCA</h1>
-                <p className="text-[10px] text-teal-400/70 tracking-wider uppercase">Ocean Intelligence</p>
+                <h1 className="text-base font-bold text-white tracking-tight leading-none">ORCA</h1>
+                <p className="text-[9px] text-teal-400/80 tracking-wider uppercase font-semibold mt-0.5">Ocean Intelligence</p>
               </div>
             )}
           </Link>
         </div>
 
-        {/* Nav */}
-        <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-          {NAV_ITEMS.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              title={collapsed ? item.label : undefined}
-              className={cn(
-                'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group relative',
-                collapsed && 'justify-center',
-                isActive(item.href)
-                  ? 'bg-teal-500/15 text-teal-300'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
-              )}
-            >
-              {isActive(item.href) && (
-                <motion.div
-                  layoutId="desktopActiveNav"
-                  className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-6 bg-teal-400 rounded-r-full"
-                  transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                />
-              )}
-              <item.icon className={cn('w-5 h-5 shrink-0', isActive(item.href) ? 'text-teal-400' : 'text-slate-500 group-hover:text-slate-300')} />
-              {!collapsed && <span className="truncate">{item.label}</span>}
-            </Link>
-          ))}
-        </nav>
+        {/* Unified Scrollable Center: All primary nav and secondary links in a single fluid container */}
+        <div className="flex-1 overflow-y-auto custom-scrollbar px-2.5 py-2 space-y-2.5">
+          {/* Primary Nav */}
+          <nav className="space-y-0.5">
+            {NAV_ITEMS.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                title={collapsed ? t(item.label, settings.language) : undefined}
+                className={cn(
+                  'flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 group relative',
+                  collapsed && 'justify-center px-2',
+                  isActive(item.href)
+                    ? 'bg-teal-500/15 text-teal-300 font-semibold shadow-sm shadow-teal-500/10'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+                )}
+              >
+                {isActive(item.href) && (
+                  <motion.div
+                    layoutId="desktopActiveNav"
+                    className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-teal-400 rounded-r-full"
+                    transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                  />
+                )}
+                <item.icon className={cn('w-4 h-4 shrink-0 transition-colors', isActive(item.href) ? 'text-teal-400' : 'text-slate-500 group-hover:text-slate-300')} />
+                {!collapsed && <span className="truncate">{t(item.label, settings.language)}</span>}
+              </Link>
+            ))}
+          </nav>
 
-        {/* Bottom */}
-        <div className="p-3 border-t border-navy-700/20 space-y-1">
-          {BOTTOM_ITEMS.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              title={collapsed ? item.label : undefined}
-              className={cn(
-                'flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-all duration-200',
-                collapsed && 'justify-center',
-                isActive(item.href)
-                  ? 'bg-teal-500/15 text-teal-300'
-                  : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
-              )}
-            >
-              <item.icon className="w-4 h-4 shrink-0" />
-              {!collapsed && <span className="truncate">{item.label}</span>}
-            </Link>
-          ))}
+          {/* Secondary Preferences & System Links */}
+          <div className="border-t border-navy-700/30 pt-2 space-y-0.5">
+            {BOTTOM_ITEMS.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                title={collapsed ? t(item.label, settings.language) : undefined}
+                className={cn(
+                  'flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 group relative',
+                  collapsed && 'justify-center px-2',
+                  isActive(item.href)
+                    ? 'bg-teal-500/15 text-teal-300 font-semibold'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+                )}
+              >
+                {isActive(item.href) && (
+                  <motion.div
+                    layoutId="desktopActiveBottom"
+                    className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-teal-400 rounded-r-full"
+                    transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                  />
+                )}
+                <item.icon className={cn('w-4 h-4 shrink-0 transition-colors', isActive(item.href) ? 'text-teal-400' : 'text-slate-500 group-hover:text-slate-300')} />
+                {!collapsed && <span className="truncate">{t(item.label, settings.language)}</span>}
+              </Link>
+            ))}
+          </div>
+        </div>
 
+        {/* Pinned Bottom Controls (Pitch deck & Collapse) */}
+        <div className="p-2.5 border-t border-navy-700/30 bg-navy-950/40 shrink-0 space-y-1">
           <button
             onClick={() => setShowPitchDeck(true)}
             title="SIH Pitch Deck & Demo Mode"
             className={cn(
-              'w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-bold transition-all bg-gradient-to-r from-teal-500/20 to-cyan-500/20 hover:from-teal-500/30 hover:to-cyan-500/30 text-teal-300 border border-teal-500/30 mb-1',
-              collapsed && 'justify-center'
+              'w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all bg-gradient-to-r from-teal-500/20 to-cyan-500/20 hover:from-teal-500/30 hover:to-cyan-500/30 text-teal-300 border border-teal-500/30 cursor-pointer',
+              collapsed && 'justify-center px-1'
             )}
           >
-            <Trophy className="w-4 h-4 shrink-0 text-amber-400" />
-            {!collapsed && <span className="truncate">SIH Pitch Deck</span>}
+            <Trophy className="w-3.5 h-3.5 shrink-0 text-amber-400" />
+            {!collapsed && <span className="truncate">{t('SIH Pitch Deck', settings.language)}</span>}
           </button>
 
           <button
             onClick={() => setCollapsed(!collapsed)}
-            className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-slate-500 hover:text-slate-300 hover:bg-white/5 w-full transition-all"
+            className={cn(
+              'flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-slate-400 hover:text-slate-200 hover:bg-white/5 w-full transition-all cursor-pointer',
+              collapsed && 'justify-center px-1'
+            )}
+            title={collapsed ? t('Expand', settings.language) || 'Expand' : undefined}
           >
-            {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
-            {!collapsed && <span>Collapse</span>}
+            {collapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
+            {!collapsed && <span>{t('Collapse', settings.language)}</span>}
           </button>
         </div>
       </aside>
-
-      {/* Bottom mobile nav */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 glass border-t border-navy-700/30 px-2 py-1 flex items-center justify-around">
-        {[NAV_ITEMS[0], NAV_ITEMS[1], NAV_ITEMS[2], NAV_ITEMS[3], NAV_ITEMS[8]].map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={cn(
-              'flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-lg text-[10px] transition-colors min-w-[48px]',
-              isActive(item.href) ? 'text-teal-400' : 'text-slate-500'
-            )}
-          >
-            <item.icon className="w-5 h-5" />
-            <span>{item.label.split(' ')[0]}</span>
-          </Link>
-        ))}
-      </nav>
 
       {/* Pitch Deck Modal */}
       <PitchDeckDemoModal

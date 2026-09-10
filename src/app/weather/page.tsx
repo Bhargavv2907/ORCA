@@ -9,8 +9,11 @@ import { ForecastPoint, WeatherForecast } from '@/types/marine';
 import { cn } from '@/lib/utils';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts';
 import { getSelectedLocation, marineApiUrl } from '@/lib/location-store';
+import { useSettings, formatSpeed, formatTemperature, convertSpeed } from '@/lib/settings-store';
+import { t } from '@/lib/i18n-engine';
 
 export default function WeatherPage() {
+  const { settings } = useSettings();
   const [forecast, setForecast] = useState<ForecastPoint[]>([]);
   const [weekForecast, setWeekForecast] = useState<WeatherForecast[]>([]);
   const [activeChart, setActiveChart] = useState('wind');
@@ -159,8 +162,10 @@ export default function WeatherPage() {
               >
                 <span className="text-xs text-slate-400">{point.label}</span>
                 <Wind className={cn('w-4 h-4', point.isDangerous ? 'text-red-400' : 'text-blue-400')} />
-                <span className="text-sm font-bold text-white">{point.windSpeed}</span>
-                <span className="text-[10px] text-slate-500">km/h</span>
+                <span className="text-sm font-bold text-white">
+                  {convertSpeed(point.windSpeed, settings.speedUnit).toFixed(1)}
+                </span>
+                <span className="text-[10px] text-slate-500">{settings.speedUnit}</span>
                 <Waves className={cn('w-4 h-4 mt-1', point.isDangerous ? 'text-red-400' : 'text-cyan-400')} />
                 <span className="text-sm font-bold text-white">{point.waveHeight}</span>
                 <span className="text-[10px] text-slate-500">m</span>
@@ -196,7 +201,7 @@ export default function WeatherPage() {
                 <div className="flex items-center gap-6 flex-1 flex-wrap">
                   <div className="flex items-center gap-1.5 min-w-[80px]">
                     <Wind className={cn('w-3.5 h-3.5', isStormy ? 'text-red-400' : 'text-blue-400')} />
-                    <span className="text-sm text-white">{Math.round(day.weather.windSpeed)} km/h</span>
+                    <span className="text-sm text-white">{formatSpeed(day.weather.windSpeed, settings.speedUnit)}</span>
                   </div>
                   <div className="flex items-center gap-1.5 min-w-[70px]">
                     <Waves className={cn('w-3.5 h-3.5', isStormy ? 'text-red-400' : 'text-cyan-400')} />
@@ -204,7 +209,7 @@ export default function WeatherPage() {
                   </div>
                   <div className="flex items-center gap-1.5 min-w-[60px]">
                     <Thermometer className="w-3.5 h-3.5 text-amber-400" />
-                    <span className="text-sm text-white">{Math.round(day.weather.temperature)}°C</span>
+                    <span className="text-sm text-white">{formatTemperature(day.weather.temperature, settings.tempUnit)}</span>
                   </div>
                   <div className="flex items-center gap-1.5 min-w-[60px]">
                     <Droplets className="w-3.5 h-3.5 text-blue-400" />

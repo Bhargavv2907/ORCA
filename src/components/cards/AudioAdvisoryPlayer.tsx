@@ -4,28 +4,43 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Volume2, VolumeX, Globe, Play, Square, FastForward } from 'lucide-react';
 import { COASTAL_LANGUAGES, translateAdvisory, speakVernacularAdvisory, stopVernacularAdvisory } from '@/lib/i18n-engine';
+import { useSettings } from '@/lib/settings-store';
 
 interface AudioAdvisoryPlayerProps {
   text: string;
   defaultLanguage?: string;
 }
 
-export function AudioAdvisoryPlayer({ text, defaultLanguage = 'English' }: AudioAdvisoryPlayerProps) {
+export function AudioAdvisoryPlayer({ text, defaultLanguage }: AudioAdvisoryPlayerProps) {
+  const { settings } = useSettings();
   const [isPlaying, setIsPlaying] = useState(false);
-  const [language, setLanguage] = useState(defaultLanguage);
+  const [userSelectedLang, setUserSelectedLang] = useState<string | null>(null);
   const [speed, setSpeed] = useState(1.0);
+
+  const activeLanguage = userSelectedLang || defaultLanguage || settings.language || 'English';
   const [translatedPreview, setTranslatedPreview] = useState(text);
 
+  // Sync with defaultLanguage or settings.language only if user hasn't made an explicit local choice
   useEffect(() => {
-    setTranslatedPreview(translateAdvisory(text, language));
-  }, [text, language]);
+    if (!userSelectedLang) {
+      if (defaultLanguage) {
+        // defaultLanguage provided
+      } else if (settings.language) {
+        // settings.language updated
+      }
+    }
+  }, [defaultLanguage, settings.language, userSelectedLang]);
+
+  useEffect(() => {
+    setTranslatedPreview(translateAdvisory(text, activeLanguage));
+  }, [text, activeLanguage]);
 
   const handleTogglePlay = () => {
     if (isPlaying) {
       stopVernacularAdvisory();
       setIsPlaying(false);
     } else {
-      const success = speakVernacularAdvisory(text, language, speed, () => setIsPlaying(false));
+      const success = speakVernacularAdvisory(text, activeLanguage, speed, () => setIsPlaying(false));
       if (success) {
         setIsPlaying(true);
       }
@@ -53,7 +68,7 @@ export function AudioAdvisoryPlayer({ text, defaultLanguage = 'English' }: Audio
             ) : (
               <>
                 <Play className="w-3.5 h-3.5 fill-current" />
-                <span>Listen ({language})</span>
+                <span>Listen ({activeLanguage})</span>
               </>
             )}
           </button>
@@ -71,11 +86,11 @@ export function AudioAdvisoryPlayer({ text, defaultLanguage = 'English' }: Audio
         <div className="flex items-center gap-1.5">
           {/* Language Selector */}
           <select
-            value={language}
+            value={activeLanguage}
             onChange={(e) => {
               stopVernacularAdvisory();
               setIsPlaying(false);
-              setLanguage(e.target.value);
+              setUserSelectedLang(e.target.value);
             }}
             className="bg-navy-800 text-slate-200 text-[11px] font-semibold px-2 py-1 rounded-lg border border-navy-700 outline-none cursor-pointer hover:border-teal-500/40"
           >
@@ -98,7 +113,7 @@ export function AudioAdvisoryPlayer({ text, defaultLanguage = 'English' }: Audio
       </div>
 
       {/* Translated Vernacular Preview if non-English */}
-      {language !== 'English' && (
+      {activeLanguage !== 'English' && (
         <motion.div
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: 'auto' }}

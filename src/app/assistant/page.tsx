@@ -2,11 +2,13 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Mic, Globe, Bot, User, Shield, HelpCircle, Loader2, Anchor } from 'lucide-react';
+import { Send, Mic, Globe, Bot, User, Shield, HelpCircle, Loader2, Anchor, AlertTriangle, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { orchestrate, AgentOutput } from '@/lib/orchestrator';
 import { ChatMessage, AgentType, EvidencePayload } from '@/types/marine';
 import { DemoModeBanner, WhyEvidenceModal, AudioAdvisoryPlayer, ProactiveAlertBanner } from '@/components/cards';
+import { useSettings, SupportedLanguage } from '@/lib/settings-store';
+import { checkVulgarity } from '@/lib/moderation';
 
 const EXAMPLE_QUESTIONS = [
   'Where is the nearest Potential Fishing Zone (PFZ) today?',
@@ -24,20 +26,50 @@ const LANGUAGES = [
 ];
 
 export default function AssistantPage() {
+  const { settings, setSetting } = useSettings();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [language, setLanguage] = useState('English');
+  const language = settings.language;
+  const setLanguage = (lang: string) => setSetting('language', lang as SupportedLanguage);
   const [showLangMenu, setShowLangMenu] = useState(false);
   const [activeAgents, setActiveAgents] = useState<Set<AgentType>>(new Set());
   const [completedAgents, setCompletedAgents] = useState<Set<AgentType>>(new Set());
   const [activeEvidence, setActiveEvidence] = useState<EvidencePayload | null>(null);
   const [isListening, setIsListening] = useState(false);
+  const [vulgarityWarning, setVulgarityWarning] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const handleSend = async (question?: string) => {
     const q = question || input.trim();
     if (!q || isLoading) return;
+
+    // Check for vulgar or offensive language in query
+    const moderation = checkVulgarity(q, language);
+    if (moderation.isVulgar) {
+      const userMsg: ChatMessage = {
+        id: Date.now().toString(),
+        role: 'user',
+        content: q,
+        timestamp: new Date().toISOString(),
+      };
+      const warningMsg: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: moderation.warningText,
+        timestamp: new Date().toISOString(),
+        safetyStatus: {
+          overall: 0,
+          label: 'Content Moderation Warning',
+          status: 'DANGEROUS',
+          components: [],
+        },
+      };
+      setMessages(prev => [...prev, userMsg, warningMsg]);
+      setVulgarityWarning(moderation.warningText);
+      setInput('');
+      return;
+    }
 
     const userMsg: ChatMessage = {
       id: Date.now().toString(),
@@ -258,11 +290,17 @@ export default function AssistantPage() {
                     {msg.safetyStatus && (
                       <div className={cn(
                         'inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold',
+                        msg.safetyStatus.label === 'Content Moderation Warning'
+                          ? 'bg-red-500/20 text-red-400 border border-red-500/40' :
                         msg.safetyStatus.status === 'SAFE' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
                         msg.safetyStatus.status === 'MODERATE' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'
                       )}>
-                        <Shield className="w-3.5 h-3.5" />
-                        {msg.safetyStatus.label} — {msg.safetyStatus.overall}/100
+                        {msg.safetyStatus.label === 'Content Moderation Warning' ? (
+                          <AlertTriangle className="w-3.5 h-3.5 text-red-400" />
+                        ) : (
+                          <Shield className="w-3.5 h-3.5" />
+                        )}
+                        {msg.safetyStatus.label} {msg.safetyStatus.overall > 0 ? `— ${msg.safetyStatus.overall}/100` : ''}
                       </div>
                     )}
 
@@ -333,6 +371,30 @@ export default function AssistantPage() {
       {/* Input */}
       <div className="shrink-0 border-t border-navy-700/20 px-4 md:px-6 py-4">
         <div className="max-w-4xl mx-auto">
+          {/* Vulgar Language Warning Banner */}
+          <AnimatePresence>
+            {vulgarityWarning && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 10 }}
+                className="mb-3 p-3.5 rounded-xl bg-red-950/90 border border-red-500/50 text-red-200 text-xs flex items-center justify-between gap-3 shadow-lg shadow-red-950/40"
+              >
+                <div className="flex items-center gap-2.5">
+                  <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
+                  <span className="font-medium">{vulgarityWarning}</span>
+                </div>
+                <button
+                  onClick={() => setVulgarityWarning(null)}
+                  className="text-red-400 hover:text-white p-1 rounded-lg transition-colors cursor-pointer"
+                  title="Dismiss"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           <div className="flex items-center gap-2 p-2 rounded-2xl glass border border-navy-600/30 focus-within:border-teal-500/40 transition-colors">
             <button
               onClick={handleVoiceInput}
