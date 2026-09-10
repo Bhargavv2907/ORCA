@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Brain, Send, User, Zap, Lightbulb, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { orchestrate, classifyQuery, AgentOutput } from '@/lib/orchestrator';
-import { AgentCard, DemoModeBanner, RiskScore } from '@/components/cards';
+import { AgentCard, DemoModeBanner, RiskScore, AudioAdvisoryPlayer } from '@/components/cards';
 import { Agent, AgentType, OrcaResponse } from '@/types/marine';
 import { getMockAgents } from '@/data/mock-data';
 
@@ -302,6 +302,9 @@ export default function IntelligencePage() {
                     <p className="text-xs text-teal-400 font-semibold uppercase tracking-wider mb-1">Recommendation</p>
                     <p className="text-sm text-white">{response.recommendation}</p>
                   </div>
+
+                  {/* Voice Advisory Player */}
+                  <AudioAdvisoryPlayer text={response.recommendation} />
                 </div>
 
                 <div className="flex justify-center">

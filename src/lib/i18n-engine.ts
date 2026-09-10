@@ -83,7 +83,33 @@ export function getLanguageBCP47(languageName: string): string {
 let activeUtterance: SpeechSynthesisUtterance | null = null;
 
 /**
+ * Returns voices, waiting for the voiceschanged event if the list is empty.
+ * The Web Speech API loads voices asynchronously on first page load.
+ */
+function getVoicesAsync(): Promise<SpeechSynthesisVoice[]> {
+  return new Promise((resolve) => {
+    const voices = window.speechSynthesis.getVoices();
+    if (voices.length > 0) {
+      resolve(voices);
+      return;
+    }
+    // Voices not yet loaded — wait for the event (fires once on Chrome/Edge)
+    const handler = () => {
+      window.speechSynthesis.removeEventListener('voiceschanged', handler);
+      resolve(window.speechSynthesis.getVoices());
+    };
+    window.speechSynthesis.addEventListener('voiceschanged', handler);
+    // Fallback: resolve after 1 s even if event never fires (Firefox, Safari)
+    setTimeout(() => {
+      window.speechSynthesis.removeEventListener('voiceschanged', handler);
+      resolve(window.speechSynthesis.getVoices());
+    }, 1000);
+  });
+}
+
+/**
  * Speaks advisory text aloud using Web Speech API synthesis in target language.
+ * Voices are loaded asynchronously before speaking to avoid empty voice list.
  */
 export function speakVernacularAdvisory(
   text: string,
@@ -104,24 +130,36 @@ export function speakVernacularAdvisory(
   utterance.lang = bcp47;
   utterance.rate = rate;
 
-  const voices = window.speechSynthesis.getVoices();
-  const matchedVoice = voices.find(v => v.lang.startsWith(bcp47.slice(0, 2)) || v.lang.includes(bcp47));
-  if (matchedVoice) {
-    utterance.voice = matchedVoice;
-  }
-
   utterance.onend = () => {
     activeUtterance = null;
     onEnd?.();
   };
 
-  utterance.onerror = () => {
-    activeUtterance = null;
-    onEnd?.();
+  utterance.onerror = (e) => {
+    // Ignore 'interrupted' errors caused by stopVernacularAdvisory() cancelling
+    if ((e as SpeechSynthesisErrorEvent).error !== 'interrupted') {
+      activeUtterance = null;
+      onEnd?.();
+    }
   };
 
   activeUtterance = utterance;
-  window.speechSynthesis.speak(utterance);
+
+  // Load voices asynchronously then speak
+  getVoicesAsync().then((voices) => {
+    // Try exact BCP-47 match first, then language-code prefix match
+    const matched =
+      voices.find(v => v.lang === bcp47) ||
+      voices.find(v => v.lang.startsWith(bcp47.slice(0, 2)));
+    if (matched) {
+      utterance.voice = matched;
+    }
+    // Cancel any speech that may have been queued while waiting
+    if (activeUtterance === utterance) {
+      window.speechSynthesis.speak(utterance);
+    }
+  });
+
   return true;
 }
 

@@ -437,10 +437,24 @@ function generateResponse(
         ? `✅ Safe to go out. Waves ${waves.height.toFixed(1)}m · Wind ${Math.round(weather.windSpeed)} km/h from ${weather.windDirection} · Visibility ${weather.visibility?.toFixed(1) ?? 'good'} km. Safety score: ${safety.overall}/100. Return before evening.`
         : `⚠️ Do NOT go out — hazardous conditions. Waves: ${waves.height.toFixed(1)}m, Wind: ${Math.round(weather.windSpeed)} km/h from ${weather.windDirection}. Safety score: ${safety.overall}/100. Stay ashore.`,
     }),
-    fishing_recommendation: () => ({
-      safetyStatus: safety,
-      recommendation: `🐟 Best zone today: ${zones[0].name} — ${zones[0].distanceFromCoast} km offshore, suitability ${zones[0].suitabilityScore}%. Sea temp ${zones[0].sst}°C, chlorophyll ${zones[0].chlorophyll} mg/m³. Waves ${waves.height.toFixed(1)}m · Wind ${Math.round(weather.windSpeed)} km/h. Safety: ${safety.overall}/100 (${safety.label}). Take Route B (38 km, 96% safety).`,
-    }),
+    fishing_recommendation: () => {
+      const bestZone = zones[0];
+      return {
+        safetyStatus: safety,
+        recommendation: `🐟 Best zone today: ${bestZone.name} — ${bestZone.distanceFromCoast} km offshore, suitability ${bestZone.suitabilityScore}%. Sea temp ${bestZone.sst}°C, chlorophyll ${bestZone.chlorophyll} mg/m³. Waves ${waves.height.toFixed(1)}m · Wind ${Math.round(weather.windSpeed)} km/h. Safety: ${safety.overall}/100 (${safety.label}). Take Route B (38 km, 96% safety).`,
+        missionPlan: {
+          recommendedZone: bestZone.name,
+          suitabilityScore: bestZone.suitabilityScore,
+          safetyScore: safety.overall,
+          safetyLabel: safety.label,
+          recommendedTime: '05:30 AM',
+          recommendedRoute: 'Route B (Coastal Path)',
+          distanceKm: bestZone.distanceFromCoast,
+          warnings: safety.overall < 70 ? ['Marginal sea conditions — proceed with caution'] : [],
+          mapAction: 'FOCUS_PFZ_ZONE',
+        },
+      };
+    },
     route_planning: () => ({
       safetyStatus: safety,
       recommendation: `🗺️ Route B (Coastal Path) recommended — 38 km, 96% safety score. Current conditions: Waves ${waves.height.toFixed(1)}m, Wind ${Math.round(weather.windSpeed)} km/h ${weather.windDirection}. Route B avoids high swell and shipping lanes. ${safety.overall < 70 ? '⚠️ Conditions are marginal — sail with caution.' : '✅ Good conditions for the trip.'}`,
