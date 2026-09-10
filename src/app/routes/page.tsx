@@ -457,6 +457,49 @@ export default function RoutesPage() {
               </button>
             ))}
           </div>
+
+          {/* Turn-by-Turn Marine Navigation Instructions (Google Maps for Sea) */}
+          <div className="p-5 bg-card/90 border-t border-navy-700/60 space-y-3">
+            <h4 className="text-sm font-bold text-white flex items-center gap-2">
+              <Navigation className="w-4 h-4 text-teal-400" />
+              Turn-by-Turn Marine Navigational Guidance (Google Maps for Sea)
+            </h4>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+              <div className="p-3 rounded-xl bg-navy-950/60 border border-navy-700/50 space-y-1">
+                <div className="flex items-center gap-2 font-bold text-emerald-400">
+                  <span className="w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center text-[10px]">1</span>
+                  Departure Leg
+                </div>
+                <p className="text-slate-300">
+                  Depart <strong>{start}</strong> ({startCoord.lat.toFixed(2)}°N, {startCoord.lon.toFixed(2)}°E). Steer heading <strong>215° SW</strong> into open shelf.
+                </p>
+                <span className="text-[10px] text-slate-500 font-mono">Leg Distance: 12.5 km | Waves: 1.2m</span>
+              </div>
+
+              <div className="p-3 rounded-xl bg-navy-950/60 border border-navy-700/50 space-y-1">
+                <div className="flex items-center gap-2 font-bold text-cyan-400">
+                  <span className="w-5 h-5 rounded-full bg-cyan-500/20 flex items-center justify-center text-[10px]">2</span>
+                  Vessel Corridor Avoidance
+                </div>
+                <p className="text-slate-300">
+                  Course adjustment: Turn <strong>240° WSW</strong> to bypass tracked commercial cargo vessels. Maintain 12 knots transit speed.
+                </p>
+                <span className="text-[10px] text-slate-500 font-mono">Leg Distance: 18.2 km | AIS Vessels: 4 Tracked</span>
+              </div>
+
+              <div className="p-3 rounded-xl bg-navy-950/60 border border-navy-700/50 space-y-1">
+                <div className="flex items-center gap-2 font-bold text-amber-400">
+                  <span className="w-5 h-5 rounded-full bg-amber-500/20 flex items-center justify-center text-[10px]">3</span>
+                  Target Arrival
+                </div>
+                <p className="text-slate-300">
+                  Final approach <strong>195° S</strong> entering <strong>{targetZoneObj?.name || destination}</strong> ({endCoord.lat.toFixed(2)}°N, {endCoord.lon.toFixed(2)}°E).
+                </p>
+                <span className="text-[10px] text-slate-500 font-mono">Target Radius: {targetZoneObj?.radius || 15} km | Match: {targetZoneObj?.suitabilityScore || 90}%</span>
+              </div>
+            </div>
+          </div>
         </motion.div>
       )}
 

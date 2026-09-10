@@ -592,20 +592,32 @@ export default function WorldMapComponent({
       if (currentLayers.has('vessels')) {
         vessels.forEach((vessel) => {
           const color = vessel.type === 'fishing' ? '#34d399' : vessel.type === 'commercial' ? '#fbbf24' : '#38bdf8';
+          const heading = vessel.heading || 0;
           const vesselIcon = L.divIcon({
             className: 'custom-vessel-marker',
-            html: `<div style="background-color: ${color}; width: 10px; height: 10px; border-radius: 50%; border: 2px solid #030712; box-shadow: 0 0 8px ${color}; cursor: pointer;"></div>`,
-            iconSize: [12, 12],
-            iconAnchor: [6, 6],
+            html: `<div style="position:relative;display:flex;align-items:center;cursor:pointer;">
+              <div style="transform:rotate(${heading}deg);width:16px;height:16px;display:flex;align-items:center;justify-content:center;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="${color}" stroke="#030712" stroke-width="1.5">
+                  <path d="M12 2L19 21L12 17L5 21L12 2Z"/>
+                </svg>
+              </div>
+              <span style="margin-left:4px;font-size:9px;font-weight:bold;color:#f8fafc;background:rgba(15,23,42,0.85);padding:1px 4px;border-radius:4px;white-space:nowrap;border:1px solid ${color}66;">
+                ${vessel.name.split(' ')[0]} (${vessel.speed}kn)
+              </span>
+            </div>`,
+            iconSize: [80, 18],
+            iconAnchor: [8, 9],
           });
 
           const marker = L.marker([vessel.position.lat, vessel.position.lon], { icon: vesselIcon });
           marker.on('click', () => {
-            inspect(vessel.position.lat, vessel.position.lon, `${vessel.name} (${vessel.type})`);
+            inspect(vessel.position.lat, vessel.position.lon, `${vessel.name} (${vessel.type}) — Speed ${vessel.speed} kn, Heading ${heading}°`);
           });
           marker.bindTooltip(
-            `<div class="px-2 py-1 bg-navy-900 text-white text-xs font-medium rounded shadow">
-              🚢 ${vessel.name} (${vessel.type}) — ${vessel.speed} kts
+            `<div style="padding:4px 8px;background:#0f172a;color:#fff;font-size:11px;font-family:sans-serif;border-radius:6px;border:1px solid ${color};">
+              🚢 <strong>${vessel.name}</strong> (${vessel.type.toUpperCase()})<br/>
+              Speed: <strong>${vessel.speed} knots</strong> | Heading: <strong>${heading}°</strong><br/>
+              Flag: ${vessel.flag || 'IN'} | Length: ${vessel.length || 20}m
             </div>`,
             { sticky: true }
           );
@@ -658,11 +670,36 @@ export default function WorldMapComponent({
 
       if (route && route.length > 1) {
         const coords: [number, number][] = route.map(r => [r.lat, r.lon]);
+
+        // Outer Glow Buffer (Google Maps marine style)
+        L.polyline(coords, {
+          color: '#0d9488',
+          weight: 10,
+          opacity: 0.35,
+        }).addTo(layerGroup);
+
+        // Main Navigation Line
         const polyline = L.polyline(coords, {
-          color: '#10b981',
+          color: '#2dd4bf',
           weight: 5,
           opacity: 0.95,
+          dashArray: '8, 4',
         }).addTo(layerGroup);
+
+        // Add Waypoint Leg Pins along the sea route
+        coords.forEach((pt, idx) => {
+          if (idx > 0 && idx < coords.length - 1) {
+            const wayIcon = L.divIcon({
+              className: 'custom-way-marker',
+              html: `<div style="background:#0f172a;border:1.5px solid #2dd4bf;color:#2dd4bf;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:bold;box-shadow:0 0 6px rgba(45,212,191,0.6);">
+                ${idx}
+              </div>`,
+              iconSize: [18, 18],
+              iconAnchor: [9, 9],
+            });
+            L.marker(pt, { icon: wayIcon }).addTo(layerGroup).bindTooltip(`📍 Sea Waypoint ${idx} (${pt[0].toFixed(2)}°N, ${pt[1].toFixed(2)}°E)`, { sticky: true });
+          }
+        });
 
         // Add Start marker (Green pin)
         const startPt = coords[0];
@@ -690,7 +727,7 @@ export default function WorldMapComponent({
         });
         L.marker(endPt, { icon: endIcon }).addTo(layerGroup).bindPopup(`<b>🎯 Destination: ${selectedZone || 'PFZ Target'}</b>`);
 
-        polyline.bindTooltip(`✨ Safe Navigation Route to ${selectedZone || 'Destination'}`, { sticky: true });
+        polyline.bindTooltip(`✨ Google-Maps Sea Navigation Route to ${selectedZone || 'Destination'}`, { sticky: true });
         lineLayerRef.current = polyline;
         map.flyToBounds(coords, { padding: [60, 60], duration: 1.5 });
       }
