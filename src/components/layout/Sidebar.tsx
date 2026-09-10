@@ -15,7 +15,7 @@ import { useSelectedLanguage, t } from '@/lib/language-store';
 
 const NAV_ITEMS = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/assistant', label: 'AI Assistant', icon: Bot },
+  { href: '/assistant', label: 'JalSaathi Assistant', icon: Bot },
   { href: '/map', label: 'Marine Map', icon: Map },
   { href: '/fishing-zones', label: 'Fishing Zones', icon: Fish },
   { href: '/routes', label: 'Safe Routes', icon: Route },
