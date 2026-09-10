@@ -399,7 +399,10 @@ export default function WorldMapComponent({
       let tileUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
       let attribution = '&copy; Esri World Imagery & ISRO MOSDAC';
 
-      if (satelliteMode === 'dark_nautical') {
+      if (satelliteMode === 'nautical_ecdis') {
+        tileUrl = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+        attribution = '&copy; OpenStreetMap & CartoDB Voyager Nautical';
+      } else if (satelliteMode === 'dark_nautical') {
         tileUrl = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
         attribution = '&copy; OpenStreetMap & CartoDB Dark';
       } else if (satelliteMode === 'mosdac_sst') {
@@ -624,6 +627,83 @@ export default function WorldMapComponent({
 
           marker.addTo(layerGroup);
         });
+      }
+
+      // 4. NAUTICAL CHART ECDIS OVERLAYS (Isobaths, TSS Channels, Naval Exclusion Zone, Buoys)
+      if (currentLayers.has('tss') || currentLayers.has('military') || currentLayers.has('nautical_ecdis') || true) {
+        const centerLat = selectedRegion?.center?.lat || 18.92;
+        const centerLon = selectedRegion?.center?.lon || 72.82;
+
+        // 4A. Bathymetry Depth Isobaths (20m & 10m ISOBATH)
+        const isobath20: [number, number][] = [
+          [centerLat + 0.15, centerLon - 0.25],
+          [centerLat + 0.05, centerLon - 0.20],
+          [centerLat - 0.08, centerLon - 0.18],
+          [centerLat - 0.20, centerLon - 0.15],
+        ];
+        const isoPoly20 = L.polyline(isobath20, { color: '#3b82f6', weight: 1.5, opacity: 0.7, dashArray: '4, 4' }).addTo(layerGroup);
+        isoPoly20.bindTooltip('<span style="font-size:9px;font-weight:bold;color:#1d4ed8;">20m ISOBATH</span>', { permanent: true, direction: 'center', className: 'leaflet-tooltip-transparent' });
+
+        const isobath10: [number, number][] = [
+          [centerLat + 0.10, centerLon - 0.10],
+          [centerLat, centerLon - 0.08],
+          [centerLat - 0.15, centerLon - 0.06],
+        ];
+        const isoPoly10 = L.polyline(isobath10, { color: '#60a5fa', weight: 1.5, opacity: 0.7, dashArray: '4, 4' }).addTo(layerGroup);
+        isoPoly10.bindTooltip('<span style="font-size:9px;font-weight:bold;color:#2563eb;">10m ISOBATH</span>', { permanent: true, direction: 'center', className: 'leaflet-tooltip-transparent' });
+
+        // 4B. TSS Shipping Channel Fairway (30UR-FAIRWAY TSS DEEP DRAFT-VESSEL)
+        const fairway: [number, number][] = [
+          [centerLat + 0.25, centerLon - 0.02],
+          [centerLat - 0.25, centerLon - 0.02],
+        ];
+        const fairwayPoly = L.polyline(fairway, { color: '#1e3a8a', weight: 2.5, opacity: 0.8, dashArray: '8, 6' }).addTo(layerGroup);
+        fairwayPoly.bindTooltip('<span style="font-size:9px;font-weight:bold;color:#1e3a8a;background:#dbeafe;padding:1px 4px;border-radius:2px;">30UR-FAIRWAY -(TSS DEEP DRAFT-VESSEL)</span>', { permanent: true, direction: 'center' });
+
+        // 4C. Naval Defence Zone (Strictly No Fishing Polygon)
+        const militaryPolyCoords: [number, number][] = [
+          [centerLat + 0.04, centerLon + 0.08],
+          [centerLat + 0.03, centerLon + 0.15],
+          [centerLat - 0.10, centerLon + 0.14],
+          [centerLat - 0.09, centerLon + 0.07],
+        ];
+        const milPoly = L.polygon(militaryPolyCoords, {
+          color: '#dc2626',
+          fillColor: '#ef4444',
+          fillOpacity: 0.18,
+          weight: 2,
+        }).addTo(layerGroup);
+        milPoly.bindTooltip('<div style="font-size:10px;font-weight:extrabold;color:#b91c1c;text-align:center;">NAVAL DEFENCE ZONE<br/><span style="font-size:8px;color:#dc2626;">STRICTLY NO FISHING</span></div>', { permanent: true, direction: 'center' });
+
+        // 4D. ICG SAR Buoy Marker #3
+        const buoyIcon = L.divIcon({
+          className: 'custom-buoy-marker',
+          html: `<div style="text-align:center;">
+            <div style="width:14px;height:14px;border-radius:50%;background:#ea580c;border:2px solid #fff;margin:0 auto;box-shadow:0 0 8px rgba(234,88,12,0.8);"></div>
+            <div style="font-size:9px;font-weight:bold;color:#9a3412;background:#ffedd5;padding:1px 4px;border-radius:4px;border:1px solid #f97316;margin-top:2px;white-space:nowrap;">
+              ICG SAR BUOY #3<br/><span style="font-size:7px;color:#c2410c;">Racon (B) • VHF Watch</span>
+            </div>
+          </div>`,
+          iconSize: [90, 34],
+          iconAnchor: [45, 17],
+        });
+        L.marker([centerLat - 0.18, centerLon - 0.05], { icon: buoyIcon }).addTo(layerGroup);
+
+        // 4E. My Boat (Jai Malhar) Callout Marker
+        const myBoatIcon = L.divIcon({
+          className: 'custom-myboat-marker',
+          html: `<div style="text-align:center;">
+            <div style="display:inline-flex;align-items:center;gap:4px;background:#0f172a;color:#fff;padding:4px 8px;border-radius:6px;font-size:10px;font-weight:bold;border:1px solid #3b82f6;box-shadow:0 4px 12px rgba(15,23,42,0.5);">
+              <span>🚢 MY BOAT: Jai Malhar</span>
+            </div>
+            <div style="font-size:8px;color:#94a3b8;background:#1e293b;padding:2px 4px;border-radius:4px;margin-top:2px;border:1px solid #334155;">
+              Heading 230° • 6.2 kts | <span style="color:#34d399;font-weight:bold;">CLEAR WATER</span>
+            </div>
+          </div>`,
+          iconSize: [160, 40],
+          iconAnchor: [80, 20],
+        });
+        L.marker([centerLat, centerLon - 0.01], { icon: myBoatIcon }).addTo(layerGroup);
       }
     });
   }, [highlightCoasts, activeLayersKey, zonesList, vessels, isLoaded]);
