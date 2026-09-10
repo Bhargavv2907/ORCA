@@ -6,11 +6,10 @@ import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, Bot, Map, Fish, Route, CloudSun, Waves,
-  AlertTriangle, Settings, ChevronLeft, ChevronRight, Brain,
-  Menu, X, Database, Info, Anchor, Ship, Trophy, AlertOctagon, User
+  AlertTriangle, Settings, ChevronLeft, ChevronRight,
+  Menu, X, Database, Info, Anchor, Ship, AlertOctagon, User
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { PitchDeckDemoModal } from '@/components/cards/PitchDeckDemoModal';
 import { SOSEmergencyModal } from '@/components/cards/SOSEmergencyModal';
 import { useSelectedLanguage, t } from '@/lib/language-store';
 
@@ -24,7 +23,6 @@ const NAV_ITEMS = [
   { href: '/ocean', label: 'Ocean Data', icon: Waves },
   { href: '/vessels', label: 'Vessels', icon: Ship },
   { href: '/alerts', label: 'Alerts', icon: AlertTriangle },
-  { href: '/intelligence', label: 'JalSaathi Intelligence', icon: Brain },
 ];
 
 const BOTTOM_ITEMS = [
@@ -39,7 +37,6 @@ export function Sidebar() {
   const language = useSelectedLanguage();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [showPitchDeck, setShowPitchDeck] = useState(false);
   const [showSOS, setShowSOS] = useState(false);
 
   const isActive = (href: string) => pathname === href;
@@ -235,18 +232,6 @@ export function Sidebar() {
           ))}
 
           <button
-            onClick={() => setShowPitchDeck(true)}
-            title="SIH Pitch Deck & Demo Mode"
-            className={cn(
-              'w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-bold transition-all bg-gradient-to-r from-teal-500/20 to-cyan-500/20 hover:from-teal-500/30 hover:to-cyan-500/30 text-teal-300 border border-teal-500/30 mb-1',
-              collapsed && 'justify-center'
-            )}
-          >
-            <Trophy className="w-4 h-4 shrink-0 text-amber-400" />
-            {!collapsed && <span className="truncate">{t('SIH Pitch Deck')}</span>}
-          </button>
-
-          <button
             onClick={() => setCollapsed(!collapsed)}
             className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-slate-500 hover:text-slate-300 hover:bg-white/5 w-full transition-all"
           >
@@ -272,12 +257,6 @@ export function Sidebar() {
           </Link>
         ))}
       </nav>
-
-      {/* Pitch Deck Modal */}
-      <PitchDeckDemoModal
-        isOpen={showPitchDeck}
-        onClose={() => setShowPitchDeck(false)}
-      />
 
       {/* Emergency SOS Modal */}
       <SOSEmergencyModal
