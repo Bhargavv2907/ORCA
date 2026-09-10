@@ -81,6 +81,7 @@ export interface FishingZone {
   season: string;
   distanceFromCoast: number;  // km
   color: string;              // hex color for map
+  sectorId?: string;          // Indian coastal sector id
   factors: FishingFactor[];
 }
 
