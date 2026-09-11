@@ -6,9 +6,10 @@ export async function GET(request: NextRequest) {
   const lat = parseFloat(searchParams.get('lat') || '18.95');
   const lon = parseFloat(searchParams.get('lon') || '72.82');
   const radius = parseFloat(searchParams.get('radius') || '50');
+  const apiKey = searchParams.get('apiKey') || searchParams.get('key') || request.headers.get('x-marinetraffic-key') || undefined;
 
   try {
-    const data = await fetchLiveVesselData(lat, lon, radius);
+    const data = await fetchLiveVesselData(lat, lon, radius, apiKey);
     return NextResponse.json({
       success: true,
       data,

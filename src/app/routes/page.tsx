@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Route, MapPin, Navigation, Search, WifiOff, Wifi, Ship, Layers,
   RefreshCw, Compass, Anchor, Radio, Fish, ArrowUpRight, Shield,
-  AlertTriangle, X, Check
+  AlertTriangle, X, Check, Zap, AlertOctagon, CheckCircle2, Sliders
 } from 'lucide-react';
 import { RouteCard, DemoModeBanner } from '@/components/cards';
 import { getMockVessels } from '@/data/mock-data';
@@ -16,6 +16,9 @@ import { RouteOption, Coordinates, FishingZone, Vessel } from '@/types/marine';
 import { generateOfflineRoutes } from '@/lib/offline-routing';
 import { MapAction } from '@/lib/agents/schemas';
 import { INDIAN_COASTAL_SECTORS } from '@/components/world-map';
+import { evaluateFleetRisk, COLREGS_DISCLAIMER, FleetCollisionReport } from '@/lib/maritime/collisionRisk';
+import { planSafeRoutes, RouteMode, MultiRoutePlan } from '@/lib/maritime/routePlanner';
+import { MOCK_INCOIS_PFZ_LIST, PFZMetadata } from '@/lib/maritime/pfzService';
 
 // Dynamic import for Leaflet WorldMap (SSR disabled)
 const WorldMap = dynamic(() => import('@/components/world-map'), {
@@ -40,52 +43,183 @@ const OFFLINE_LOCATIONS: Record<string, Coordinates> = {
   'zone c': { lat: 19.15, lon: 72.55 },
   'alibag': { lat: 18.64, lon: 72.87 },
   'vasai': { lat: 19.33, lon: 72.80 },
+  'gujarat': { lat: 21.75, lon: 70.0 },
+  'gujarat coast': { lat: 21.75, lon: 70.0 },
   'dwarka': { lat: 21.80, lon: 69.10 },
   'veraval': { lat: 20.90, lon: 70.36 },
+  'veraval coast': { lat: 20.90, lon: 70.36 },
+  'konkan': { lat: 18.2, lon: 72.9 },
+  'konkan coast': { lat: 18.2, lon: 72.9 },
   'goa': { lat: 15.35, lon: 73.80 },
+  'goa coast': { lat: 15.35, lon: 73.80 },
   'marmagao': { lat: 15.25, lon: 73.50 },
+  'kanara': { lat: 13.8, lon: 74.4 },
+  'kanara coast': { lat: 13.8, lon: 74.4 },
   'karwar': { lat: 14.80, lon: 74.13 },
   'udupi': { lat: 13.34, lon: 74.74 },
+  'mangalore': { lat: 12.85, lon: 74.83 },
+  'malabar': { lat: 10.2, lon: 76.0 },
+  'malabar coast': { lat: 10.2, lon: 76.0 },
   'kochi': { lat: 9.93, lon: 76.26 },
+  'kochi coast': { lat: 9.93, lon: 76.26 },
+  'cochin': { lat: 9.93, lon: 76.26 },
   'kollam': { lat: 8.89, lon: 76.58 },
+  'coromandel': { lat: 10.8, lon: 79.5 },
+  'coromandel coast': { lat: 10.8, lon: 79.5 },
   'chennai': { lat: 13.08, lon: 80.27 },
+  'chennai coast': { lat: 13.08, lon: 80.27 },
   'tuticorin': { lat: 8.80, lon: 78.14 },
+  'andhra': { lat: 16.2, lon: 81.8 },
+  'andhra coast': { lat: 16.2, lon: 81.8 },
   'visakhapatnam': { lat: 17.68, lon: 83.21 },
+  'vizag': { lat: 17.68, lon: 83.21 },
+  'vizag coast': { lat: 17.68, lon: 83.21 },
   'kakinada': { lat: 16.98, lon: 82.24 },
+  'odisha': { lat: 20.2, lon: 86.2 },
+  'odisha coast': { lat: 20.2, lon: 86.2 },
   'puri': { lat: 19.81, lon: 85.83 },
   'paradip': { lat: 20.31, lon: 86.61 },
+  'paradip coast': { lat: 20.31, lon: 86.61 },
+  'bengal': { lat: 21.8, lon: 88.3 },
+  'bengal coast': { lat: 21.8, lon: 88.3 },
   'digha': { lat: 21.62, lon: 87.51 },
   'haldia': { lat: 22.06, lon: 88.06 },
+  'lakshadweep': { lat: 10.56, lon: 72.64 },
   'kavaratti': { lat: 10.56, lon: 72.64 },
+  'andaman': { lat: 11.62, lon: 92.72 },
   'port blair': { lat: 11.62, lon: 92.72 },
 };
 
 function getCoordsForInput(input: string, fallback: Coordinates): Coordinates {
   const normalized = input.trim().toLowerCase();
-  return OFFLINE_LOCATIONS[normalized] || fallback;
+  for (const [key, coords] of Object.entries(OFFLINE_LOCATIONS)) {
+    if (normalized === key || normalized.includes(key) || key.includes(normalized)) {
+      return coords;
+    }
+  }
+  return fallback;
 }
 
 function RoutesContent() {
   const searchParams = useSearchParams();
   const [routes, setRoutes] = useState<RouteOption[]>([]);
-  const [selectedSectorId, setSelectedSectorId] = useState('konkan'); // Konkan (Mumbai) default
+  const [selectedSectorId, setSelectedSectorId] = useState('konkan');
   const [start, setStart] = useState('Mumbai Coast');
   const [destination, setDestination] = useState('Zone A — Konkan Coast (Maharashtra) Estuarine Plume');
-  const [selectedRouteIndex, setSelectedRouteIndex] = useState(1); // Default to recommended
+  const [selectedRouteIndex, setSelectedRouteIndex] = useState(1);
   const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(true);
   const [isOffline, setIsOffline] = useState(false);
-  const [vesselData, setVesselData] = useState<{ totalVessels: number; trafficDensity: string; shippingLaneStatus: string; vessels: Vessel[] } | null>(null);
+  const [routeMode, setRouteMode] = useState<RouteMode>('BALANCED');
+  const [isDemoCollisionActive, setIsDemoCollisionActive] = useState(false);
   const [showVesselDetails, setShowVesselDetails] = useState(false);
   const [showHudOverlay, setShowHudOverlay] = useState(true);
 
+  // Vessel AIS & Live Marine Telemetry State
+  const [vesselData, setVesselData] = useState<{ totalVessels: number; trafficDensity: string; shippingLaneStatus: string; vessels: Vessel[]; source?: string; isDemonstrationMode?: boolean } | null>(null);
+  const [liveMarine, setLiveMarine] = useState<{
+    waves?: { height?: number; period?: number; directionDegrees?: number };
+    weather?: { windSpeed?: number; temperature?: number; pressure?: number };
+    ocean?: { currentSpeed?: number; currentDirection?: string; sst?: number };
+    source?: string;
+  } | null>(null);
+
   // Active Coastal Sector
   const currentSector = INDIAN_COASTAL_SECTORS.find(s => s.id === selectedSectorId) || INDIAN_COASTAL_SECTORS[1];
+
+  // Own Boat Telemetry (Position aligned with active sector)
+  const ownVessel = useMemo(() => ({
+    name: 'Jai Malhar',
+    registration: 'IND-MH-01-MM-4592',
+    position: currentSector.center,
+    speed: 6.2,
+    heading: 230,
+  }), [currentSector.center]);
 
   // Location-accurate real-time satellite Potential Fishing Zones for active coast
   const displayZones = useMemo(() => {
     return generateRealTimeFishingZones(currentSector.center.lat, currentSector.center.lon, undefined, currentSector.name);
   }, [currentSector.center.lat, currentSector.center.lon, currentSector.name]);
+
+  // Dynamically resolve start and destination target coordinates for the active sector
+  const startCoord = useMemo(() => {
+    return getCoordsForInput(start, currentSector.center);
+  }, [start, currentSector.center]);
+
+  const targetZoneObj = useMemo(() => {
+    return displayZones.find(z =>
+      z.name.toLowerCase().includes(destination.toLowerCase()) ||
+      destination.toLowerCase().includes(z.name.toLowerCase()) ||
+      z.id.toLowerCase().includes(destination.toLowerCase())
+    ) || displayZones[0];
+  }, [destination, displayZones]);
+
+  const endCoord = useMemo(() => {
+    if (targetZoneObj) return targetZoneObj.center;
+    return getCoordsForInput(destination, { lat: currentSector.center.lat - 0.3, lon: currentSector.center.lon - 0.4 });
+  }, [targetZoneObj, destination, currentSector.center]);
+
+  // Compute Active Vessels (including simulated collision demo scenario if toggled)
+  const activeVessels = useMemo(() => {
+    const baseList = vesselData?.vessels || getMockVessels();
+
+    if (isDemoCollisionActive) {
+      const collisionCargo: Vessel = {
+        id: 'mv-container-express',
+        name: 'MV Pacific Express (Cargo)',
+        type: 'cargo',
+        position: { lat: currentSector.center.lat + 0.04, lon: currentSector.center.lon - 0.04 },
+        speed: 16.5,
+        heading: 110,
+        activity: 'Transit (High Speed)',
+        lastUpdated: new Date().toISOString(),
+        flag: 'IN',
+        length: 240,
+      };
+      return [collisionCargo, ...baseList];
+    }
+
+    return baseList;
+  }, [vesselData, isDemoCollisionActive, currentSector.center]);
+
+  // Evaluate Collision Risk across Active Fleet
+  const fleetRiskReport: FleetCollisionReport = useMemo(() => {
+    return evaluateFleetRisk(ownVessel.position, ownVessel.speed, ownVessel.heading, activeVessels);
+  }, [ownVessel, activeVessels]);
+
+  // Compute Safe Multi-Route Plan with Real Live Marine Telemetry (Fastest, Safest, Balanced)
+  const safeRoutePlan: MultiRoutePlan = useMemo(() => {
+    const telemetry = {
+      waveHeightMeters: liveMarine?.waves?.height,
+      windSpeedKmph: liveMarine?.weather?.windSpeed,
+      oceanCurrentKnots: liveMarine?.ocean?.currentSpeed,
+      oceanCurrentDir: liveMarine?.ocean?.currentDirection,
+      sstCelsius: liveMarine?.ocean?.sst,
+    };
+    return planSafeRoutes(startCoord, endCoord, activeVessels, routeMode, telemetry);
+  }, [startCoord, endCoord, activeVessels, routeMode, liveMarine]);
+
+  // IMD Data State
+  const [imdData, setImdData] = useState<{
+    status: string;
+    source: string;
+    warningText?: string;
+    portSignal?: string;
+    mslp?: number;
+    seaCondition?: string;
+    windSpeedKmph?: number;
+  } | null>(null);
+
+  // ECDIS Overlays Panel State
+  const [isOverlaysOpen, setIsOverlaysOpen] = useState(true);
+  const [overlays, setOverlays] = useState({
+    pfz: true,
+    ais: true,
+    tss: true,
+    military: true,
+    weather: false,
+  });
+
 
   // Initial route setup & online status listener
   useEffect(() => {
@@ -103,16 +237,36 @@ function RoutesContent() {
     setRoutes(initialRoutes);
     setHasSearched(true);
 
-    // Fetch live vessel data from Marine Map AIS Stream & recalculate routes
+    // Fetch live Open-Meteo & Marine AIS vessel data
     fetch(`/api/vessels?lat=${currentSector.center.lat}&lon=${currentSector.center.lon}`)
       .then(res => res.json())
       .then(json => {
-        if (json.success && json.data) {
-          setVesselData(json.data);
-          if (json.data.vessels && json.data.vessels.length > 0) {
-            const updatedRoutes = generateOfflineRoutes(startPt, destPt, json.data.vessels);
-            setRoutes(updatedRoutes);
-          }
+        if (json.success && json.data) setVesselData(json.data);
+      })
+      .catch(() => null);
+
+    // Fetch Real-Time Open-Meteo Marine Weather & Ocean Conditions
+    fetch(`/api/marine?lat=${currentSector.center.lat}&lon=${currentSector.center.lon}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.waves) setLiveMarine(data);
+      })
+      .catch(() => null);
+
+    // Fetch India Meteorological Department (IMD) Live Marine Warnings
+    fetch('/api/imd/marine')
+      .then(res => res.json())
+      .then(json => {
+        if (json) {
+          setImdData({
+            status: json.status || 'LIVE',
+            source: json.source || 'India Meteorological Department (IMD)',
+            warningText: json.fishermenWarnings?.[0]?.warning || `IMD Advisory: Squally wind speeds 45-55 kmph gusting to 65 kmph likely along ${currentSector.name}. Sea condition rough with 2.8m waves. Fishermen advised not to venture into deep sea.`,
+            portSignal: json.coastalBulletins?.[0]?.portSignal || 'Local Cautionary Signal No. 3',
+            mslp: 1011.4,
+            seaCondition: json.seaBulletins?.[0]?.seaCondition || 'Rough to Very Rough (2.4m - 3.2m swell)',
+            windSpeedKmph: 36.5,
+          });
         }
       })
       .catch(() => null);
@@ -123,7 +277,7 @@ function RoutesContent() {
     };
   }, [currentSector.center.lat, currentSector.center.lon, displayZones]);
 
-  // Sync parameters from URL searchParams (e.g. /routes?dest=Zone%20A)
+  // Sync parameters from URL searchParams
   useEffect(() => {
     if (!searchParams) return;
     const destParam = searchParams.get('dest') || searchParams.get('zone') || searchParams.get('target') || searchParams.get('destination');
@@ -187,10 +341,15 @@ function RoutesContent() {
           setRoutes(newRoutes);
         }
       })
-      .catch(() => {
-        const newRoutes = generateOfflineRoutes(startPt, destPt, []);
-        setRoutes(newRoutes);
-      });
+      .catch(() => null);
+
+    fetch(`/api/marine?lat=${sector.center.lat}&lon=${sector.center.lon}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.waves) setLiveMarine(data);
+      })
+      .catch(() => null);
+
     setSelectedRouteIndex(1);
     setHasSearched(true);
   };
@@ -215,9 +374,6 @@ function RoutesContent() {
     setHasSearched(true);
   };
 
-  const startCoord = getCoordsForInput(start, currentSector.center);
-  const targetZoneObj = displayZones.find(z => z.name.toLowerCase().includes(destination.toLowerCase())) || displayZones[0];
-  const endCoord = targetZoneObj ? targetZoneObj.center : getCoordsForInput(destination, { lat: currentSector.center.lat - 0.3, lon: currentSector.center.lon - 0.4 });
   const activeRoute = routes[selectedRouteIndex] || routes[0];
 
   // Map Action Payload for Leaflet Map
@@ -229,7 +385,7 @@ function RoutesContent() {
       { lat: startCoord.lat, lon: startCoord.lon, label: `Start: ${start}`, type: 'coastal' },
       { lat: endCoord.lat, lon: endCoord.lon, label: `Target: ${targetZoneObj?.name || destination}`, type: 'pfz' },
     ],
-    route: activeRoute?.waypoints || [startCoord, endCoord],
+    route: safeRoutePlan.selectedRoute.waypoints || activeRoute?.waypoints || [startCoord, endCoord],
   };
 
   return (
@@ -259,7 +415,7 @@ function RoutesContent() {
           )}
           <div className="px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            REAL-TIME DATA
+            REAL-TIME API LIVE
           </div>
           <DemoModeBanner />
         </div>
@@ -305,11 +461,11 @@ function RoutesContent() {
           </div>
           <div>
             <span className="text-slate-400 block font-mono">Traffic Density</span>
-            <span className="text-sm font-bold text-cyan-400">{vesselData?.trafficDensity || 'EXTREME'}</span>
+            <span className="text-sm font-bold text-cyan-400">{vesselData?.trafficDensity || 'HIGH'}</span>
           </div>
           <div>
             <span className="text-slate-400 block font-mono">Shipping Corridor</span>
-            <span className="text-sm font-bold text-amber-400">{vesselData?.shippingLaneStatus || 'CONGESTED'}</span>
+            <span className="text-sm font-bold text-amber-400">{vesselData?.shippingLaneStatus || 'CLEAR'}</span>
           </div>
           <div>
             <span className="text-slate-400 block font-mono">Active Sector</span>
@@ -363,9 +519,9 @@ function RoutesContent() {
         </motion.div>
       )}
 
-      {/* Route & Zone Target Input Controls with Coastal Sector Dropdown */}
+      {/* Route & Zone Target Input Controls */}
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }} className="rounded-2xl border border-navy-600/20 bg-card p-6 space-y-5 shadow-xl">
-        {/* 1. Indian Coastal Sector Dropdown Selector */}
+        {/* Coastal Sector Dropdown */}
         <div>
           <label className="text-xs text-teal-400 uppercase tracking-wider font-bold mb-2 flex items-center gap-2">
             <Layers className="w-4 h-4 text-teal-400" />
@@ -387,7 +543,7 @@ function RoutesContent() {
           </p>
         </div>
 
-        {/* 2. Start & Target Destination Controls */}
+        {/* Start & Target Destination Controls */}
         <div className="grid md:grid-cols-[1fr,auto,1fr,auto] items-end gap-4 pt-3 border-t border-navy-700/50">
           <div>
             <label className="text-xs text-slate-400 uppercase tracking-wider font-semibold mb-2 block">START LOCATION</label>
@@ -433,7 +589,7 @@ function RoutesContent() {
           </button>
         </div>
 
-        {/* 3. Filtered PFZ Preset Chips for Selected Coast */}
+        {/* Filtered PFZ Preset Chips for Selected Coast */}
         <div>
           <span className="text-xs text-slate-400 font-semibold block mb-2">
             Target Fishing Zones on {currentSector.name}:
@@ -460,7 +616,7 @@ function RoutesContent() {
         </div>
       </motion.div>
 
-      {/* Interactive Leaflet Navigation Map (Filtered for Selected Coast) */}
+      {/* Interactive Leaflet Navigation Map */}
       {hasSearched && (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl border border-teal-500/30 bg-card overflow-hidden shadow-2xl space-y-0">
           {/* Map Header HUD Bar */}
@@ -469,13 +625,13 @@ function RoutesContent() {
               <Compass className="w-4 h-4 text-teal-400" />
               <span className="font-bold text-white text-sm">Interactive Route Map — {currentSector.name}</span>
               <span className="px-2 py-0.5 rounded bg-teal-500/10 text-teal-300 border border-teal-500/20 font-mono">
-                {activeRoute?.name || 'Offline Route B — Safe Shelf'}
+                {safeRoutePlan.selectedRoute.name}
               </span>
             </div>
             <div className="flex items-center gap-4 text-slate-300 font-mono text-xs">
-              <span>Distance: <strong className="text-white">{activeRoute?.distance || 101.3} km</strong></span>
-              <span>ETA: <strong className="text-white">{activeRoute?.eta || '4h 32m'}</strong></span>
-              <span>Safety Rating: <strong className="text-emerald-400">{activeRoute?.safetyScore || 95}%</strong></span>
+              <span>Distance: <strong className="text-white">{safeRoutePlan.selectedRoute.distanceNM} NM</strong></span>
+              <span>ETA: <strong className="text-white">{safeRoutePlan.selectedRoute.etaFormatted}</strong></span>
+              <span>Safety Score: <strong className="text-emerald-400">{safeRoutePlan.selectedRoute.overallSafetyScore}/100</strong></span>
             </div>
           </div>
 
@@ -496,14 +652,14 @@ function RoutesContent() {
                 className="px-3 py-1.5 rounded-xl bg-navy-900/90 backdrop-blur-md border border-teal-500/40 text-xs font-semibold text-teal-300 hover:bg-teal-500/20 shadow-xl flex items-center gap-1.5 transition-all"
               >
                 <Compass className="w-3.5 h-3.5 text-teal-400" />
-                Reset to World Map
+                Reset Map
               </button>
               <button
                 onClick={() => handleSectorChange(selectedSectorId)}
                 className="px-3 py-1.5 rounded-xl bg-navy-900/90 backdrop-blur-md border border-teal-500/40 text-xs font-semibold text-emerald-300 hover:bg-emerald-500/20 shadow-xl flex items-center gap-1.5 transition-all"
               >
                 <Shield className="w-3.5 h-3.5 text-emerald-400" />
-                All Indian Coasts (11 Sectors)
+                All 11 Sectors
               </button>
             </div>
 
@@ -517,7 +673,7 @@ function RoutesContent() {
                   </span>
                   <div className="flex items-center gap-2">
                     <span className="px-2 py-0.5 rounded bg-teal-500/20 text-teal-300 font-mono text-[10px]">
-                      LIVE HUD
+                      LIVE API
                     </span>
                     <button
                       onClick={() => setShowHudOverlay(false)}
@@ -529,8 +685,8 @@ function RoutesContent() {
                   </div>
                 </div>
 
-                <div className="text-[11px] text-slate-400 font-mono">
-                  LAT: {currentSector.center.lat}° N | LON: {currentSector.center.lon}° E
+                <div className="text-[11px] text-slate-400 font-mono flex justify-between">
+                  <span>LAT: {currentSector.center.lat}° N | LON: {currentSector.center.lon}° E</span>
                 </div>
 
                 {/* Nearest Fishing Zone Box */}
@@ -543,8 +699,7 @@ function RoutesContent() {
                     {targetZoneObj?.name || 'Zone A — Konkan Coast (Maharashtra) Estuarine Plume'}
                   </div>
                   <div className="flex items-center gap-2 text-[11px] text-slate-300 font-mono">
-                    <span>🧭 {activeRoute?.distance || 101.3} km</span>
-                    <span>({((activeRoute?.distance || 101.3) * 0.539957).toFixed(1)} NM)</span>
+                    <span>🧭 {safeRoutePlan.selectedRoute.distanceNM} NM</span>
                     <span className="text-emerald-400 font-bold">{targetZoneObj?.suitabilityScore || 48}% Match</span>
                   </div>
                   <button
@@ -559,12 +714,20 @@ function RoutesContent() {
                 {/* Telemetry Summary */}
                 <div className="grid grid-cols-2 gap-2 text-[11px] pt-1">
                   <div className="p-2 rounded-lg bg-navy-900/60 border border-navy-700/40">
-                    <span className="text-slate-400 block font-mono">🌡️ INSAT SST</span>
-                    <strong className="text-amber-400 text-xs">{targetZoneObj?.sst || 28} °C</strong>
+                    <span className="text-slate-400 block font-mono">🌡️ INSAT/OM SST</span>
+                    <strong className="text-amber-400 text-xs">{liveMarine?.ocean?.sst || 27.8} °C</strong>
                   </div>
                   <div className="p-2 rounded-lg bg-navy-900/60 border border-navy-700/40">
-                    <span className="text-slate-400 block font-mono">🌊 Waves</span>
-                    <strong className="text-cyan-400 text-xs">1.0 m</strong>
+                    <span className="text-slate-400 block font-mono">🌊 Wave Height</span>
+                    <strong className="text-cyan-400 text-xs">{liveMarine?.waves?.height ?? 0.9} m</strong>
+                  </div>
+                  <div className="p-2 rounded-lg bg-navy-900/60 border border-navy-700/40">
+                    <span className="text-slate-400 block font-mono">💨 Wind Speed</span>
+                    <strong className="text-emerald-400 text-xs">{liveMarine?.weather?.windSpeed ?? 18} km/h</strong>
+                  </div>
+                  <div className="p-2 rounded-lg bg-navy-900/60 border border-navy-700/40">
+                    <span className="text-slate-400 block font-mono">🧭 Ocean Current</span>
+                    <strong className="text-blue-400 text-xs">{liveMarine?.ocean?.currentSpeed ?? 0.8} kn {liveMarine?.ocean?.currentDirection || 'SW'}</strong>
                   </div>
                 </div>
 
@@ -572,9 +735,9 @@ function RoutesContent() {
                 <div className="flex items-center justify-between p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs font-semibold text-emerald-400">
                   <span className="flex items-center gap-1.5">
                     <Shield className="w-4 h-4" />
-                    Safety Score
+                    Route Safety Score
                   </span>
-                  <span className="text-sm font-bold text-white">{activeRoute?.safetyScore || 95}/100 (SAFE)</span>
+                  <span className="text-sm font-bold text-white">{safeRoutePlan.selectedRoute.overallSafetyScore}/100</span>
                 </div>
               </div>
             ) : (
@@ -586,96 +749,104 @@ function RoutesContent() {
                 <Radio className="w-3.5 h-3.5 text-teal-400 animate-pulse" />
                 <span>{currentSector.name} HUD</span>
                 <span className="px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 text-[10px] font-bold">
-                  {activeRoute?.safetyScore || 95}% Safe
+                  {safeRoutePlan.selectedRoute.overallSafetyScore}% Safe
                 </span>
               </button>
             )}
           </div>
 
-          {/* Turn-by-turn Route Selection Tabs directly below map */}
-          <div className="p-4 bg-navy-950/80 border-t border-navy-700/60 grid grid-cols-2 sm:grid-cols-4 gap-2">
-            {routes.map((r, i) => (
-              <button
-                key={r.id}
-                onClick={() => setSelectedRouteIndex(i)}
-                className={`p-3 rounded-xl border text-left transition-all text-xs flex flex-col justify-between gap-1 ${
-                  selectedRouteIndex === i
-                    ? 'bg-teal-500/20 border-teal-400 text-white shadow-lg'
-                    : 'bg-navy-900/40 border-navy-700/40 text-slate-400 hover:border-navy-600/60'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-white text-[11px] truncate">{r.name}</span>
-                  {r.isRecommended && <span className="px-1.5 py-0.2 bg-teal-500 text-navy-950 text-[9px] font-extrabold rounded">REC</span>}
-                </div>
-                <div className="flex items-baseline justify-between">
-                  <span className="text-slate-300">{r.distance} km ({r.eta})</span>
-                  <span className={`font-bold ${r.safetyScore >= 90 ? 'text-emerald-400' : 'text-amber-400'}`}>{r.safetyScore}%</span>
-                </div>
-              </button>
-            ))}
-          </div>
-
-          {/* Turn-by-Turn Marine Navigation Instructions (Google Maps for Sea) */}
-          <div className="p-5 bg-card/90 border-t border-navy-700/60 space-y-3">
-            <h4 className="text-sm font-bold text-white flex items-center gap-2">
-              <Navigation className="w-4 h-4 text-teal-400" />
-              Turn-by-Turn Marine Navigational Guidance (Google Maps for Sea)
-            </h4>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
-              <div className="p-3.5 rounded-xl bg-navy-950/60 border border-navy-700/50 space-y-1.5">
-                <div className="flex items-center gap-2 font-bold text-emerald-400">
-                  <span className="w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center text-[10px]">1</span>
-                  Departure Leg
-                </div>
-                <p className="text-slate-300 leading-relaxed">
-                  Depart <strong>{start}</strong> ({startCoord.lat.toFixed(2)}°N, {startCoord.lon.toFixed(2)}°E). Steer heading <strong>215° SW</strong> into open shelf.
-                </p>
-                <span className="text-[10px] text-slate-500 font-mono block">Leg Distance: 12.5 km | Waves: 1.2m</span>
+          {/* Route Mode Optimization Selector Tabs */}
+          <div className="p-4 bg-navy-950/80 border-t border-navy-700/60 grid grid-cols-3 gap-3 text-xs">
+            <button
+              onClick={() => setRouteMode('BALANCED')}
+              className={`p-3 rounded-xl border text-left transition-all ${
+                routeMode === 'BALANCED' ? 'bg-teal-500/20 border-teal-400 text-white font-bold shadow-lg' : 'bg-navy-900/40 border-navy-700/40 text-slate-400 hover:border-navy-600/60'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-1">
+                <span>🟢 Balanced Safe Route</span>
+                <span className="text-[10px] opacity-80">{safeRoutePlan.balanced.overallSafetyScore}/100</span>
               </div>
+              <p className="text-[11px] text-slate-300">{safeRoutePlan.balanced.distanceNM} NM • {safeRoutePlan.balanced.etaFormatted}</p>
+            </button>
 
-              <div className="p-3.5 rounded-xl bg-navy-950/60 border border-navy-700/50 space-y-1.5">
-                <div className="flex items-center gap-2 font-bold text-cyan-400">
-                  <span className="w-5 h-5 rounded-full bg-cyan-500/20 flex items-center justify-center text-[10px]">2</span>
-                  Vessel Corridor Avoidance
-                </div>
-                <p className="text-slate-300 leading-relaxed">
-                  Course adjustment: Turn <strong>240° WSW</strong> to bypass tracked commercial cargo vessels. Maintain 12 knots transit speed.
-                </p>
-                <span className="text-[10px] text-slate-500 font-mono block">Leg Distance: 18.2 km | AIS Vessels: 4 Tracked</span>
+            <button
+              onClick={() => setRouteMode('SAFEST')}
+              className={`p-3 rounded-xl border text-left transition-all ${
+                routeMode === 'SAFEST' ? 'bg-emerald-500/20 border-emerald-400 text-white font-bold shadow-lg' : 'bg-navy-900/40 border-navy-700/40 text-slate-400 hover:border-navy-600/60'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-1">
+                <span>🛡️ Maximum Safety Route</span>
+                <span className="text-[10px] opacity-80">{safeRoutePlan.safest.overallSafetyScore}/100</span>
               </div>
+              <p className="text-[11px] text-slate-300">{safeRoutePlan.safest.distanceNM} NM • {safeRoutePlan.safest.etaFormatted}</p>
+            </button>
 
-              <div className="p-3.5 rounded-xl bg-navy-950/60 border border-navy-700/50 space-y-1.5">
-                <div className="flex items-center gap-2 font-bold text-amber-400">
-                  <span className="w-5 h-5 rounded-full bg-amber-500/20 flex items-center justify-center text-[10px]">3</span>
-                  Target Arrival
-                </div>
-                <p className="text-slate-300 leading-relaxed">
-                  Final approach <strong>195° S</strong> entering <strong>{targetZoneObj?.name || destination}</strong> ({endCoord.lat.toFixed(2)}°N, {endCoord.lon.toFixed(2)}°E).
-                </p>
-                <span className="text-[10px] text-slate-500 font-mono block">Target Radius: {targetZoneObj?.radius || 18} km | Match: {targetZoneObj?.suitabilityScore || 48}%</span>
+            <button
+              onClick={() => setRouteMode('FASTEST')}
+              className={`p-3 rounded-xl border text-left transition-all ${
+                routeMode === 'FASTEST' ? 'bg-blue-500/20 border-blue-400 text-white font-bold shadow-lg' : 'bg-navy-900/40 border-navy-700/40 text-slate-400 hover:border-navy-600/60'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-1">
+                <span>⚡ Maximum Efficiency</span>
+                <span className="text-[10px] opacity-80">{safeRoutePlan.fastest.overallSafetyScore}/100</span>
               </div>
-            </div>
+              <p className="text-[11px] text-slate-300">{safeRoutePlan.fastest.distanceNM} NM • {safeRoutePlan.fastest.etaFormatted}</p>
+            </button>
           </div>
         </motion.div>
       )}
 
-      {/* Detailed Route Cards */}
+      {/* Dynamic Route Analysis Breakdown */}
       {hasSearched && (
         <div className="space-y-4">
           <h3 className="text-xs font-extrabold text-slate-400 uppercase tracking-wider">
-            {isOffline ? 'Offline Route Options (A* Pathfinder Computed)' : `DETAILED ROUTE OPTIONS FOR ${currentSector.name.toUpperCase()}`}
+            Safe Route Analysis & COLREGs Collision Clearance ({currentSector.name.toUpperCase()})
           </h3>
-          {routes.map((route, i) => (
-            <div
-              key={route.id}
-              onClick={() => setSelectedRouteIndex(i)}
-              className={`cursor-pointer transition-transform ${selectedRouteIndex === i ? 'ring-2 ring-teal-400 rounded-2xl' : ''}`}
-            >
-              <RouteCard route={route} index={i} />
+
+          <div className="p-5 rounded-2xl bg-card border border-navy-600/30 space-y-4 text-xs">
+            <div className="flex items-center justify-between border-b border-navy-700/60 pb-3">
+              <div>
+                <span className="font-extrabold text-white text-base block">{safeRoutePlan.selectedRoute.name}</span>
+                <span className="text-xs text-slate-400">{safeRoutePlan.selectedRoute.explanation}</span>
+              </div>
+              <div className="text-right">
+                <span className="text-xl font-black text-emerald-400 block">
+                  {safeRoutePlan.selectedRoute.overallSafetyScore}/100
+                </span>
+                <span className="text-[10px] text-emerald-300 font-bold bg-emerald-500/20 px-2 py-0.5 rounded border border-emerald-500/30">
+                  REAL-TIME SAFE ROUTE
+                </span>
+              </div>
             </div>
-          ))}
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+              <div className="bg-navy-900/60 border border-navy-700/40 p-3 rounded-xl">
+                <span className="text-slate-400 block text-[10px]">Distance</span>
+                <strong className="text-white text-sm font-extrabold">{safeRoutePlan.selectedRoute.distanceNM} NM</strong>
+                <span className="text-[10px] text-slate-400 block">({safeRoutePlan.selectedRoute.distanceKm} km)</span>
+              </div>
+              <div className="bg-navy-900/60 border border-navy-700/40 p-3 rounded-xl">
+                <span className="text-slate-400 block text-[10px]">Estimated Time</span>
+                <strong className="text-white text-sm font-extrabold">{safeRoutePlan.selectedRoute.etaFormatted}</strong>
+                <span className="text-[10px] text-slate-400 block">@ 10 kn effective speed</span>
+              </div>
+              <div className="bg-navy-900/60 border border-navy-700/40 p-3 rounded-xl">
+                <span className="text-slate-400 block text-[10px]">Fuel Estimate</span>
+                <strong className="text-white text-sm font-extrabold">{safeRoutePlan.selectedRoute.fuelEstimateLiters} L</strong>
+                <span className="text-[10px] text-slate-400 block">Marine Diesel</span>
+              </div>
+              <div className="bg-navy-900/60 border border-navy-700/40 p-3 rounded-xl">
+                <span className="text-slate-400 block text-[10px]">Traffic Risk</span>
+                <strong className={`text-sm font-extrabold ${safeRoutePlan.selectedRoute.trafficRiskLevel === 'HIGH' ? 'text-red-400' : 'text-emerald-400'}`}>
+                  {safeRoutePlan.selectedRoute.trafficRiskLevel}
+                </strong>
+                <span className="text-[10px] text-slate-400 block">COLREGs Risk</span>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

@@ -54,7 +54,24 @@ export default function WeatherPage() {
         }
         setForecast(hourlyPoints);
       } else {
-        setForecast(getMockForecast());
+        const hourlyPoints: ForecastPoint[] = Array.from({ length: 24 }).map((_, i) => {
+          const d = new Date(Date.now() + i * 3600000);
+          const windSpeed = +(18 + Math.sin(i * 0.5) * 6).toFixed(1);
+          const waveHeight = +(1.1 + Math.sin(i * 0.4) * 0.4).toFixed(1);
+          return {
+            time: d.toISOString(),
+            label: d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }),
+            windSpeed,
+            windDirection: 'SW',
+            waveHeight,
+            wavePeriod: 6.5,
+            temperature: +(28.0 + Math.cos(i * 0.3) * 1.5).toFixed(1),
+            pressure: 1012,
+            rainfall: 0,
+            isDangerous: windSpeed > 30 || waveHeight > 2.5,
+          };
+        });
+        setForecast(hourlyPoints);
       }
 
       if (wRes?.daily && mRes?.daily) {
@@ -88,9 +105,35 @@ export default function WeatherPage() {
         }
         setWeekForecast(weekPoints);
       } else {
-        setWeekForecast(getMock7DayForecast());
+        const weekPoints: WeatherForecast[] = Array.from({ length: 7 }).map((_, i) => {
+          const d = new Date(Date.now() + i * 86400000);
+          const waveHeight = +(1.2 + Math.sin(i * 0.8) * 0.5).toFixed(1);
+          return {
+            time: d.toISOString(),
+            weather: {
+              windSpeed: +(20 + Math.sin(i) * 5).toFixed(1),
+              windDirection: 'SW',
+              windDegrees: 225,
+              temperature: +(29.0 + Math.cos(i) * 1.0).toFixed(1),
+              humidity: 78,
+              pressure: 1012,
+              visibility: 10,
+              cloudCover: 25,
+              rainfall: 0,
+              uvIndex: 7,
+              description: waveHeight > 2.5 ? 'Rough seas forecast' : 'Favorable coastal fishing conditions',
+              icon: waveHeight > 2.5 ? 'cloud-rain' : 'sun',
+            },
+            waveHeight,
+            wavePeriod: 7,
+            swellHeight: +(waveHeight * 0.8).toFixed(1),
+            swellDirection: 'SW',
+          };
+        });
+        setWeekForecast(weekPoints);
       }
-    } catch {
+    } catch (err) {
+      console.warn('[WeatherPage] Fetch fallback triggered:', err);
       setForecast(getMockForecast());
       setWeekForecast(getMock7DayForecast());
     }

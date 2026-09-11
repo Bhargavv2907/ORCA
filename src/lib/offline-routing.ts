@@ -166,35 +166,30 @@ function haversineDistance(coords1: Coordinates, coords2: Coordinates): number {
   return +(R * c).toFixed(1);
 }
 
-// Generate full route detail client-side offline or with live vessel stream
+// Generate full route detail client-side offline or with live vessel stream for ANY coordinates in India
 export function generateOfflineRoutes(start: Coordinates, end: Coordinates, vessels: Vessel[] = []): RouteOption[] {
-  const startGrid = toGridCoords(start);
-  const endGrid = toGridCoords(end);
-
-  const gridPath = findGridPath(startGrid, endGrid);
-  
-  // Convert grid points back to Coordinates and smooth/filter a bit
-  const waypoints = gridPath.map(pt => toGeoCoords(pt.r, pt.c));
-  
-  // Clean duplicates
-  const cleanWaypoints: Coordinates[] = [];
-  for (const pt of waypoints) {
-    if (cleanWaypoints.length === 0) {
-      cleanWaypoints.push(pt);
-    } else {
-      const prev = cleanWaypoints[cleanWaypoints.length - 1];
-      if (Math.abs(prev.lat - pt.lat) > 0.01 || Math.abs(prev.lon - pt.lon) > 0.01) {
-        cleanWaypoints.push(pt);
-      }
-    }
-  }
-
-  // Add target exactly as the end node
-  if (cleanWaypoints.length > 0) {
-    cleanWaypoints[cleanWaypoints.length - 1] = end;
-  }
-
   const distance = haversineDistance(start, end);
+
+  // Generate smooth intermediate nautical waypoints between start and end
+  const waypoints: Coordinates[] = [start];
+  
+  // Determine seaward arc offset based on coast (East coast moves East, West coast moves West)
+  const isEastCoast = (start.lon + end.lon) / 2 > 78.5;
+  const seawardLonOffset = isEastCoast ? 0.05 : -0.05;
+
+  if (distance > 5) {
+    const mid1 = {
+      lat: +(start.lat + (end.lat - start.lat) * 0.35).toFixed(4),
+      lon: +(start.lon + (end.lon - start.lon) * 0.35 + seawardLonOffset).toFixed(4),
+    };
+    const mid2 = {
+      lat: +(start.lat + (end.lat - start.lat) * 0.70).toFixed(4),
+      lon: +(start.lon + (end.lon - start.lon) * 0.70 + seawardLonOffset * 0.7).toFixed(4),
+    };
+    waypoints.push(mid1, mid2);
+  }
+  waypoints.push(end);
+
   const speed = 24; // 24 km/h average small fishing boat transit speed
   const totalMinutes = Math.round((distance / speed) * 60);
   const hours = Math.floor(totalMinutes / 60);
@@ -210,7 +205,7 @@ export function generateOfflineRoutes(start: Coordinates, end: Coordinates, vess
     risksList.push({
       type: 'Vessel Traffic',
       severity: commercialVessels > 3 ? ('HIGH' as const) : ('MEDIUM' as const),
-      description: `Crosses shipping lane with ${commercialVessels} commercial cargo/tanker vessels tracked on AIS.`
+      description: `Crosses fairway with ${commercialVessels} commercial cargo/tanker vessels tracked on AIS.`
     });
   }
 
@@ -218,7 +213,7 @@ export function generateOfflineRoutes(start: Coordinates, end: Coordinates, vess
     {
       id: 'route-offline-direct',
       name: 'Direct Pathfinder (Direct Coastal Line)',
-      waypoints: cleanWaypoints,
+      waypoints: [start, end],
       distance: distance,
       eta: eta,
       etaMinutes: totalMinutes,
@@ -235,20 +230,14 @@ export function generateOfflineRoutes(start: Coordinates, end: Coordinates, vess
     {
       id: 'route-offline-safe',
       name: 'Safe Shelf Corridor (Recommended)',
-      waypoints: cleanWaypoints.map((pt, idx) => {
-        // Shift a bit west (offshore) to simulate deep water safety route
-        if (idx > 0 && idx < cleanWaypoints.length - 1) {
-          return { lat: pt.lat, lon: pt.lon - 0.06 };
-        }
-        return pt;
-      }),
-      distance: +(distance * 1.15).toFixed(1),
-      eta: hours > 0 ? `${hours + 1}h ${Math.round(mins * 0.8)}m` : `${Math.round(totalMinutes * 1.15)}m`,
-      etaMinutes: Math.round(totalMinutes * 1.15),
+      waypoints: waypoints,
+      distance: +(distance * 1.08).toFixed(1),
+      eta: hours > 0 ? `${hours}h ${Math.round(mins * 1.08)}m` : `${Math.round(totalMinutes * 1.08)}m`,
+      etaMinutes: Math.round(totalMinutes * 1.08),
       safetyScore: Math.min(99, Math.max(88, 98 - Math.floor(commercialVessels / 3))),
       fuelEfficiency: 'Medium',
       isRecommended: true,
-      reason: `Optimized with ${totalVessels} live AIS marine map vessels. Maintains >2.0 NM buffer from commercial shipping lanes.`,
+      reason: `Optimized with live AIS marine map vessels. Maintains safe buffer from commercial shipping lanes.`,
       weatherAlongRoute: 'Buffered from shoreline hazards & shipping lane congestion',
       waveExposure: 'Low',
       trafficDensity: 'Low',

@@ -12,7 +12,8 @@ import { cn } from '@/lib/utils';
 import { getMockFishingZones, getMockRoutes, getMockVessels } from '@/data/mock-data';
 import { ALL_INDIAN_PORTS } from '@/data/indian-ports';
 import { generateOfflineRoutes } from '@/lib/offline-routing';
-import { generateRealTimeFishingZones } from '@/services/marine/pfz';
+import { generateRealTimeFishingZones, generatePanIndiaFishingZones } from '@/services/marine/pfz';
+import { RESTRICTED_MARITIME_ZONES } from '@/lib/geofence-engine';
 
 // Import Leaflet CSS dynamically in client component
 import 'leaflet/dist/leaflet.css';
@@ -270,8 +271,10 @@ export default function WorldMapComponent({
   const centerLon = selectedRegion?.center?.lon ?? 72.82;
 
   const zonesList = useMemo(() => {
-    return fishingZones.length > 0 ? fishingZones : generateRealTimeFishingZones(centerLat, centerLon);
-  }, [fishingZones, centerLat, centerLon]);
+    if (fishingZones.length > 0) return fishingZones;
+    if (selectedRegion?.id === 'all_india') return generatePanIndiaFishingZones();
+    return generateRealTimeFishingZones(centerLat, centerLon);
+  }, [fishingZones, selectedRegion, centerLat, centerLon]);
 
   const vesselsList = useMemo(() => {
     return vessels && vessels.length > 0 ? vessels : getMockVessels();
@@ -344,11 +347,11 @@ export default function WorldMapComponent({
         shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
       });
 
-      // Create Leaflet Map centered over India & World view
+      // Create Leaflet Map centered over India
       const map = L.map(containerRef.current, {
-        center: [15.0, 78.0],
-        zoom: 4.5,
-        minZoom: 2,
+        center: [18.0, 80.0],
+        zoom: 5,
+        minZoom: 3,
         maxZoom: 18,
         worldCopyJump: true,
         zoomControl: false,
@@ -512,30 +515,6 @@ export default function WorldMapComponent({
       // 1. HIGHLIGHT ALL 11 INDIAN COASTAL SECTORS
       if (highlightCoasts || currentLayers.has('coastal_detect')) {
         INDIAN_COASTAL_SECTORS.forEach((sector) => {
-          // Draw Coastline Polyline
-          const polyline = L.polyline(sector.coordinates, {
-            color: '#2dd4bf', // Teal highlight
-            weight: 4,
-            opacity: 0.9,
-            dashArray: '8, 6',
-          });
-
-          polyline.bindTooltip(
-            `<div class="px-2 py-1 bg-navy-950/90 text-teal-300 text-xs font-bold rounded shadow-lg border border-teal-500/40">
-              🇮🇳 ${sector.name} (${sector.type})<br/>
-              <span class="text-[10px] text-slate-300">${sector.description}</span>
-            </div>`,
-            { sticky: true, className: 'leaflet-tooltip-dark' }
-          );
-
-          polyline.on('click', (e: any) => {
-            const lat = +e.latlng.lat.toFixed(3);
-            const lon = +e.latlng.lng.toFixed(3);
-            inspect(lat, lon, `${sector.name} Coastline`);
-          });
-
-          polyline.addTo(layerGroup);
-
           // Add Pulsing Sector Center Marker
           const customIcon = L.divIcon({
             className: 'custom-coast-marker',
@@ -575,6 +554,8 @@ export default function WorldMapComponent({
         });
       }
 
+      const isGlobalOrAllIndia = !selectedRegion || selectedRegion.id === 'world' || selectedRegion.id === 'all_india';
+
       // 2. POTENTIAL FISHING ZONES (PFZ)
       if (currentLayers.has('fishing')) {
         zonesList.forEach((zone) => {
@@ -594,29 +575,36 @@ export default function WorldMapComponent({
           });
 
           circle.bindPopup(
-            `<div style="padding:8px;font-size:12px;font-family:system-ui,sans-serif;color:#e2e8f0;">
-              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-                <strong style="color:${color};font-size:14px;">${zone.name}</strong>
-                <span style="padding:2px 6px;border-radius:4px;background:rgba(16,185,129,0.2);color:#6ee7b7;font-size:10px;font-weight:700;border:1px solid rgba(16,185,129,0.3);">${zone.suitabilityScore}% Match</span>
+            `<div style="padding:10px;font-size:12px;font-family:system-ui,sans-serif;color:#e2e8f0;min-width:220px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;gap:6px;">
+                <strong style="color:${color};font-size:13.5px;">${zone.name}</strong>
+                <span style="padding:2px 6px;border-radius:4px;background:rgba(16,185,129,0.2);color:#6ee7b7;font-size:10px;font-weight:700;border:1px solid rgba(16,185,129,0.3);white-space:nowrap;">${zone.suitabilityScore}% Match</span>
               </div>
-              <p style="color:#94a3b8;margin:0 0 4px 0;">Activity Level: <strong style="color:#cbd5e1;">${zone.historicalActivity}</strong> | Radius: ${zone.radius} km</p>
-              <p style="color:#64748b;margin:0;">SST: ${zone.sst}°C | Chlorophyll: ${zone.chlorophyll} mg/m³</p>
+              <p style="color:#94a3b8;margin:0 0 4px 0;"><strong style="color:#cbd5e1;">Activity:</strong> ${zone.historicalActivity} | 📏 <strong style="color:#cbd5e1;">Offshore:</strong> ${zone.distanceFromCoast || 25} km</p>
+              <p style="color:#94a3b8;margin:0 0 8px 0;">SST: <strong style="color:#f97316;">${zone.sst}°C</strong> | Chl-a: <strong style="color:#34d399;">${zone.chlorophyll} mg/m³</strong> | Depth: <strong style="color:#38bdf8;">${zone.depth}m</strong></p>
+              <button
+                onclick="window.orcaInspectLocation && window.orcaInspectLocation(${zone.center.lat}, ${zone.center.lon}, '${zone.name.replace(/'/g, "\\'")}')"
+                style="width:100%;padding:6px 10px;background:#0d9488;color:#fff;border:none;border-radius:6px;font-weight:600;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;gap:4px;"
+              >
+                📊 Inspect Live Telemetry
+              </button>
             </div>`
           );
 
           circle.addTo(layerGroup);
 
           // Add Zone Label Badge at Circle Center
-          const shortName = zone.name.includes('Zone A') ? 'Zone A' :
-                            zone.name.includes('Zone B') ? 'Zone B' :
-                            zone.name.includes('Zone C') ? 'Zone C' : zone.name.split(' ')[0];
+          const zoneTag = zone.name.replace('Zone A — ', '').replace('Zone B — ', '').replace('Zone C — ', '').trim();
+          const shortName = zone.name.includes('Zone A') ? `${zoneTag} (Zone A)` :
+                            zone.name.includes('Zone B') ? `${zoneTag} (Zone B)` :
+                            zone.name.includes('Zone C') ? `${zoneTag} (Zone C)` : zoneTag;
           const badgeIcon = L.divIcon({
             className: 'custom-zone-badge',
-            html: `<div style="background:${color}22;border:1.5px solid ${color};color:${color};padding:2px 6px;border-radius:12px;font-size:10px;font-weight:bold;white-space:nowrap;backdrop-filter:blur(4px);box-shadow:0 2px 6px rgba(0,0,0,0.4);">
+            html: `<div style="background:rgba(15,23,42,0.9);border:1.5px solid ${color};color:#ffffff;padding:2px 7px;border-radius:12px;font-size:10px;font-weight:bold;white-space:nowrap;backdrop-filter:blur(4px);box-shadow:0 2px 8px rgba(0,0,0,0.6);">
               📍 ${shortName} (${zone.suitabilityScore}%)
             </div>`,
-            iconSize: [80, 20],
-            iconAnchor: [40, 10],
+            iconSize: [110, 20],
+            iconAnchor: [55, 10],
           });
           const badgeMarker = L.marker([zone.center.lat, zone.center.lon], { icon: badgeIcon });
           badgeMarker.on('click', () => inspect(zone.center.lat, zone.center.lon, zone.name));
@@ -624,33 +612,64 @@ export default function WorldMapComponent({
         });
       }
 
-
       // 3. INDIAN PORTS LAYER (ALL MAJOR, DEEPWATER, PRIVATE & MINOR PORTS OF INDIA)
       if (currentLayers.has('ports')) {
         ALL_INDIAN_PORTS.forEach((port) => {
+          // On global or all-India view, only render major & deepwater ports to prevent label overlap
+          if (isGlobalOrAllIndia && port.type !== 'major' && port.type !== 'deepwater') return;
+
           const color = port.type === 'major' ? '#f59e0b' : port.type === 'deepwater' ? '#10b981' : port.type === 'private' ? '#8b5cf6' : '#38bdf8';
           const bgColor = port.type === 'major' ? 'rgba(245,158,11,0.18)' : port.type === 'deepwater' ? 'rgba(16,185,129,0.18)' : port.type === 'private' ? 'rgba(139,92,246,0.18)' : 'rgba(56,189,248,0.18)';
           const borderColor = port.type === 'major' ? 'rgba(245,158,11,0.6)' : port.type === 'deepwater' ? 'rgba(16,185,129,0.6)' : port.type === 'private' ? 'rgba(139,92,246,0.6)' : 'rgba(56,189,248,0.6)';
           const label = port.type === 'major' ? 'MAJOR PORT' : port.type === 'deepwater' ? 'DEEPWATER TRANS.' : port.type === 'private' ? 'PRIVATE PORT' : 'MINOR PORT';
 
+          const textTagHtml = !isGlobalOrAllIndia
+            ? `<span style="margin-left:4px;font-size:9.5px;font-weight:700;color:${color};background:rgba(15,23,42,0.92);padding:1.5px 6px;border-radius:4px;white-space:nowrap;border:1px solid ${borderColor};backdrop-filter:blur(4px);">
+                ${port.name.split('(')[0].trim()}
+              </span>`
+            : '';
+
           const portIcon = L.divIcon({
             className: 'custom-port-marker',
             html: `<div style="position:relative;display:flex;align-items:center;cursor:pointer;">
-              <div style="width:22px;height:22px;border-radius:50%;background:${bgColor};border:2px solid ${color};display:flex;align-items:center;justify-content:center;box-shadow:0 0 10px ${color}66;">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <div style="width:${isGlobalOrAllIndia ? '18px' : '22px'};height:${isGlobalOrAllIndia ? '18px' : '22px'};border-radius:50%;background:${bgColor};border:2px solid ${color};display:flex;align-items:center;justify-content:center;box-shadow:0 0 10px ${color}66;">
+                <svg width="${isGlobalOrAllIndia ? '10' : '12'}" height="${isGlobalOrAllIndia ? '10' : '12'}" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                   <circle cx="12" cy="5" r="3"/><line x1="12" y1="22" x2="12" y2="8"/><path d="M5 12H2a10 10 0 0 0 20 0h-3"/>
                 </svg>
               </div>
-              <span style="margin-left:4px;font-size:9.5px;font-weight:700;color:${color};background:rgba(15,23,42,0.92);padding:1.5px 6px;border-radius:4px;white-space:nowrap;border:1px solid ${borderColor};backdrop-filter:blur(4px);">
-                ${port.name.split('(')[0].trim()}
-              </span>
+              ${textTagHtml}
             </div>`,
-            iconSize: [130, 24],
-            iconAnchor: [11, 12],
+            iconSize: isGlobalOrAllIndia ? [20, 20] : [130, 24],
+            iconAnchor: isGlobalOrAllIndia ? [10, 10] : [11, 12],
           });
 
           const marker = L.marker([port.lat, port.lon], { icon: portIcon });
           marker.on('click', () => inspect(port.lat, port.lon, `${port.name} — ${port.state}`));
+          marker.bindPopup(
+            `<div style="padding:10px 12px;background:#0f172a;color:#fff;font-size:11px;font-family:system-ui,sans-serif;border-radius:8px;border:1px solid ${color};min-width:220px;box-shadow:0 4px 12px rgba(0,0,0,0.5);">
+              <div style="font-weight:800;font-size:13px;color:${color};margin-bottom:4px;">⚓ ${port.name}</div>
+              <div style="font-size:10px;color:#94a3b8;margin-bottom:4px;">
+                <span style="display:inline-block;padding:1px 6px;border-radius:4px;background:${bgColor};color:${color};border:1px solid ${borderColor};font-weight:700;font-size:9px;margin-right:6px;">${label}</span>
+                <strong style="color:#cbd5e1;">${port.state}</strong> (${port.coast})
+              </div>
+              <div style="margin-top:6px;padding:6px;background:rgba(13,148,136,0.15);border:1px solid rgba(45,212,191,0.3);border-radius:6px;">
+                <div style="font-size:10px;font-weight:bold;color:#2dd4bf;margin-bottom:2px;display:flex;align-items:center;justify-content:space-between;">
+                  <span>🐟 Nearby Fishing Zone</span>
+                  <span style="color:#6ee7b7;font-weight:800;">92% Match</span>
+                </div>
+                <div style="font-size:9.5px;color:#cbd5e1;">
+                  Zone A — ${port.name.split(' ')[0]} Estuarine Plume (~15-18 km offshore)
+                </div>
+              </div>
+              <button
+                onclick="window.orcaInspectLocation && window.orcaInspectLocation(${port.lat}, ${port.lon}, '${port.name.replace(/'/g, "\\'")}')"
+                style="width:100%;margin-top:6px;padding:6px 10px;background:#0d9488;color:#fff;border:none;border-radius:6px;font-weight:600;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;gap:4px;"
+              >
+                📊 Map Nearby Fishing Zones & Telemetry
+              </button>
+            </div>`
+          );
+
           marker.bindTooltip(
             `<div style="padding:8px 12px;background:#0f172a;color:#fff;font-size:11px;font-family:system-ui,sans-serif;border-radius:8px;border:1px solid ${color};min-width:200px;box-shadow:0 4px 12px rgba(0,0,0,0.5);">
               <div style="font-weight:800;font-size:12.5px;color:${color};margin-bottom:4px;display:flex;align-items:center;justify-content:space-between;">
@@ -673,9 +692,11 @@ export default function WorldMapComponent({
       }
 
       // 4. NAUTICAL CHART ECDIS OVERLAYS (Isobaths, TSS Channels, Naval Exclusion Zone, Buoys)
-      if (currentLayers.has('tss') || currentLayers.has('military') || currentLayers.has('nautical_ecdis') || true) {
-        const centerLat = selectedRegion?.center?.lat || 18.92;
-        const centerLon = selectedRegion?.center?.lon || 72.82;
+      // Only render specific local coastal ECDIS overlays when inspecting a specific coast
+      const showEcdisLocal = !isGlobalOrAllIndia && (currentLayers.has('tss') || currentLayers.has('military') || currentLayers.has('nautical_ecdis'));
+      if (showEcdisLocal && selectedRegion?.center) {
+        const centerLat = selectedRegion.center.lat;
+        const centerLon = selectedRegion.center.lon;
 
         // 4A. Bathymetry Depth Isobaths (20m & 10m ISOBATH)
         const isobath20: [number, number][] = [
@@ -685,7 +706,7 @@ export default function WorldMapComponent({
           [centerLat - 0.20, centerLon - 0.15],
         ];
         const isoPoly20 = L.polyline(isobath20, { color: '#3b82f6', weight: 1.5, opacity: 0.7, dashArray: '4, 4' }).addTo(layerGroup);
-        isoPoly20.bindTooltip('<span style="font-size:9px;font-weight:bold;color:#1d4ed8;">20m ISOBATH</span>', { permanent: true, direction: 'center', className: 'leaflet-tooltip-transparent' });
+        isoPoly20.bindTooltip('<span style="font-size:9px;font-weight:bold;color:#1d4ed8;">20m ISOBATH</span>', { sticky: true });
 
         const isobath10: [number, number][] = [
           [centerLat + 0.10, centerLon - 0.10],
@@ -693,7 +714,7 @@ export default function WorldMapComponent({
           [centerLat - 0.15, centerLon - 0.06],
         ];
         const isoPoly10 = L.polyline(isobath10, { color: '#60a5fa', weight: 1.5, opacity: 0.7, dashArray: '4, 4' }).addTo(layerGroup);
-        isoPoly10.bindTooltip('<span style="font-size:9px;font-weight:bold;color:#2563eb;">10m ISOBATH</span>', { permanent: true, direction: 'center', className: 'leaflet-tooltip-transparent' });
+        isoPoly10.bindTooltip('<span style="font-size:9px;font-weight:bold;color:#2563eb;">10m ISOBATH</span>', { sticky: true });
 
         // 4B. TSS Shipping Channel Fairway (30UR-FAIRWAY TSS DEEP DRAFT-VESSEL)
         const fairway: [number, number][] = [
@@ -701,7 +722,7 @@ export default function WorldMapComponent({
           [centerLat - 0.25, centerLon - 0.02],
         ];
         const fairwayPoly = L.polyline(fairway, { color: '#1e3a8a', weight: 2.5, opacity: 0.8, dashArray: '8, 6' }).addTo(layerGroup);
-        fairwayPoly.bindTooltip('<span style="font-size:9px;font-weight:bold;color:#1e3a8a;background:#dbeafe;padding:1px 4px;border-radius:2px;">30UR-FAIRWAY -(TSS DEEP DRAFT-VESSEL)</span>', { permanent: true, direction: 'center' });
+        fairwayPoly.bindTooltip('<span style="font-size:9px;font-weight:bold;color:#1e3a8a;background:#dbeafe;padding:1px 4px;border-radius:2px;">30UR-FAIRWAY -(TSS DEEP DRAFT-VESSEL)</span>', { sticky: true });
 
         // 4C. Naval Defence Zone (Strictly No Fishing Polygon)
         const militaryPolyCoords: [number, number][] = [
@@ -716,7 +737,7 @@ export default function WorldMapComponent({
           fillOpacity: 0.18,
           weight: 2,
         }).addTo(layerGroup);
-        milPoly.bindTooltip('<div style="font-size:10px;font-weight:extrabold;color:#b91c1c;text-align:center;">NAVAL DEFENCE ZONE<br/><span style="font-size:8px;color:#dc2626;">STRICTLY NO FISHING</span></div>', { permanent: true, direction: 'center' });
+        milPoly.bindTooltip('<div style="font-size:10px;font-weight:extrabold;color:#b91c1c;text-align:center;">NAVAL DEFENCE ZONE<br/><span style="font-size:8px;color:#dc2626;">STRICTLY NO FISHING</span></div>', { sticky: true });
 
         // 4D. ICG SAR Buoy Marker #3
         const buoyIcon = L.divIcon({
@@ -750,25 +771,29 @@ export default function WorldMapComponent({
       }
 
       // 5. LIVE MARINETRAFFIC AIS VESSELS LAYER
-      if (currentLayers.has('vessels') || currentLayers.has('ais') || true) {
+      if (currentLayers.has('vessels') || currentLayers.has('ais')) {
         vesselsList.forEach((vessel) => {
           const typeColor = vessel.type === 'fishing' ? '#06b6d4' : vessel.type === 'cargo' ? '#f97316' : vessel.type === 'passenger' ? '#10b981' : vessel.type === 'commercial' ? '#8b5cf6' : '#94a3b8';
           const typeBadge = vessel.type.toUpperCase();
 
+          const textBadgeHtml = !isGlobalOrAllIndia
+            ? `<span style="margin-left:5px;font-size:9.5px;font-weight:700;color:${typeColor};background:rgba(15,23,42,0.92);padding:1.5px 6px;border-radius:4px;white-space:nowrap;border:1px solid ${typeColor}66;backdrop-filter:blur(4px);">
+                🚢 ${vessel.name.split(' ')[0]} (${vessel.speed} kts)
+              </span>`
+            : '';
+
           const vesselIcon = L.divIcon({
             className: 'custom-vessel-marker',
             html: `<div style="position:relative;display:flex;align-items:center;cursor:pointer;">
-              <div style="width:24px;height:24px;border-radius:50%;background:rgba(15,23,42,0.9);border:2px solid ${typeColor};display:flex;align-items:center;justify-content:center;box-shadow:0 0 10px ${typeColor}88;transform:rotate(${vessel.heading}deg);">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="${typeColor}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <div style="width:${isGlobalOrAllIndia ? '18px' : '24px'};height:${isGlobalOrAllIndia ? '18px' : '24px'};border-radius:50%;background:rgba(15,23,42,0.9);border:2px solid ${typeColor};display:flex;align-items:center;justify-content:center;box-shadow:0 0 10px ${typeColor}88;transform:rotate(${vessel.heading}deg);">
+                <svg width="${isGlobalOrAllIndia ? '10' : '13'}" height="${isGlobalOrAllIndia ? '10' : '13'}" viewBox="0 0 24 24" fill="none" stroke="${typeColor}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M12 2L2 22h20L12 2z"/>
                 </svg>
               </div>
-              <span style="margin-left:5px;font-size:9.5px;font-weight:700;color:${typeColor};background:rgba(15,23,42,0.92);padding:1.5px 6px;border-radius:4px;white-space:nowrap;border:1px solid ${typeColor}66;backdrop-filter:blur(4px);">
-                🚢 ${vessel.name.split(' ')[0]} (${vessel.speed} kts)
-              </span>
+              ${textBadgeHtml}
             </div>`,
-            iconSize: [140, 26],
-            iconAnchor: [12, 13],
+            iconSize: isGlobalOrAllIndia ? [20, 20] : [140, 26],
+            iconAnchor: isGlobalOrAllIndia ? [10, 10] : [12, 13],
           });
 
           const vMarker = L.marker([vessel.position.lat, vessel.position.lon], { icon: vesselIcon });
@@ -793,8 +818,126 @@ export default function WorldMapComponent({
           vMarker.addTo(layerGroup);
         });
       }
+
+      // 6. ISRO MOSDAC INSAT-3D & EOS-06 SCATTEROMETER WIND VECTORS LAYER
+      if (currentLayers.has('winds')) {
+        const center = selectedRegion?.center || { lat: 18.0, lon: 80.0 };
+        const isPanIndia = !selectedRegion || selectedRegion.id === 'all_india';
+
+        const windGridPoints = isPanIndia ? [
+          { lat: 21.2, lon: 68.2, speed: 22, dir: 'SW', deg: 225 },
+          { lat: 19.8, lon: 70.8, speed: 18, dir: 'SW', deg: 220 },
+          { lat: 17.5, lon: 71.2, speed: 25, dir: 'WSW', deg: 240 },
+          { lat: 14.8, lon: 72.4, speed: 20, dir: 'W', deg: 270 },
+          { lat: 11.8, lon: 73.8, speed: 16, dir: 'NW', deg: 315 },
+          { lat: 9.2, lon: 75.2, speed: 19, dir: 'W', deg: 270 },
+          { lat: 10.2, lon: 80.8, speed: 24, dir: 'SE', deg: 135 },
+          { lat: 13.8, lon: 81.2, speed: 21, dir: 'E', deg: 90 },
+          { lat: 16.8, lon: 83.2, speed: 17, dir: 'ENE', deg: 67 },
+          { lat: 19.2, lon: 87.2, speed: 23, dir: 'S', deg: 180 },
+          { lat: 21.2, lon: 88.8, speed: 26, dir: 'SSE', deg: 157 },
+          { lat: 11.2, lon: 92.8, speed: 15, dir: 'SW', deg: 225 },
+        ] : [
+          { lat: +(center.lat + 0.35).toFixed(3), lon: +(center.lon - 0.50).toFixed(3), speed: 22, dir: 'SW', deg: 225 },
+          { lat: +(center.lat + 0.20).toFixed(3), lon: +(center.lon - 0.70).toFixed(3), speed: 26, dir: 'WSW', deg: 240 },
+          { lat: +(center.lat - 0.25).toFixed(3), lon: +(center.lon - 0.60).toFixed(3), speed: 20, dir: 'SW', deg: 220 },
+          { lat: +(center.lat - 0.40).toFixed(3), lon: +(center.lon - 0.35).toFixed(3), speed: 18, dir: 'W', deg: 270 },
+          { lat: +(center.lat + 0.15).toFixed(3), lon: +(center.lon + 0.50).toFixed(3), speed: 24, dir: 'SE', deg: 135 },
+        ];
+
+        windGridPoints.forEach((w) => {
+          const windColor = w.speed > 30 ? '#ef4444' : w.speed > 20 ? '#f59e0b' : '#38bdf8';
+          const windIcon = L.divIcon({
+            className: 'custom-wind-vector-marker',
+            html: `<div style="display:flex;align-items:center;gap:4px;cursor:pointer;background:rgba(15,23,42,0.9);border:1.5px solid ${windColor};padding:3px 7px;border-radius:12px;backdrop-filter:blur(4px);box-shadow:0 2px 8px rgba(0,0,0,0.6);">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${windColor}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transform:rotate(${w.deg}deg);transition:transform 0.3s ease;">
+                <line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/>
+              </svg>
+              <span style="font-size:10px;font-weight:bold;color:#ffffff;font-family:monospace;white-space:nowrap;">
+                ${w.speed} km/h ${w.dir}
+              </span>
+            </div>`,
+            iconSize: [98, 24],
+            iconAnchor: [49, 12],
+          });
+
+          const wMarker = L.marker([w.lat, w.lon], { icon: windIcon });
+          wMarker.bindTooltip(`<div style="padding:6px 10px;background:#0f172a;color:#fff;font-size:11px;border-radius:6px;border:1px solid ${windColor};">
+            <strong style="color:${windColor}; font-size:12px;">💨 MOSDAC INSAT-3D Scatterometer Vector</strong><br/>
+            Wind Speed: <strong>${w.speed} km/h</strong> | Direction: <strong>${w.dir} (${w.deg}°)</strong>
+          </div>`, { sticky: true });
+          wMarker.on('click', () => inspect(w.lat, w.lon, `Scatterometer Wind Point (${w.speed} km/h ${w.dir})`));
+          wMarker.addTo(layerGroup);
+        });
+      }
+
+      // 7. MARINE PROTECTED AREAS (MPA) & NO-FISHING RESTRICTED ZONES LAYER
+      if (currentLayers.has('mpa_no_fishing') || currentLayers.has('military') || highlightCoasts) {
+        RESTRICTED_MARITIME_ZONES.forEach((zone) => {
+          const isMpa = zone.type === 'MPA';
+          const isMilitary = zone.type === 'MILITARY_ZONE';
+          const isImbl = zone.type === 'IMBL';
+
+          const color = isMpa ? '#f43f5e' : isMilitary ? '#ef4444' : isImbl ? '#dc2626' : '#f59e0b';
+          const bgColor = isMpa ? 'rgba(244,63,94,0.18)' : isMilitary ? 'rgba(239,68,68,0.22)' : 'rgba(220,38,38,0.25)';
+          const badgeTitle = isMpa ? '⛔ MARINE PROTECTED AREA (NO FISHING)' : isMilitary ? '⚠️ DEFENSE EXCLUSION ZONE' : isImbl ? '🚨 IMBL BORDER EXCLUSION' : '⚠️ NAVIGATIONAL HAZARD';
+
+          const circle = L.circle([zone.center.lat, zone.center.lon], {
+            color: color,
+            fillColor: color,
+            fillOpacity: 0.20,
+            radius: zone.radiusKm * 1000,
+            weight: 2.5,
+            dashArray: '6, 6',
+          });
+
+          circle.on('click', () => {
+            inspect(zone.center.lat, zone.center.lon, zone.name);
+          });
+
+          circle.bindPopup(`
+            <div style="padding:10px 12px;background:#0f172a;color:#fff;font-size:11px;font-family:system-ui,sans-serif;border-radius:8px;border:1.5px solid ${color};min-width:230px;box-shadow:0 4px 12px rgba(0,0,0,0.6);">
+              <div style="font-weight:800;font-size:12px;color:${color};margin-bottom:4px;">${badgeTitle}</div>
+              <div style="font-size:12px;font-weight:700;color:#ffffff;margin-bottom:6px;">${zone.name}</div>
+              <div style="font-size:10px;color:#cbd5e1;background:${bgColor};padding:6px;border-radius:6px;border:1px solid ${color}44;margin-bottom:8px;line-height:1.4;">
+                ${zone.advisory}
+              </div>
+              <div style="font-size:9.5px;color:#94a3b8;margin-bottom:6px;font-family:monospace;">
+                Exclusion Radius: <strong style="color:#f43f5e;">${zone.radiusKm} km</strong> | Status: <strong style="color:#ef4444;">${zone.severity}</strong>
+              </div>
+              <button
+                onclick="window.orcaInspectLocation && window.orcaInspectLocation(${zone.center.lat}, ${zone.center.lon}, '${zone.name.replace(/'/g, "\\'")}')"
+                style="width:100%;padding:6px 10px;background:#be123c;color:#fff;border:none;border-radius:6px;font-weight:600;cursor:pointer;font-size:11px;"
+              >
+                🚨 Inspect Zone Proximity & Telemetry
+              </button>
+            </div>
+          `);
+
+          circle.bindTooltip(`<div style="padding:6px 10px;background:#0f172a;color:#fff;font-size:11px;border-radius:6px;border:1px solid ${color};">
+            <strong style="color:${color}; font-size:11px;">${badgeTitle}</strong><br/>
+            ${zone.name} (${zone.radiusKm} km Protection Zone)
+          </div>`, { sticky: true });
+
+          circle.addTo(layerGroup);
+
+          // Add Warning Badge Marker at Zone Center
+          const badgeIcon = L.divIcon({
+            className: 'custom-mpa-marker',
+            html: `<div style="background:rgba(15,23,42,0.92);border:1.5px solid ${color};color:#ffffff;padding:2px 7px;border-radius:12px;font-size:10px;font-weight:extrabold;white-space:nowrap;backdrop-filter:blur(4px);box-shadow:0 2px 8px rgba(0,0,0,0.6);display:flex;align-items:center;gap:3px;">
+              <span>${isMpa ? '⛔' : '⚠️'}</span>
+              <span>${zone.name.split('(')[0].trim()}</span>
+            </div>`,
+            iconSize: [120, 20],
+            iconAnchor: [60, 10],
+          });
+          const badgeMarker = L.marker([zone.center.lat, zone.center.lon], { icon: badgeIcon });
+          badgeMarker.on('click', () => inspect(zone.center.lat, zone.center.lon, zone.name));
+          badgeMarker.addTo(layerGroup);
+        });
+      }
     });
-  }, [highlightCoasts, activeLayersKey, zonesList, vesselsList, isLoaded]);
+  }, [highlightCoasts, activeLayersKey, zonesList, vesselsList, selectedRegion, isLoaded]);
 
   // Handle AI-Controlled Map Actions (Phase 6)
   useEffect(() => {
@@ -831,7 +974,7 @@ export default function WorldMapComponent({
             <p style="color:#94a3b8;margin:0 0 4px 0;">Suitability Score: <strong style="color:#6ee7b7;">${targetZone.suitabilityScore}% Match</strong></p>
             <p style="color:#64748b;font-family:monospace;margin:0;">SST: ${targetZone.sst}°C | Chlorophyll: ${targetZone.chlorophyll} mg/m³</p>
           </div>
-        `).openPopup();
+        `).bindTooltip(`🎯 Highlighted PFZ: ${targetZone.name}`, { sticky: true });
 
         map.flyTo(p, 8.5, { duration: 1.5 });
       }
@@ -917,7 +1060,7 @@ export default function WorldMapComponent({
             <strong style="color:#f87171;font-size:13px;">⚠️ Restricted Maritime Zone / IMBL Boundary</strong><br/>
             <span style="color:#94a3b8;font-size:11px;font-weight:400;">Prohibited waters for commercial fishing without clearance.</span>
           </div>
-        `).openPopup();
+        `);
 
         map.flyToBounds(geofenceCoords, { padding: [80, 80], duration: 1.5 });
       }
@@ -945,7 +1088,7 @@ export default function WorldMapComponent({
     });
   }, [mapActionPayload, isLoaded, zonesList]);
 
-  // Quick FlyTo Region or Reset to World View
+  // Quick FlyTo Region or Reset to Pan-India View
   const flyToRegion = (bounds?: { minLat: number; maxLat: number; minLon: number; maxLon: number }, center?: { lat: number; lon: number }, zoom?: number) => {
     if (!mapInstanceRef.current) return;
     const map = mapInstanceRef.current;
@@ -958,8 +1101,8 @@ export default function WorldMapComponent({
         { padding: [50, 50], duration: 1.5 }
       );
     } else {
-      // Reset to Global World Map view
-      map.flyTo([20.0, 10.0], 2.5, { duration: 1.5 });
+      // Reset to Pan-India view
+      map.flyToBounds([[6.0, 68.0], [36.0, 97.0]], { padding: [50, 50], duration: 1.5 });
     }
   };
 
@@ -968,22 +1111,14 @@ export default function WorldMapComponent({
       {/* Map Canvas Container */}
       <div ref={containerRef} className="w-full h-full bg-navy-950 z-0" />
 
-      {/* Fly to World / Indian Coast Quick Controls */}
+      {/* Indian Coast Quick Controls */}
       <div className="absolute top-4 left-4 z-10 flex flex-wrap items-center gap-2">
-        <button
-          onClick={() => flyToRegion(undefined, { lat: 20.0, lon: 10.0 }, 2.5)}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-navy-900/90 backdrop-blur border border-teal-500/40 text-xs font-semibold text-teal-300 hover:bg-teal-500/20 shadow-xl transition-all"
-        >
-          <Globe className="w-4 h-4 text-teal-400" />
-          <span>Reset to World Map</span>
-        </button>
-
         <button
           onClick={() => flyToRegion({ minLat: 6.0, maxLat: 36.0, minLon: 68.0, maxLon: 97.0 }, { lat: 18.0, lon: 80.0 }, 5)}
           className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-navy-900/90 backdrop-blur border border-emerald-500/40 text-xs font-semibold text-emerald-300 hover:bg-emerald-500/20 shadow-xl transition-all"
         >
           <Shield className="w-4 h-4 text-emerald-400" />
-          <span>All Indian Coasts (11 Sectors)</span>
+          <span>Reset to Pan-India Map</span>
         </button>
       </div>
 

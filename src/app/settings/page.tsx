@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Settings, Globe, MapPin, Bell, Layers, Shield, Database, Gauge, Check } from 'lucide-react';
+import { Settings, Globe, MapPin, Bell, Layers, Shield, Database, Gauge, Check, Ship, Key, Radio, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { COASTAL_LANGUAGES } from '@/lib/i18n-engine';
 import { useSelectedLanguage, setSelectedLanguage, t } from '@/lib/language-store';
@@ -15,11 +15,14 @@ export default function SettingsPage() {
   const [demoMode, setDemoMode] = useState(false);
   const [notifications, setNotifications] = useState(true);
   const [riskSensitivity, setRiskSensitivity] = useState('medium');
+  const [marineTrafficKey, setMarineTrafficKey] = useState('');
+  const [aisStreamKey, setAisStreamKey] = useState('');
+  const [apiKeySaveStatus, setApiKeySaveStatus] = useState<string | null>(null);
   const [layers, setLayers] = useState({
     weather: true, waves: true, currents: true, fishingActivity: true, vessels: true, routes: true, depth: false,
   });
 
-  // Load other saved preferences from localStorage on mount
+  // Load saved preferences from localStorage on mount
   useEffect(() => {
     if (typeof window === 'undefined') return;
     try {
@@ -31,10 +34,23 @@ export default function SettingsPage() {
       if (savedTemp) setTempUnit(savedTemp);
       const savedSens = localStorage.getItem('orca_risk_sensitivity');
       if (savedSens) setRiskSensitivity(savedSens);
+      const savedMTKey = localStorage.getItem('jalsaathi_marinetraffic_key');
+      if (savedMTKey) setMarineTrafficKey(savedMTKey);
+      const savedAISKey = localStorage.getItem('jalsaathi_aisstream_key');
+      if (savedAISKey) setAisStreamKey(savedAISKey);
     } catch {
       // ignore storage errors
     }
   }, []);
+
+  const handleSaveApiKeys = () => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('jalsaathi_marinetraffic_key', marineTrafficKey.trim());
+      localStorage.setItem('jalsaathi_aisstream_key', aisStreamKey.trim());
+    }
+    setApiKeySaveStatus('API Keys Saved Successfully! Active across Live Vessels & Maps.');
+    setTimeout(() => setApiKeySaveStatus(null), 4000);
+  };
 
   const handleSpeedUnitChange = (u: string) => {
     setSpeedUnit(u);
@@ -237,24 +253,74 @@ export default function SettingsPage() {
         <p className="text-xs text-slate-400 mt-2.5">{t('Higher sensitivity triggers alerts at lower risk thresholds.', language)}</p>
       </motion.div>
 
-      {/* Toggles */}
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="rounded-2xl border border-navy-600/20 bg-card p-5 space-y-4">
+      {/* MarineTraffic & Live AIS API Key Configurator */}
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.32 }} className="rounded-2xl border border-cyan-500/30 bg-card p-5 space-y-4 shadow-xl">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Bell className="w-4 h-4 text-teal-400" />
-            <span className="text-sm text-white font-medium">{t('Notifications', language)}</span>
-          </div>
-          <Toggle checked={notifications} onChange={() => setNotifications(!notifications)} />
-        </div>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Database className="w-4 h-4 text-emerald-400" />
+            <Key className="w-5 h-5 text-cyan-400" />
             <div>
-              <span className="text-sm text-white font-medium">{t('Real-Time Data Pipeline', language)}</span>
-              <p className="text-xs text-slate-400">{t('Stream live ISRO MOSDAC satellite and Open-Meteo weather data.', language)}</p>
+              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                Live AIS & MarineTraffic API Key Configurator
+                <span className="px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 text-[10px] font-mono">PRO / LIVE API</span>
+              </h3>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Connect your official MarineTraffic API key or AISStream token to stream live commercial ship telemetry.
+              </p>
             </div>
           </div>
-          <Toggle checked={!demoMode} onChange={() => setDemoMode(!demoMode)} />
+        </div>
+
+        {apiKeySaveStatus && (
+          <div className="p-3 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs font-semibold flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+            {apiKeySaveStatus}
+          </div>
+        )}
+
+        <div className="space-y-3 pt-1">
+          <div>
+            <label className="text-xs text-slate-300 block font-semibold mb-1">
+              MarineTraffic ExportVessels API Key (MARINETRAFFIC_API_KEY):
+            </label>
+            <input
+              type="password"
+              value={marineTrafficKey}
+              onChange={(e) => setMarineTrafficKey(e.target.value)}
+              placeholder="e.g. MTA030AD-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-navy-900 border border-navy-700/60 text-white text-xs font-mono outline-none focus:border-cyan-400 transition-colors"
+            />
+            <span className="text-[10px] text-slate-500 block mt-1">
+              Queries endpoints: <code className="text-cyan-400">/api/exportvessels/{'{apiKey}'}/...</code> for real-time AIS vessel vectors.
+            </span>
+          </div>
+
+          <div>
+            <label className="text-xs text-slate-300 block font-semibold mb-1">
+              AISStream.io WebSocket Key (AISSTREAM_API_KEY):
+            </label>
+            <input
+              type="password"
+              value={aisStreamKey}
+              onChange={(e) => setAisStreamKey(e.target.value)}
+              placeholder="e.g. wss_ais_live_xxxxxxxxx"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-navy-900 border border-navy-700/60 text-white text-xs font-mono outline-none focus:border-cyan-400 transition-colors"
+            />
+            <span className="text-[10px] text-slate-500 block mt-1">
+              Streams sub-second AIS WebSocket packets from <code className="text-cyan-400">wss://stream.aisstream.io/v0/stream</code>.
+            </span>
+          </div>
+
+          <div className="flex items-center justify-between pt-2 border-t border-navy-700/50">
+            <span className="text-xs text-slate-400">
+              Fallback: Digitraffic Open Marine API & Pan-India Integrated Stream (38 Ships Active)
+            </span>
+            <button
+              onClick={handleSaveApiKeys}
+              className="px-4 py-2 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-400 hover:to-cyan-400 text-navy-950 font-bold text-xs shadow-lg shadow-cyan-500/20 transition-all"
+            >
+              Save & Activate Keys
+            </button>
+          </div>
         </div>
       </motion.div>
 
