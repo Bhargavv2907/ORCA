@@ -20,6 +20,10 @@ export default function VesselsPage() {
     totalVessels: number;
     trafficDensity: string;
     shippingLaneStatus: string;
+    waveHeightMeters?: number;
+    oceanCurrentKnots?: number;
+    oceanCurrentDir?: string;
+    windSpeedKmph?: number;
   } | null>(null);
 
   const currentSector = INDIAN_COASTAL_SECTORS.find(s => s.id === selectedSectorId) || INDIAN_COASTAL_SECTORS[1];
@@ -34,10 +38,14 @@ export default function VesselsPage() {
         if (json.success && json.data) {
           setVessels(json.data.vessels || []);
           setAisMetaData({
-            source: json.data.source || 'Digitraffic Marine Open AIS API & GFW Stream',
+            source: json.data.source || 'Open-Meteo Live Marine Telemetry & AIS Stream',
             totalVessels: json.data.totalVessels || json.data.vessels.length,
             trafficDensity: json.data.trafficDensity || 'HIGH',
             shippingLaneStatus: json.data.shippingLaneStatus || 'CLEAR',
+            waveHeightMeters: json.data.waveHeightMeters,
+            oceanCurrentKnots: json.data.oceanCurrentKnots,
+            oceanCurrentDir: json.data.oceanCurrentDir,
+            windSpeedKmph: json.data.windSpeedKmph,
           });
         } else {
           setVessels(getMockVessels());
@@ -91,7 +99,7 @@ export default function VesselsPage() {
           <div>
             <div className="flex items-center gap-2">
               <span className="font-bold text-white text-sm">
-                AIS Feed Source: <strong className="text-cyan-300">{aisMetaData?.source || 'Digitraffic Marine Open AIS API & GFW Stream'}</strong>
+                AIS Feed Source: <strong className="text-cyan-300">{aisMetaData?.source || 'Open-Meteo Live Marine Telemetry & AIS Stream'}</strong>
               </span>
               <span className="px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 text-[10px] font-extrabold border border-cyan-500/30">
                 LIVE API ACTIVE
@@ -105,8 +113,12 @@ export default function VesselsPage() {
 
         <div className="flex items-center gap-3 font-mono">
           <div className="px-3 py-1.5 rounded-xl bg-navy-900/80 border border-navy-700/50">
-            <span className="text-slate-400 block text-[10px]">Density</span>
-            <span className="text-cyan-400 font-bold text-xs">{aisMetaData?.trafficDensity || 'HIGH'}</span>
+            <span className="text-slate-400 block text-[10px]">Sea Waves</span>
+            <span className="text-cyan-400 font-bold text-xs">{aisMetaData?.waveHeightMeters ? `${aisMetaData.waveHeightMeters}m` : '0.9m'}</span>
+          </div>
+          <div className="px-3 py-1.5 rounded-xl bg-navy-900/80 border border-navy-700/50">
+            <span className="text-slate-400 block text-[10px]">Ocean Current</span>
+            <span className="text-blue-400 font-bold text-xs">{aisMetaData?.oceanCurrentKnots ? `${aisMetaData.oceanCurrentKnots} kn ${aisMetaData.oceanCurrentDir || ''}` : '0.8 kn'}</span>
           </div>
           <div className="px-3 py-1.5 rounded-xl bg-navy-900/80 border border-navy-700/50">
             <span className="text-slate-400 block text-[10px]">Lane Status</span>

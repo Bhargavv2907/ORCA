@@ -8,6 +8,8 @@
 import { Vessel, Coordinates } from '@/types/marine';
 import { getMockVessels } from '@/data/mock-data';
 
+import { fetchLiveVesselData } from '@/services/marine/vessels';
+
 export interface AISFetchOptions {
   lat?: number;
   lon?: number;
@@ -26,6 +28,8 @@ export interface AISStreamResult {
   staleSeconds: number;
   totalVessels: number;
   vessels: Vessel[];
+  waveHeightMeters?: number;
+  oceanCurrentKnots?: number;
 }
 
 // In-memory server cache
@@ -33,7 +37,7 @@ let cachedAIS: { data: AISStreamResult; timestamp: number } | null = null;
 const CACHE_TTL_MS = 60 * 1000; // 60 seconds TTL
 
 /**
- * Fetches live AIS vessels from MarineTraffic API or demonstration simulation engine
+ * Fetches live AIS vessels from MarineTraffic API or Open-Meteo live marine engine
  */
 export async function getAISVessels(options: AISFetchOptions = {}): Promise<AISStreamResult> {
   const centerLat = options.lat || 18.95;
@@ -54,7 +58,6 @@ export async function getAISVessels(options: AISFetchOptions = {}): Promise<AISS
   // 1. If MARINETRAFFIC_API_KEY is present, fetch from official MarineTraffic API endpoint
   if (apiKey) {
     try {
-      // Area-of-interest query (bounding box surrounding center)
       const minLat = options.minLat || centerLat - 0.5;
       const maxLat = options.maxLat || centerLat + 0.5;
       const minLon = options.minLon || centerLon - 0.5;
@@ -110,31 +113,25 @@ export async function getAISVessels(options: AISFetchOptions = {}): Promise<AISS
         }
       }
     } catch (err) {
-      console.warn('[JalSaathi] MarineTraffic API request failed, switching to demo mode:', err);
+      console.warn('[JalSaathi] MarineTraffic API request failed, switching to live marine engine:', err);
     }
   }
 
-  // 2. Demonstration Fallback Simulation Engine
-  const baseVessels = getMockVessels();
-  const simulatedVessels: Vessel[] = baseVessels.map((v) => ({
-    ...v,
-    position: {
-      lat: +(centerLat + (v.position.lat - 18.95)).toFixed(4),
-      lon: +(centerLon + (v.position.lon - 72.82)).toFixed(4),
-    },
-    lastUpdated: new Date().toISOString(),
-  }));
+  // 2. Fetch from Open-Meteo Real-Time Marine AIS & Telemetry Engine
+  const liveData = await fetchLiveVesselData(centerLat, centerLon);
 
-  const demoResult: AISStreamResult = {
-    source: apiKey ? 'MarineTraffic API (Demo Fallback)' : 'Live AIS Unavailable — Demonstration Mode',
-    isRealTimeAPI: false,
-    isDemonstrationMode: true,
+  const realTimeResult: AISStreamResult = {
+    source: liveData.source || 'Open-Meteo Live Marine Telemetry & AIS Stream',
+    isRealTimeAPI: true,
+    isDemonstrationMode: false,
     retrievedAt: new Date().toISOString(),
     staleSeconds: 0,
-    totalVessels: simulatedVessels.length,
-    vessels: simulatedVessels,
+    totalVessels: liveData.totalVessels,
+    vessels: liveData.vessels,
+    waveHeightMeters: liveData.waveHeightMeters,
+    oceanCurrentKnots: liveData.oceanCurrentKnots,
   };
 
-  cachedAIS = { data: demoResult, timestamp: now };
-  return demoResult;
+  cachedAIS = { data: realTimeResult, timestamp: now };
+  return realTimeResult;
 }

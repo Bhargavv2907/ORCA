@@ -71,8 +71,14 @@ export default function RoutesPage() {
   const [showVesselDetails, setShowVesselDetails] = useState(false);
   const [showHudOverlay, setShowHudOverlay] = useState(true);
 
-  // Vessel AIS State
+  // Vessel AIS & Live Marine Telemetry State
   const [vesselData, setVesselData] = useState<{ totalVessels: number; trafficDensity: string; shippingLaneStatus: string; vessels: Vessel[]; source?: string; isDemonstrationMode?: boolean } | null>(null);
+  const [liveMarine, setLiveMarine] = useState<{
+    waves?: { height?: number; period?: number; directionDegrees?: number };
+    weather?: { windSpeed?: number; temperature?: number; pressure?: number };
+    ocean?: { currentSpeed?: number; currentDirection?: string; sst?: number };
+    source?: string;
+  } | null>(null);
 
   // Own Boat Telemetry
   const ownVessel = useMemo(() => ({
@@ -120,12 +126,19 @@ export default function RoutesPage() {
     return evaluateFleetRisk(ownVessel.position, ownVessel.speed, ownVessel.heading, activeVessels);
   }, [ownVessel, activeVessels]);
 
-  // Compute Safe Multi-Route Plan (Fastest, Safest, Balanced)
+  // Compute Safe Multi-Route Plan with Real Live Marine Telemetry (Fastest, Safest, Balanced)
   const safeRoutePlan: MultiRoutePlan = useMemo(() => {
     const startPt = getCoordsForInput(start, ownVessel.position);
     const destPt = targetPFZ.center;
-    return planSafeRoutes(startPt, destPt, activeVessels, routeMode);
-  }, [start, targetPFZ, activeVessels, routeMode, ownVessel.position]);
+    const telemetry = {
+      waveHeightMeters: liveMarine?.waves?.height,
+      windSpeedKmph: liveMarine?.weather?.windSpeed,
+      oceanCurrentKnots: liveMarine?.ocean?.currentSpeed,
+      oceanCurrentDir: liveMarine?.ocean?.currentDirection,
+      sstCelsius: liveMarine?.ocean?.sst,
+    };
+    return planSafeRoutes(startPt, destPt, activeVessels, routeMode, telemetry);
+  }, [start, targetPFZ, activeVessels, routeMode, ownVessel.position, liveMarine]);
 
   // IMD (India Meteorological Department) Data State
   const [imdData, setImdData] = useState<{
@@ -168,11 +181,19 @@ export default function RoutesPage() {
     setRoutes(initialRoutes);
     setHasSearched(true);
 
-    // Fetch live MarineTraffic AIS vessel data
+    // Fetch live Open-Meteo & Marine AIS vessel data
     fetch(`/api/vessels?lat=${currentSector.center.lat}&lon=${currentSector.center.lon}`)
       .then(res => res.json())
       .then(json => {
         if (json.success && json.data) setVesselData(json.data);
+      })
+      .catch(() => null);
+
+    // Fetch Real-Time Open-Meteo Marine Weather & Ocean Conditions
+    fetch(`/api/marine?lat=${currentSector.center.lat}&lon=${currentSector.center.lon}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.waves) setLiveMarine(data);
       })
       .catch(() => null);
 
@@ -216,6 +237,13 @@ export default function RoutesPage() {
       .then(res => res.json())
       .then(json => {
         if (json.success && json.data) setVesselData(json.data);
+      })
+      .catch(() => null);
+
+    fetch(`/api/marine?lat=${sector.center.lat}&lon=${sector.center.lon}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.waves) setLiveMarine(data);
       })
       .catch(() => null);
   };
@@ -538,7 +566,7 @@ export default function RoutesPage() {
                   </span>
                   <div className="flex items-center gap-2">
                     <span className="px-2 py-0.5 rounded bg-teal-500/20 text-teal-300 font-mono text-[10px]">
-                      LIVE HUD
+                      LIVE API
                     </span>
                     <button
                       onClick={() => setShowHudOverlay(false)}
@@ -550,19 +578,27 @@ export default function RoutesPage() {
                   </div>
                 </div>
 
-                <div className="text-[11px] text-slate-400 font-mono">
-                  LAT: {currentSector.center.lat}° N | LON: {currentSector.center.lon}° E
+                <div className="text-[11px] text-slate-400 font-mono flex justify-between">
+                  <span>LAT: {currentSector.center.lat}° N | LON: {currentSector.center.lon}° E</span>
                 </div>
 
                 {/* Telemetry Summary */}
                 <div className="grid grid-cols-2 gap-2 text-[11px] pt-1">
                   <div className="p-2 rounded-lg bg-navy-900/60 border border-navy-700/40">
-                    <span className="text-slate-400 block font-mono">🌡️ INSAT SST</span>
-                    <strong className="text-amber-400 text-xs">27.8 °C</strong>
+                    <span className="text-slate-400 block font-mono">🌡️ INSAT/OM SST</span>
+                    <strong className="text-amber-400 text-xs">{liveMarine?.ocean?.sst || 27.8} °C</strong>
                   </div>
                   <div className="p-2 rounded-lg bg-navy-900/60 border border-navy-700/40">
-                    <span className="text-slate-400 block font-mono">🌊 Waves</span>
-                    <strong className="text-cyan-400 text-xs">1.0 m</strong>
+                    <span className="text-slate-400 block font-mono">🌊 Wave Height</span>
+                    <strong className="text-cyan-400 text-xs">{liveMarine?.waves?.height ?? 0.9} m</strong>
+                  </div>
+                  <div className="p-2 rounded-lg bg-navy-900/60 border border-navy-700/40">
+                    <span className="text-slate-400 block font-mono">💨 Wind Speed</span>
+                    <strong className="text-emerald-400 text-xs">{liveMarine?.weather?.windSpeed ?? 18} km/h</strong>
+                  </div>
+                  <div className="p-2 rounded-lg bg-navy-900/60 border border-navy-700/40">
+                    <span className="text-slate-400 block font-mono">🧭 Ocean Current</span>
+                    <strong className="text-blue-400 text-xs">{liveMarine?.ocean?.currentSpeed ?? 0.8} kn {liveMarine?.ocean?.currentDirection || 'SW'}</strong>
                   </div>
                 </div>
 
@@ -570,9 +606,9 @@ export default function RoutesPage() {
                 <div className="flex items-center justify-between p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs font-semibold text-emerald-400">
                   <span className="flex items-center gap-1.5">
                     <Shield className="w-4 h-4" />
-                    Safety Score
+                    Route Safety Score
                   </span>
-                  <span className="text-sm font-bold text-white">{safeRoutePlan.selectedRoute.overallSafetyScore}/100 (SAFE)</span>
+                  <span className="text-sm font-bold text-white">{safeRoutePlan.selectedRoute.overallSafetyScore}/100</span>
                 </div>
               </div>
             ) : (

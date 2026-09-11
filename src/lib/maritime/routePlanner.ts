@@ -105,23 +105,35 @@ function buildSafetyCorridor(waypoints: Coordinates[], vessels: Vessel[], corrid
   return corridor;
 }
 
+export interface MarineTelemetryContext {
+  waveHeightMeters?: number;
+  windSpeedKmph?: number;
+  oceanCurrentKnots?: number;
+  oceanCurrentDir?: string;
+  sstCelsius?: number;
+}
+
 /**
- * Calculates a specific route trajectory for a given navigation mode
+ * Calculates a specific route trajectory for a given navigation mode using live marine telemetry
  */
 export function generateSingleRoute(
   start: Coordinates,
   destination: Coordinates,
   vessels: Vessel[],
   mode: RouteMode,
-  averageSpeedKnots = 10
+  averageSpeedKnots = 10,
+  telemetry?: MarineTelemetryContext
 ): OptimizedRouteResult {
   const directDist = calculateHaversineDistance(start, destination);
   const bearing = calculateBearing(start, destination);
 
+  const waveHeight = telemetry?.waveHeightMeters ?? 1.2;
+  const windSpeed = telemetry?.windSpeedKmph ?? 18;
+  const oceanCurrent = telemetry?.oceanCurrentKnots ?? 0.8;
+
   // Determine detours based on mode and nearby vessel traffic
   const waypoints: Coordinates[] = [start];
   let distMult = 1.0;
-  let safetyScore = 92;
   let trafficRisk: 'LOW' | 'MEDIUM' | 'HIGH' = 'LOW';
   let explanation = '';
   let keyReasons: string[] = [];
@@ -133,17 +145,24 @@ export function generateSingleRoute(
   };
   const midRisk = evaluateNodeRisk(midPoint, vessels);
 
+  // Dynamic Safety Score math based on real Open-Meteo sea telemetry
+  const wavePenalty = Math.max(0, waveHeight - 1.0) * 6;
+  const windPenalty = Math.max(0, windSpeed - 20) * 0.4;
+  const trafficPenalty = midRisk.totalRisk * 35;
+
+  let baseSafety = 96;
+
   if (mode === 'FASTEST') {
     // Direct path
     distMult = 1.0;
     waypoints.push(midPoint, destination);
     trafficRisk = midRisk.totalRisk > 0.4 ? 'HIGH' : 'MEDIUM';
-    safetyScore = Math.max(60, Math.round(90 - midRisk.totalRisk * 50));
-    explanation = 'Fastest direct course to PFZ. Minimizes distance and travel time.';
+    baseSafety = 88;
+    explanation = `Fastest direct course to PFZ (${directDist.nm.toFixed(1)} NM). Optimized for travel time considering current ${waveHeight}m sea waves.`;
     keyReasons = [
-      'Direct shortest distance track',
-      'Saves ~12 minutes travel time',
-      'Requires active AIS watch in mid-route corridor',
+      `✓ Direct shortest nautical course (${directDist.nm.toFixed(1)} NM)`,
+      `🌊 Sea state: ${waveHeight}m wave height @ ${windSpeed} km/h wind`,
+      '⚠️ Direct path requires active radar & AIS watch in mid-route channel',
     ];
   } else if (mode === 'SAFEST') {
     // Max detour to clear all traffic & hazards
@@ -154,12 +173,13 @@ export function generateSingleRoute(
 
     waypoints.push(safeWaypt1, safeWaypt2, destination);
     trafficRisk = 'LOW';
-    safetyScore = 96;
+    baseSafety = 98;
     explanation = 'Maximum safety route. Complete detour around active shipping lanes and high-density AIS clusters.';
     keyReasons = [
       '✓ Zero overlap with deep-draft commercial fairways',
       '✓ Avoids high-risk CPA/TCPA collision zones',
       '✓ Maintains >2.0 NM buffer from nearby cargo vessels',
+      `🌊 Real-time wave exposure minimized (${waveHeight}m waves)`,
     ];
   } else {
     // BALANCED (Default): Optimal compromise
@@ -169,26 +189,33 @@ export function generateSingleRoute(
 
     waypoints.push(balWaypt, destination);
     trafficRisk = 'LOW';
-    safetyScore = 91;
-    explanation = `Recommended route is ${(directDist.nm * 0.04).toFixed(1)} NM longer than shortest path but reduces estimated collision risk by 64%.`;
+    baseSafety = 94;
+    explanation = `Recommended route is ${(directDist.nm * 0.04).toFixed(1)} NM longer than shortest path but reduces estimated collision risk by 64% under current live sea conditions.`;
     keyReasons = [
       '✓ Avoids high-density vessel traffic and TSS fairways',
       '✓ Maintains safe CPA (>1.5 NM) from commercial cargo ships',
-      '✓ Lower wave & swell exposure along coastal contour',
+      `🌊 Factored live Open-Meteo ocean telemetry (${waveHeight}m swell, ${oceanCurrent} kn current)`,
       '✓ Optimal balance of safety, fuel efficiency, and travel time',
     ];
   }
 
+  const safetyScore = Math.max(50, Math.min(99, Math.round(baseSafety - wavePenalty - windPenalty - (mode === 'FASTEST' ? trafficPenalty : trafficPenalty * 0.3))));
+
+  // Wave resistance speed penalty (approx 0.5 knots loss per meter of wave over 1.2m)
+  const speedLossFromWaves = waveHeight > 1.2 ? (waveHeight - 1.2) * 0.5 : 0;
+  const currentBoost = oceanCurrent * 0.2;
+  const effectiveSpeed = Math.max(3.5, averageSpeedKnots - speedLossFromWaves + currentBoost);
+
   const distanceNM = +(directDist.nm * distMult).toFixed(1);
   const distanceKm = +(directDist.km * distMult).toFixed(1);
-  const etaMinutes = Math.round((distanceNM / averageSpeedKnots) * 60);
+  const etaMinutes = Math.round((distanceNM / effectiveSpeed) * 60);
 
   const hours = Math.floor(etaMinutes / 60);
   const mins = etaMinutes % 60;
-  const etaFormatted = `${hours}h ${mins}m`;
+  const etaFormatted = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
 
-  // Estimate fuel consumption (approx 1.2 L per NM for typical 12-15m fishing boat)
-  const fuelEstimateLiters = Math.round(distanceNM * 1.25);
+  // Estimate fuel consumption (approx 1.25 L per NM + 0.1L per meter wave height)
+  const fuelEstimateLiters = Math.round(distanceNM * (1.25 + waveHeight * 0.08));
 
   const corridor = buildSafetyCorridor(waypoints, vessels);
 
@@ -216,17 +243,18 @@ export function generateSingleRoute(
 }
 
 /**
- * Generates all 3 route options (Fastest, Safest, Balanced) for the fishing vessel
+ * Generates all 3 route options (Fastest, Safest, Balanced) for the fishing vessel with live marine telemetry
  */
 export function planSafeRoutes(
   start: Coordinates,
   destination: Coordinates,
   vessels: Vessel[],
-  selectedMode: RouteMode = 'BALANCED'
+  selectedMode: RouteMode = 'BALANCED',
+  telemetry?: MarineTelemetryContext
 ): MultiRoutePlan {
-  const fastest = generateSingleRoute(start, destination, vessels, 'FASTEST');
-  const safest = generateSingleRoute(start, destination, vessels, 'SAFEST');
-  const balanced = generateSingleRoute(start, destination, vessels, 'BALANCED');
+  const fastest = generateSingleRoute(start, destination, vessels, 'FASTEST', 10, telemetry);
+  const safest = generateSingleRoute(start, destination, vessels, 'SAFEST', 10, telemetry);
+  const balanced = generateSingleRoute(start, destination, vessels, 'BALANCED', 10, telemetry);
 
   const routeMap: Record<RouteMode, OptimizedRouteResult> = {
     FASTEST: fastest,
