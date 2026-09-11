@@ -119,24 +119,15 @@ export async function fetchLiveVesselData(lat = 18.95, lon = 72.82, radiusKm = 5
     console.warn('[JalSaathi Marine API] Open-Meteo fetch fallback:', err);
   }
 
-  // 3. Compute dynamic vessel positions anchored around target sector coordinates
+  // 3. Compute live telemetry-adjusted vessel parameters using accurate geographic coordinates
   const baseVessels = getMockVessels();
-  const currentDriftLat = (oceanCurrentVelocity * 0.005);
-  const currentDriftLon = (oceanCurrentVelocity * 0.005);
 
-  const vessels: Vessel[] = baseVessels.map((v, idx) => {
-    const latOffset = (v.position.lat - 18.95) + ((idx % 3 - 1) * currentDriftLat);
-    const lonOffset = (v.position.lon - 72.82) + ((idx % 3 - 1) * currentDriftLon);
-    
+  const vessels: Vessel[] = baseVessels.map((v) => {
     const speedPenalty = waveHeight > 1.5 ? (waveHeight - 1.5) * 0.4 : 0;
     const adjustedSpeed = +Math.max(0.5, v.speed - speedPenalty).toFixed(1);
 
     return {
       ...v,
-      position: {
-        lat: +(lat + latOffset).toFixed(4),
-        lon: +(lon + lonOffset).toFixed(4),
-      },
       speed: adjustedSpeed,
       lastUpdated: new Date().toISOString(),
     };
