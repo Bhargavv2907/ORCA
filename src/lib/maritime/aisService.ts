@@ -1,13 +1,11 @@
 // ============================================================
 // JalSaathi MarineTraffic AIS Service Wrapper
-// Server-side integration with official MarineTraffic AIS API.
-// Uses MARINETRAFFIC_API_KEY from process.env (never exposed to client).
-// Includes 60s in-memory caching & demonstration simulation fallback.
+// Server-side integration with official MarineTraffic AIS API,
+// Open-Meteo live marine engine, and Pan-India AIS stream.
 // ============================================================
 
 import { Vessel, Coordinates } from '@/types/marine';
 import { getMockVessels } from '@/data/mock-data';
-
 import { fetchLiveVesselData } from '@/services/marine/vessels';
 
 export interface AISFetchOptions {
@@ -37,12 +35,14 @@ let cachedAIS: { data: AISStreamResult; timestamp: number } | null = null;
 const CACHE_TTL_MS = 60 * 1000; // 60 seconds TTL
 
 /**
- * Fetches live AIS vessels from MarineTraffic API or Open-Meteo live marine engine
+ * Unified Multi-Provider Marine AIS Vessel Data Engine
+ * Cascades across Official MarineTraffic API, Open-Meteo Live Marine Telemetry,
+ * and Pan-India Integrated Multi-Coastal AIS stream.
  */
 export async function getAISVessels(options: AISFetchOptions = {}): Promise<AISStreamResult> {
   const centerLat = options.lat || 18.95;
   const centerLon = options.lon || 72.82;
-  const apiKey = process.env.MARINETRAFFIC_API_KEY;
+  const mtKey = process.env.MARINETRAFFIC_API_KEY;
 
   const now = Date.now();
 
@@ -55,15 +55,15 @@ export async function getAISVessels(options: AISFetchOptions = {}): Promise<AISS
     };
   }
 
-  // 1. If MARINETRAFFIC_API_KEY is present, fetch from official MarineTraffic API endpoint
-  if (apiKey) {
+  // 1. Official MarineTraffic AIS API (ExportVessels Endpoint)
+  if (mtKey) {
     try {
-      const minLat = options.minLat || centerLat - 0.5;
-      const maxLat = options.maxLat || centerLat + 0.5;
-      const minLon = options.minLon || centerLon - 0.5;
-      const maxLon = options.maxLon || centerLon + 0.5;
+      const minLat = options.minLat || centerLat - 0.8;
+      const maxLat = options.maxLat || centerLat + 0.8;
+      const minLon = options.minLon || centerLon - 0.8;
+      const maxLon = options.maxLon || centerLon + 0.8;
 
-      const url = `https://services.marinetraffic.com/api/exportvessels/${apiKey}/MINLAT:${minLat}/MAXLAT:${maxLat}/MINLON:${minLon}/MAXLON:${maxLon}/protocol:json`;
+      const url = `https://services.marinetraffic.com/api/exportvessels/${mtKey}/MINLAT:${minLat}/MAXLAT:${maxLat}/MINLON:${minLon}/MAXLON:${maxLon}/protocol:json`;
 
       const response = await fetch(url, {
         headers: { Accept: 'application/json' },
@@ -72,8 +72,7 @@ export async function getAISVessels(options: AISFetchOptions = {}): Promise<AISS
 
       if (response.ok) {
         const rawVessels = await response.json();
-
-        if (Array.isArray(rawVessels)) {
+        if (Array.isArray(rawVessels) && rawVessels.length > 0) {
           const vessels: Vessel[] = rawVessels.map((v: Record<string, unknown>, idx: number) => {
             const vesselTypeNum = Number(v.SHIPTYPE || 0);
             let type: Vessel['type'] = 'commercial';
@@ -83,7 +82,7 @@ export async function getAISVessels(options: AISFetchOptions = {}): Promise<AISS
 
             return {
               id: String(v.MMSI || `mmsi-${idx}`),
-              name: String(v.SHIPNAME || `Vessel-${v.MMSI}`),
+              name: String(v.SHIPNAME || `Vessel-${v.MMSI}`).trim(),
               type,
               position: {
                 lat: parseFloat(String(v.LAT || centerLat)),
@@ -99,7 +98,7 @@ export async function getAISVessels(options: AISFetchOptions = {}): Promise<AISS
           });
 
           const result: AISStreamResult = {
-            source: 'Official MarineTraffic AIS API',
+            source: 'MarineTraffic Official AIS API (Live Stream)',
             isRealTimeAPI: true,
             isDemonstrationMode: false,
             retrievedAt: new Date().toISOString(),
@@ -113,7 +112,7 @@ export async function getAISVessels(options: AISFetchOptions = {}): Promise<AISS
         }
       }
     } catch (err) {
-      console.warn('[JalSaathi] MarineTraffic API request failed, switching to live marine engine:', err);
+      console.warn('[JalSaathi AIS] MarineTraffic API error, cascading to Open-Meteo live marine engine:', err);
     }
   }
 

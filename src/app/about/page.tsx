@@ -13,8 +13,8 @@ export default function AboutPage() {
   return (
     <div className="p-4 md:p-6 lg:p-8 max-w-4xl mx-auto space-y-8">
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="text-center py-8">
-        <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center mx-auto mb-6 glow-teal">
-          <Anchor className="w-10 h-10 text-navy-950" />
+        <div className="mx-auto mb-6 flex justify-center">
+          <img src="/logo.jpg" alt="JalSaathi Logo" className="w-24 h-24 rounded-3xl object-cover shadow-xl border-2 border-teal-400/50 glow-teal" />
         </div>
         <h1 className="text-4xl md:text-5xl font-black text-white mb-3">JalSaathi</h1>
         <p className="text-xl text-teal-300 italic mb-2">Your intelligent companion at sea.</p>

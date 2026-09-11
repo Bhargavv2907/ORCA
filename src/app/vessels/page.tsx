@@ -12,7 +12,7 @@ import { INDIAN_COASTAL_SECTORS } from '@/components/world-map';
 export default function VesselsPage() {
   const [vessels, setVessels] = useState<Vessel[]>([]);
   const [filter, setFilter] = useState('all');
-  const [selectedSectorId, setSelectedSectorId] = useState('konkan');
+  const [selectedSectorId, setSelectedSectorId] = useState('pan_india');
   const [selectedVessel, setSelectedVessel] = useState<Vessel | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [aisMetaData, setAisMetaData] = useState<{
@@ -26,13 +26,23 @@ export default function VesselsPage() {
     windSpeedKmph?: number;
   } | null>(null);
 
-  const currentSector = INDIAN_COASTAL_SECTORS.find(s => s.id === selectedSectorId) || INDIAN_COASTAL_SECTORS[1];
+  const currentSector = INDIAN_COASTAL_SECTORS.find(s => s.id === selectedSectorId) || {
+    id: 'pan_india',
+    name: 'Pan-India All 11 Coasts',
+    center: { lat: 18.0, lon: 80.0 },
+    description: 'Whole Pan-India coastline vessel tracking across all 11 sectors',
+  };
 
   const loadVessels = (sectorId: string) => {
     setIsLoading(true);
     const sector = INDIAN_COASTAL_SECTORS.find(s => s.id === sectorId) || currentSector;
+    const storedKey = typeof window !== 'undefined' ? localStorage.getItem('jalsaathi_marinetraffic_key') : null;
+    const keyParam = storedKey ? `&apiKey=${encodeURIComponent(storedKey)}` : '';
+    const url = sectorId === 'pan_india'
+      ? `/api/vessels?lat=18.0&lon=80.0&radius=1000${keyParam}`
+      : `/api/vessels?lat=${sector.center.lat}&lon=${sector.center.lon}${keyParam}`;
 
-    fetch(`/api/vessels?lat=${sector.center.lat}&lon=${sector.center.lon}`)
+    fetch(url)
       .then(res => res.json())
       .then(json => {
         if (json.success && json.data) {
@@ -145,6 +155,9 @@ export default function VesselsPage() {
           onChange={e => handleSectorChange(e.target.value)}
           className="bg-navy-900 border-2 border-teal-500/40 text-white font-bold rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-teal-400 cursor-pointer shadow-lg"
         >
+          <option value="pan_india" className="bg-navy-900 text-teal-300 font-bold">
+            🇮🇳 Pan-India Whole Coastline (All 11 Sectors — 38 Live Vessels)
+          </option>
           {INDIAN_COASTAL_SECTORS.map((sector) => (
             <option key={sector.id} value={sector.id} className="bg-navy-900 text-white">
               🇮🇳 {sector.name.includes('(') ? sector.name : `${sector.name} (${sector.state})`} — {sector.type}
