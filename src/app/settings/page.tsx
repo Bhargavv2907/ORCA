@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Settings, Globe, MapPin, Bell, Layers, Shield, Database, Gauge, Check, Ship, Key, Radio, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { COASTAL_LANGUAGES } from '@/lib/i18n-engine';
+import { COASTAL_LANGUAGES, LANGUAGE_ANNOUNCEMENTS, speakVernacularAdvisory } from '@/lib/i18n-engine';
 import { useSelectedLanguage, setSelectedLanguage, t } from '@/lib/language-store';
 
 export default function SettingsPage() {

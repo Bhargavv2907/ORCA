@@ -6,7 +6,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { COASTAL_LANGUAGES, LanguageVoiceConfig, translateAdvisory } from '@/lib/i18n-engine';
+import { COASTAL_LANGUAGES, LanguageVoiceConfig, translateAdvisory, PHRASE_DICTIONARY, FULL_TRANSLATIONS } from '@/lib/i18n-engine';
 
 const STORAGE_KEY = 'orca_selected_language';
 export const DEFAULT_LANGUAGE = 'English';
