@@ -575,6 +575,8 @@ export default function WorldMapComponent({
         });
       }
 
+      const isGlobalOrAllIndia = !selectedRegion || selectedRegion.id === 'world' || selectedRegion.id === 'all_india';
+
       // 2. POTENTIAL FISHING ZONES (PFZ)
       if (currentLayers.has('fishing')) {
         zonesList.forEach((zone) => {
@@ -606,47 +608,55 @@ export default function WorldMapComponent({
 
           circle.addTo(layerGroup);
 
-          // Add Zone Label Badge at Circle Center
-          const shortName = zone.name.includes('Zone A') ? 'Zone A' :
-                            zone.name.includes('Zone B') ? 'Zone B' :
-                            zone.name.includes('Zone C') ? 'Zone C' : zone.name.split(' ')[0];
-          const badgeIcon = L.divIcon({
-            className: 'custom-zone-badge',
-            html: `<div style="background:${color}22;border:1.5px solid ${color};color:${color};padding:2px 6px;border-radius:12px;font-size:10px;font-weight:bold;white-space:nowrap;backdrop-filter:blur(4px);box-shadow:0 2px 6px rgba(0,0,0,0.4);">
-              📍 ${shortName} (${zone.suitabilityScore}%)
-            </div>`,
-            iconSize: [80, 20],
-            iconAnchor: [40, 10],
-          });
-          const badgeMarker = L.marker([zone.center.lat, zone.center.lon], { icon: badgeIcon });
-          badgeMarker.on('click', () => inspect(zone.center.lat, zone.center.lon, zone.name));
-          badgeMarker.addTo(layerGroup);
+          // Add Zone Label Badge at Circle Center (only in focused coastal mode)
+          if (!isGlobalOrAllIndia) {
+            const shortName = zone.name.includes('Zone A') ? 'Zone A' :
+                              zone.name.includes('Zone B') ? 'Zone B' :
+                              zone.name.includes('Zone C') ? 'Zone C' : zone.name.split(' ')[0];
+            const badgeIcon = L.divIcon({
+              className: 'custom-zone-badge',
+              html: `<div style="background:${color}22;border:1.5px solid ${color};color:${color};padding:2px 6px;border-radius:12px;font-size:10px;font-weight:bold;white-space:nowrap;backdrop-filter:blur(4px);box-shadow:0 2px 6px rgba(0,0,0,0.4);">
+                📍 ${shortName} (${zone.suitabilityScore}%)
+              </div>`,
+              iconSize: [80, 20],
+              iconAnchor: [40, 10],
+            });
+            const badgeMarker = L.marker([zone.center.lat, zone.center.lon], { icon: badgeIcon });
+            badgeMarker.on('click', () => inspect(zone.center.lat, zone.center.lon, zone.name));
+            badgeMarker.addTo(layerGroup);
+          }
         });
       }
-
 
       // 3. INDIAN PORTS LAYER (ALL MAJOR, DEEPWATER, PRIVATE & MINOR PORTS OF INDIA)
       if (currentLayers.has('ports')) {
         ALL_INDIAN_PORTS.forEach((port) => {
+          // On global or all-India view, only render major & deepwater ports to prevent label overlap
+          if (isGlobalOrAllIndia && port.type !== 'major' && port.type !== 'deepwater') return;
+
           const color = port.type === 'major' ? '#f59e0b' : port.type === 'deepwater' ? '#10b981' : port.type === 'private' ? '#8b5cf6' : '#38bdf8';
           const bgColor = port.type === 'major' ? 'rgba(245,158,11,0.18)' : port.type === 'deepwater' ? 'rgba(16,185,129,0.18)' : port.type === 'private' ? 'rgba(139,92,246,0.18)' : 'rgba(56,189,248,0.18)';
           const borderColor = port.type === 'major' ? 'rgba(245,158,11,0.6)' : port.type === 'deepwater' ? 'rgba(16,185,129,0.6)' : port.type === 'private' ? 'rgba(139,92,246,0.6)' : 'rgba(56,189,248,0.6)';
           const label = port.type === 'major' ? 'MAJOR PORT' : port.type === 'deepwater' ? 'DEEPWATER TRANS.' : port.type === 'private' ? 'PRIVATE PORT' : 'MINOR PORT';
 
+          const textTagHtml = !isGlobalOrAllIndia
+            ? `<span style="margin-left:4px;font-size:9.5px;font-weight:700;color:${color};background:rgba(15,23,42,0.92);padding:1.5px 6px;border-radius:4px;white-space:nowrap;border:1px solid ${borderColor};backdrop-filter:blur(4px);">
+                ${port.name.split('(')[0].trim()}
+              </span>`
+            : '';
+
           const portIcon = L.divIcon({
             className: 'custom-port-marker',
             html: `<div style="position:relative;display:flex;align-items:center;cursor:pointer;">
-              <div style="width:22px;height:22px;border-radius:50%;background:${bgColor};border:2px solid ${color};display:flex;align-items:center;justify-content:center;box-shadow:0 0 10px ${color}66;">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <div style="width:${isGlobalOrAllIndia ? '18px' : '22px'};height:${isGlobalOrAllIndia ? '18px' : '22px'};border-radius:50%;background:${bgColor};border:2px solid ${color};display:flex;align-items:center;justify-content:center;box-shadow:0 0 10px ${color}66;">
+                <svg width="${isGlobalOrAllIndia ? '10' : '12'}" height="${isGlobalOrAllIndia ? '10' : '12'}" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                   <circle cx="12" cy="5" r="3"/><line x1="12" y1="22" x2="12" y2="8"/><path d="M5 12H2a10 10 0 0 0 20 0h-3"/>
                 </svg>
               </div>
-              <span style="margin-left:4px;font-size:9.5px;font-weight:700;color:${color};background:rgba(15,23,42,0.92);padding:1.5px 6px;border-radius:4px;white-space:nowrap;border:1px solid ${borderColor};backdrop-filter:blur(4px);">
-                ${port.name.split('(')[0].trim()}
-              </span>
+              ${textTagHtml}
             </div>`,
-            iconSize: [130, 24],
-            iconAnchor: [11, 12],
+            iconSize: isGlobalOrAllIndia ? [20, 20] : [130, 24],
+            iconAnchor: isGlobalOrAllIndia ? [10, 10] : [11, 12],
           });
 
           const marker = L.marker([port.lat, port.lon], { icon: portIcon });
@@ -673,9 +683,11 @@ export default function WorldMapComponent({
       }
 
       // 4. NAUTICAL CHART ECDIS OVERLAYS (Isobaths, TSS Channels, Naval Exclusion Zone, Buoys)
-      if (currentLayers.has('tss') || currentLayers.has('military') || currentLayers.has('nautical_ecdis') || true) {
-        const centerLat = selectedRegion?.center?.lat || 18.92;
-        const centerLon = selectedRegion?.center?.lon || 72.82;
+      // Only render specific local coastal ECDIS overlays when inspecting a specific coast
+      const showEcdisLocal = !isGlobalOrAllIndia && (currentLayers.has('tss') || currentLayers.has('military') || currentLayers.has('nautical_ecdis'));
+      if (showEcdisLocal && selectedRegion?.center) {
+        const centerLat = selectedRegion.center.lat;
+        const centerLon = selectedRegion.center.lon;
 
         // 4A. Bathymetry Depth Isobaths (20m & 10m ISOBATH)
         const isobath20: [number, number][] = [
@@ -685,7 +697,7 @@ export default function WorldMapComponent({
           [centerLat - 0.20, centerLon - 0.15],
         ];
         const isoPoly20 = L.polyline(isobath20, { color: '#3b82f6', weight: 1.5, opacity: 0.7, dashArray: '4, 4' }).addTo(layerGroup);
-        isoPoly20.bindTooltip('<span style="font-size:9px;font-weight:bold;color:#1d4ed8;">20m ISOBATH</span>', { permanent: true, direction: 'center', className: 'leaflet-tooltip-transparent' });
+        isoPoly20.bindTooltip('<span style="font-size:9px;font-weight:bold;color:#1d4ed8;">20m ISOBATH</span>', { sticky: true });
 
         const isobath10: [number, number][] = [
           [centerLat + 0.10, centerLon - 0.10],
@@ -693,7 +705,7 @@ export default function WorldMapComponent({
           [centerLat - 0.15, centerLon - 0.06],
         ];
         const isoPoly10 = L.polyline(isobath10, { color: '#60a5fa', weight: 1.5, opacity: 0.7, dashArray: '4, 4' }).addTo(layerGroup);
-        isoPoly10.bindTooltip('<span style="font-size:9px;font-weight:bold;color:#2563eb;">10m ISOBATH</span>', { permanent: true, direction: 'center', className: 'leaflet-tooltip-transparent' });
+        isoPoly10.bindTooltip('<span style="font-size:9px;font-weight:bold;color:#2563eb;">10m ISOBATH</span>', { sticky: true });
 
         // 4B. TSS Shipping Channel Fairway (30UR-FAIRWAY TSS DEEP DRAFT-VESSEL)
         const fairway: [number, number][] = [
@@ -701,7 +713,7 @@ export default function WorldMapComponent({
           [centerLat - 0.25, centerLon - 0.02],
         ];
         const fairwayPoly = L.polyline(fairway, { color: '#1e3a8a', weight: 2.5, opacity: 0.8, dashArray: '8, 6' }).addTo(layerGroup);
-        fairwayPoly.bindTooltip('<span style="font-size:9px;font-weight:bold;color:#1e3a8a;background:#dbeafe;padding:1px 4px;border-radius:2px;">30UR-FAIRWAY -(TSS DEEP DRAFT-VESSEL)</span>', { permanent: true, direction: 'center' });
+        fairwayPoly.bindTooltip('<span style="font-size:9px;font-weight:bold;color:#1e3a8a;background:#dbeafe;padding:1px 4px;border-radius:2px;">30UR-FAIRWAY -(TSS DEEP DRAFT-VESSEL)</span>', { sticky: true });
 
         // 4C. Naval Defence Zone (Strictly No Fishing Polygon)
         const militaryPolyCoords: [number, number][] = [
@@ -716,7 +728,7 @@ export default function WorldMapComponent({
           fillOpacity: 0.18,
           weight: 2,
         }).addTo(layerGroup);
-        milPoly.bindTooltip('<div style="font-size:10px;font-weight:extrabold;color:#b91c1c;text-align:center;">NAVAL DEFENCE ZONE<br/><span style="font-size:8px;color:#dc2626;">STRICTLY NO FISHING</span></div>', { permanent: true, direction: 'center' });
+        milPoly.bindTooltip('<div style="font-size:10px;font-weight:extrabold;color:#b91c1c;text-align:center;">NAVAL DEFENCE ZONE<br/><span style="font-size:8px;color:#dc2626;">STRICTLY NO FISHING</span></div>', { sticky: true });
 
         // 4D. ICG SAR Buoy Marker #3
         const buoyIcon = L.divIcon({
@@ -750,25 +762,29 @@ export default function WorldMapComponent({
       }
 
       // 5. LIVE MARINETRAFFIC AIS VESSELS LAYER
-      if (currentLayers.has('vessels') || currentLayers.has('ais') || true) {
+      if (currentLayers.has('vessels') || currentLayers.has('ais')) {
         vesselsList.forEach((vessel) => {
           const typeColor = vessel.type === 'fishing' ? '#06b6d4' : vessel.type === 'cargo' ? '#f97316' : vessel.type === 'passenger' ? '#10b981' : vessel.type === 'commercial' ? '#8b5cf6' : '#94a3b8';
           const typeBadge = vessel.type.toUpperCase();
 
+          const textBadgeHtml = !isGlobalOrAllIndia
+            ? `<span style="margin-left:5px;font-size:9.5px;font-weight:700;color:${typeColor};background:rgba(15,23,42,0.92);padding:1.5px 6px;border-radius:4px;white-space:nowrap;border:1px solid ${typeColor}66;backdrop-filter:blur(4px);">
+                🚢 ${vessel.name.split(' ')[0]} (${vessel.speed} kts)
+              </span>`
+            : '';
+
           const vesselIcon = L.divIcon({
             className: 'custom-vessel-marker',
             html: `<div style="position:relative;display:flex;align-items:center;cursor:pointer;">
-              <div style="width:24px;height:24px;border-radius:50%;background:rgba(15,23,42,0.9);border:2px solid ${typeColor};display:flex;align-items:center;justify-content:center;box-shadow:0 0 10px ${typeColor}88;transform:rotate(${vessel.heading}deg);">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="${typeColor}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <div style="width:${isGlobalOrAllIndia ? '18px' : '24px'};height:${isGlobalOrAllIndia ? '18px' : '24px'};border-radius:50%;background:rgba(15,23,42,0.9);border:2px solid ${typeColor};display:flex;align-items:center;justify-content:center;box-shadow:0 0 10px ${typeColor}88;transform:rotate(${vessel.heading}deg);">
+                <svg width="${isGlobalOrAllIndia ? '10' : '13'}" height="${isGlobalOrAllIndia ? '10' : '13'}" viewBox="0 0 24 24" fill="none" stroke="${typeColor}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M12 2L2 22h20L12 2z"/>
                 </svg>
               </div>
-              <span style="margin-left:5px;font-size:9.5px;font-weight:700;color:${typeColor};background:rgba(15,23,42,0.92);padding:1.5px 6px;border-radius:4px;white-space:nowrap;border:1px solid ${typeColor}66;backdrop-filter:blur(4px);">
-                🚢 ${vessel.name.split(' ')[0]} (${vessel.speed} kts)
-              </span>
+              ${textBadgeHtml}
             </div>`,
-            iconSize: [140, 26],
-            iconAnchor: [12, 13],
+            iconSize: isGlobalOrAllIndia ? [20, 20] : [140, 26],
+            iconAnchor: isGlobalOrAllIndia ? [10, 10] : [12, 13],
           });
 
           const vMarker = L.marker([vessel.position.lat, vessel.position.lon], { icon: vesselIcon });
