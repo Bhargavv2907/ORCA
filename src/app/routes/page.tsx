@@ -43,29 +43,61 @@ const OFFLINE_LOCATIONS: Record<string, Coordinates> = {
   'zone c': { lat: 19.15, lon: 72.55 },
   'alibag': { lat: 18.64, lon: 72.87 },
   'vasai': { lat: 19.33, lon: 72.80 },
+  'gujarat': { lat: 21.75, lon: 70.0 },
+  'gujarat coast': { lat: 21.75, lon: 70.0 },
   'dwarka': { lat: 21.80, lon: 69.10 },
   'veraval': { lat: 20.90, lon: 70.36 },
+  'veraval coast': { lat: 20.90, lon: 70.36 },
+  'konkan': { lat: 18.2, lon: 72.9 },
+  'konkan coast': { lat: 18.2, lon: 72.9 },
   'goa': { lat: 15.35, lon: 73.80 },
+  'goa coast': { lat: 15.35, lon: 73.80 },
   'marmagao': { lat: 15.25, lon: 73.50 },
+  'kanara': { lat: 13.8, lon: 74.4 },
+  'kanara coast': { lat: 13.8, lon: 74.4 },
   'karwar': { lat: 14.80, lon: 74.13 },
   'udupi': { lat: 13.34, lon: 74.74 },
+  'mangalore': { lat: 12.85, lon: 74.83 },
+  'malabar': { lat: 10.2, lon: 76.0 },
+  'malabar coast': { lat: 10.2, lon: 76.0 },
   'kochi': { lat: 9.93, lon: 76.26 },
+  'kochi coast': { lat: 9.93, lon: 76.26 },
+  'cochin': { lat: 9.93, lon: 76.26 },
   'kollam': { lat: 8.89, lon: 76.58 },
+  'coromandel': { lat: 10.8, lon: 79.5 },
+  'coromandel coast': { lat: 10.8, lon: 79.5 },
   'chennai': { lat: 13.08, lon: 80.27 },
+  'chennai coast': { lat: 13.08, lon: 80.27 },
   'tuticorin': { lat: 8.80, lon: 78.14 },
+  'andhra': { lat: 16.2, lon: 81.8 },
+  'andhra coast': { lat: 16.2, lon: 81.8 },
   'visakhapatnam': { lat: 17.68, lon: 83.21 },
+  'vizag': { lat: 17.68, lon: 83.21 },
+  'vizag coast': { lat: 17.68, lon: 83.21 },
   'kakinada': { lat: 16.98, lon: 82.24 },
+  'odisha': { lat: 20.2, lon: 86.2 },
+  'odisha coast': { lat: 20.2, lon: 86.2 },
   'puri': { lat: 19.81, lon: 85.83 },
   'paradip': { lat: 20.31, lon: 86.61 },
+  'paradip coast': { lat: 20.31, lon: 86.61 },
+  'bengal': { lat: 21.8, lon: 88.3 },
+  'bengal coast': { lat: 21.8, lon: 88.3 },
   'digha': { lat: 21.62, lon: 87.51 },
   'haldia': { lat: 22.06, lon: 88.06 },
+  'lakshadweep': { lat: 10.56, lon: 72.64 },
   'kavaratti': { lat: 10.56, lon: 72.64 },
+  'andaman': { lat: 11.62, lon: 92.72 },
   'port blair': { lat: 11.62, lon: 92.72 },
 };
 
 function getCoordsForInput(input: string, fallback: Coordinates): Coordinates {
   const normalized = input.trim().toLowerCase();
-  return OFFLINE_LOCATIONS[normalized] || fallback;
+  for (const [key, coords] of Object.entries(OFFLINE_LOCATIONS)) {
+    if (normalized === key || normalized.includes(key) || key.includes(normalized)) {
+      return coords;
+    }
+  }
+  return fallback;
 }
 
 function RoutesContent() {
@@ -92,22 +124,40 @@ function RoutesContent() {
     source?: string;
   } | null>(null);
 
-  // Own Boat Telemetry
-  const ownVessel = useMemo(() => ({
-    name: 'Jai Malhar',
-    registration: 'IND-MH-01-MM-4592',
-    position: { lat: 18.92, lon: 72.82 },
-    speed: 6.2,
-    heading: 230,
-  }), []);
-
   // Active Coastal Sector
   const currentSector = INDIAN_COASTAL_SECTORS.find(s => s.id === selectedSectorId) || INDIAN_COASTAL_SECTORS[1];
 
-  // Target PFZ Metadata List
-  const targetPFZ = useMemo(() => {
-    return MOCK_INCOIS_PFZ_LIST.find(p => p.name.includes(destination) || destination.includes(p.name)) || MOCK_INCOIS_PFZ_LIST[0];
-  }, [destination]);
+  // Own Boat Telemetry (Position aligned with active sector)
+  const ownVessel = useMemo(() => ({
+    name: 'Jai Malhar',
+    registration: 'IND-MH-01-MM-4592',
+    position: currentSector.center,
+    speed: 6.2,
+    heading: 230,
+  }), [currentSector.center]);
+
+  // Location-accurate real-time satellite Potential Fishing Zones for active coast
+  const displayZones = useMemo(() => {
+    return generateRealTimeFishingZones(currentSector.center.lat, currentSector.center.lon, undefined, currentSector.name);
+  }, [currentSector.center.lat, currentSector.center.lon, currentSector.name]);
+
+  // Dynamically resolve start and destination target coordinates for the active sector
+  const startCoord = useMemo(() => {
+    return getCoordsForInput(start, currentSector.center);
+  }, [start, currentSector.center]);
+
+  const targetZoneObj = useMemo(() => {
+    return displayZones.find(z =>
+      z.name.toLowerCase().includes(destination.toLowerCase()) ||
+      destination.toLowerCase().includes(z.name.toLowerCase()) ||
+      z.id.toLowerCase().includes(destination.toLowerCase())
+    ) || displayZones[0];
+  }, [destination, displayZones]);
+
+  const endCoord = useMemo(() => {
+    if (targetZoneObj) return targetZoneObj.center;
+    return getCoordsForInput(destination, { lat: currentSector.center.lat - 0.3, lon: currentSector.center.lon - 0.4 });
+  }, [targetZoneObj, destination, currentSector.center]);
 
   // Compute Active Vessels (including simulated collision demo scenario if toggled)
   const activeVessels = useMemo(() => {
@@ -118,7 +168,7 @@ function RoutesContent() {
         id: 'mv-container-express',
         name: 'MV Pacific Express (Cargo)',
         type: 'cargo',
-        position: { lat: 18.96, lon: 72.78 },
+        position: { lat: currentSector.center.lat + 0.04, lon: currentSector.center.lon - 0.04 },
         speed: 16.5,
         heading: 110,
         activity: 'Transit (High Speed)',
@@ -130,7 +180,7 @@ function RoutesContent() {
     }
 
     return baseList;
-  }, [vesselData, isDemoCollisionActive]);
+  }, [vesselData, isDemoCollisionActive, currentSector.center]);
 
   // Evaluate Collision Risk across Active Fleet
   const fleetRiskReport: FleetCollisionReport = useMemo(() => {
@@ -139,8 +189,6 @@ function RoutesContent() {
 
   // Compute Safe Multi-Route Plan with Real Live Marine Telemetry (Fastest, Safest, Balanced)
   const safeRoutePlan: MultiRoutePlan = useMemo(() => {
-    const startPt = getCoordsForInput(start, ownVessel.position);
-    const destPt = targetPFZ.center;
     const telemetry = {
       waveHeightMeters: liveMarine?.waves?.height,
       windSpeedKmph: liveMarine?.weather?.windSpeed,
@@ -148,8 +196,8 @@ function RoutesContent() {
       oceanCurrentDir: liveMarine?.ocean?.currentDirection,
       sstCelsius: liveMarine?.ocean?.sst,
     };
-    return planSafeRoutes(startPt, destPt, activeVessels, routeMode, telemetry);
-  }, [start, targetPFZ, activeVessels, routeMode, ownVessel.position, liveMarine]);
+    return planSafeRoutes(startCoord, endCoord, activeVessels, routeMode, telemetry);
+  }, [startCoord, endCoord, activeVessels, routeMode, liveMarine]);
 
   // IMD Data State
   const [imdData, setImdData] = useState<{
@@ -172,10 +220,6 @@ function RoutesContent() {
     weather: false,
   });
 
-  // Location-accurate real-time satellite Potential Fishing Zones for active coast
-  const displayZones = useMemo(() => {
-    return generateRealTimeFishingZones(currentSector.center.lat, currentSector.center.lon, undefined, currentSector.name);
-  }, [currentSector.center.lat, currentSector.center.lon, currentSector.name]);
 
   // Initial route setup & online status listener
   useEffect(() => {
@@ -330,9 +374,6 @@ function RoutesContent() {
     setHasSearched(true);
   };
 
-  const startCoord = getCoordsForInput(start, currentSector.center);
-  const targetZoneObj = displayZones.find(z => z.name.toLowerCase().includes(destination.toLowerCase())) || displayZones[0];
-  const endCoord = targetZoneObj ? targetZoneObj.center : getCoordsForInput(destination, { lat: currentSector.center.lat - 0.3, lon: currentSector.center.lon - 0.4 });
   const activeRoute = routes[selectedRouteIndex] || routes[0];
 
   // Map Action Payload for Leaflet Map

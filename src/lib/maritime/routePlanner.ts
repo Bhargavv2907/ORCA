@@ -152,6 +152,9 @@ export function generateSingleRoute(
 
   let baseSafety = 96;
 
+  const isEastCoast = (start.lon + destination.lon) / 2 > 78.5;
+  const seawardDir = isEastCoast ? 1 : -1;
+
   if (mode === 'FASTEST') {
     // Direct path
     distMult = 1.0;
@@ -167,9 +170,9 @@ export function generateSingleRoute(
   } else if (mode === 'SAFEST') {
     // Max detour to clear all traffic & hazards
     distMult = 1.12; // 12% longer
-    const arcOffset = 0.08 * (bearing > 180 ? -1 : 1);
-    const safeWaypt1 = { lat: start.lat + (destination.lat - start.lat) * 0.35, lon: start.lon + (destination.lon - start.lon) * 0.35 + arcOffset };
-    const safeWaypt2 = { lat: start.lat + (destination.lat - start.lat) * 0.70, lon: start.lon + (destination.lon - start.lon) * 0.70 + arcOffset * 0.8 };
+    const arcOffset = 0.08 * seawardDir;
+    const safeWaypt1 = { lat: +(start.lat + (destination.lat - start.lat) * 0.35).toFixed(4), lon: +(start.lon + (destination.lon - start.lon) * 0.35 + arcOffset).toFixed(4) };
+    const safeWaypt2 = { lat: +(start.lat + (destination.lat - start.lat) * 0.70).toFixed(4), lon: +(start.lon + (destination.lon - start.lon) * 0.70 + arcOffset * 0.8).toFixed(4) };
 
     waypoints.push(safeWaypt1, safeWaypt2, destination);
     trafficRisk = 'LOW';
@@ -184,8 +187,8 @@ export function generateSingleRoute(
   } else {
     // BALANCED (Default): Optimal compromise
     distMult = 1.04; // 4% longer
-    const arcOffset = 0.04 * (bearing > 180 ? -1 : 1);
-    const balWaypt = { lat: start.lat + (destination.lat - start.lat) * 0.5, lon: start.lon + (destination.lon - start.lon) * 0.5 + arcOffset };
+    const arcOffset = 0.04 * seawardDir;
+    const balWaypt = { lat: +(start.lat + (destination.lat - start.lat) * 0.5).toFixed(4), lon: +(start.lon + (destination.lon - start.lon) * 0.5 + arcOffset).toFixed(4) };
 
     waypoints.push(balWaypt, destination);
     trafficRisk = 'LOW';
