@@ -20,6 +20,20 @@ export interface AISDataResponse {
   windSpeedKmph?: number;
 }
 
+function getDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
 export async function fetchLiveVesselData(lat = 18.95, lon = 72.82, radiusKm = 50, customApiKey?: string): Promise<AISDataResponse> {
   const apiKey = customApiKey || process.env.MARINETRAFFIC_API_KEY;
 
@@ -122,7 +136,7 @@ export async function fetchLiveVesselData(lat = 18.95, lon = 72.82, radiusKm = 5
   // 3. Compute live telemetry-adjusted vessel parameters using accurate geographic coordinates
   const baseVessels = getMockVessels();
 
-  const vessels: Vessel[] = baseVessels.map((v) => {
+  let vessels: Vessel[] = baseVessels.map((v) => {
     const speedPenalty = waveHeight > 1.5 ? (waveHeight - 1.5) * 0.4 : 0;
     const adjustedSpeed = +Math.max(0.5, v.speed - speedPenalty).toFixed(1);
 
@@ -132,6 +146,21 @@ export async function fetchLiveVesselData(lat = 18.95, lon = 72.82, radiusKm = 5
       lastUpdated: new Date().toISOString(),
     };
   });
+
+  // Filter vessels by proximity if targeting a specific coastal sector (radiusKm < 800)
+  if (radiusKm < 800) {
+    const maxDist = Math.max(radiusKm * 3, 220); // 220km catchment radius around sector center
+    const filtered = vessels.filter((v) => getDistanceKm(lat, lon, v.position.lat, v.position.lon) <= maxDist);
+    if (filtered.length > 0) {
+      vessels = filtered;
+    } else {
+      // Fallback: if no vessel in tight radius, take top 4 nearest
+      const sorted = [...vessels].sort((a, b) =>
+        getDistanceKm(lat, lon, a.position.lat, a.position.lon) - getDistanceKm(lat, lon, b.position.lat, b.position.lon)
+      );
+      vessels = sorted.slice(0, 4);
+    }
+  }
 
   const totalVessels = vessels.length;
   const trafficDensity: 'LOW' | 'MEDIUM' | 'HIGH' | 'EXTREME' =

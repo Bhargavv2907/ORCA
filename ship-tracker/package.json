@@ -1,0 +1,12 @@
+{
+  "name": "live-ship-tracker",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Real-Time Live Ship Positions Worldwide using AISStream.io, Node.js WebSocket Proxy, and MapLibre GL JS",
+  "scripts": {
+    "start:backend": "cd backend && npm start",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "build:frontend": "cd frontend && npm run build"
+  }
+}

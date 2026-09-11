@@ -76,7 +76,14 @@ export default function VesselsPage() {
     loadVessels(sectorId);
   };
 
-  const filteredVessels = filter === 'all' ? vessels : vessels.filter(v => v.type === filter);
+  const filteredVessels = filter === 'all'
+    ? vessels
+    : filter === 'commercial'
+    ? vessels.filter(v => v.type === 'commercial' || v.type === 'cargo')
+    : filter === 'other'
+    ? vessels.filter(v => v.type === 'passenger' || v.type === 'other')
+    : vessels.filter(v => v.type === filter);
+
   const counts = {
     all: vessels.length,
     fishing: vessels.filter(v => v.type === 'fishing').length,
