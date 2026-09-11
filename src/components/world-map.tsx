@@ -847,7 +847,7 @@ export default function WorldMapComponent({
             <p style="color:#94a3b8;margin:0 0 4px 0;">Suitability Score: <strong style="color:#6ee7b7;">${targetZone.suitabilityScore}% Match</strong></p>
             <p style="color:#64748b;font-family:monospace;margin:0;">SST: ${targetZone.sst}°C | Chlorophyll: ${targetZone.chlorophyll} mg/m³</p>
           </div>
-        `).openPopup();
+        `).bindTooltip(`🎯 Highlighted PFZ: ${targetZone.name}`, { sticky: true });
 
         map.flyTo(p, 8.5, { duration: 1.5 });
       }
@@ -933,7 +933,7 @@ export default function WorldMapComponent({
             <strong style="color:#f87171;font-size:13px;">⚠️ Restricted Maritime Zone / IMBL Boundary</strong><br/>
             <span style="color:#94a3b8;font-size:11px;font-weight:400;">Prohibited waters for commercial fishing without clearance.</span>
           </div>
-        `).openPopup();
+        `);
 
         map.flyToBounds(geofenceCoords, { padding: [80, 80], duration: 1.5 });
       }
