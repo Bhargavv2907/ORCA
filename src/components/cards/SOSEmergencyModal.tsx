@@ -8,7 +8,7 @@ import {
   Shield, AlertTriangle, Compass, LifeBuoy, BatteryCharging
 } from 'lucide-react';
 import { getSelectedLocation } from '@/lib/location-store';
-import { speakVernacularAdvisory, COASTAL_LANGUAGES } from '@/lib/i18n-engine';
+import { speakVernacularAdvisory, COASTAL_LANGUAGES, LANGUAGE_ANNOUNCEMENTS } from '@/lib/i18n-engine';
 import { useLanguage } from '@/lib/language-store';
 import { getMarineConditions } from '@/services/marine/unified';
 import { checkGeofenceProximity } from '@/lib/geofence-engine';

@@ -10,6 +10,8 @@ import { DemoModeBanner, WhyEvidenceModal, AudioAdvisoryPlayer, ProactiveAlertBa
 import { translateAdvisory, speakVernacularAdvisory, preloadVoices, getLanguageBCP47 } from '@/lib/i18n-engine';
 import { useSelectedLanguage, setSelectedLanguage } from '@/lib/language-store';
 
+import { checkVulgarity } from '@/lib/moderation';
+
 const EXAMPLE_QUESTIONS = [
   'Where is the nearest Potential Fishing Zone (PFZ) today?',
   'Is it safe to go fishing tomorrow morning?',
@@ -49,6 +51,25 @@ export default function AssistantPage() {
     };
     setMessages(prev => [...prev, userMsg]);
     setInput('');
+
+    const moderation = checkVulgarity(q, language);
+    if (moderation.isVulgar) {
+      const warningMsg: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: moderation.warningText,
+        timestamp: new Date().toISOString(),
+        safetyStatus: {
+          overall: 10,
+          status: 'DANGEROUS',
+          label: 'Policy Violation',
+          components: [],
+        },
+      };
+      setMessages(prev => [...prev, warningMsg]);
+      return;
+    }
+
     setIsLoading(true);
     setActiveAgents(new Set());
     setCompletedAgents(new Set());
