@@ -29,18 +29,125 @@ export function generateRealTimeFishingZones(
   const origin = { lat, lon };
 
   // Position zones relative to the coastline into open waters
-  // East coast of India (lon > 78.5) moves East (lonDir = 1), West coast moves West (lonDir = -1)
-  const isEastCoast = lon > 78.5;
-  const lonDir = isEastCoast ? 1 : -1;
-  const cosLat = Math.cos((lat * Math.PI) / 180);
+  // Determine offshore base anchor and directional vector into open oceanic waters
+  let baseLat = lat;
+  let baseLon = lon;
+  let latVec = -0.3;
+  let lonVec = lon > 78.5 ? 0.95 : -0.95;
+
+  const nameLower = (locationName || '').toLowerCase();
+
+  if (nameLower.includes('mumbai') || nameLower.includes('jnpt') || nameLower.includes('nhava sheva')) {
+    baseLat = 18.85;
+    baseLon = 72.45;
+    latVec = -0.3;
+    lonVec = -0.9;
+  } else if (nameLower.includes('cochin') || nameLower.includes('kochi') || nameLower.includes('vallarpadam')) {
+    baseLat = 9.90;
+    baseLon = 75.80;
+    latVec = -0.3;
+    lonVec = -0.9;
+  } else if (nameLower.includes('visakhapatnam') || nameLower.includes('vizag')) {
+    baseLat = 17.50;
+    baseLon = 83.70;
+    latVec = -0.4;
+    lonVec = 0.9;
+  } else if (nameLower.includes('paradip')) {
+    baseLat = 19.90;
+    baseLon = 87.20;
+    latVec = -0.5;
+    lonVec = 0.85;
+  } else if (nameLower.includes('chennai') || nameLower.includes('ennore')) {
+    baseLat = 13.00;
+    baseLon = 80.80;
+    latVec = -0.2;
+    lonVec = 0.95;
+  } else if (nameLower.includes('veraval') || nameLower.includes('porbandar')) {
+    baseLat = 20.70;
+    baseLon = 69.80;
+    latVec = -0.6;
+    lonVec = -0.8;
+  } else if (nameLower.includes('mangalore') || nameLower.includes('malpe')) {
+    baseLat = 12.85;
+    baseLon = 74.30;
+    latVec = -0.2;
+    lonVec = -0.95;
+  } else if (nameLower.includes('mormugao') || nameLower.includes('panaji')) {
+    baseLat = 15.30;
+    baseLon = 73.30;
+    latVec = -0.3;
+    lonVec = -0.9;
+  } else if (nameLower.includes('kandla') || nameLower.includes('mundra') || nameLower.includes('deendayal')) {
+    baseLat = 22.30;
+    baseLon = 68.90;
+    latVec = -0.6;
+    lonVec = -0.8;
+  } else if (nameLower.includes('gujarat') || (lat > 20 && lat < 24 && lon < 73)) {
+    baseLat = 20.85;
+    baseLon = 69.35;
+    latVec = -0.6;
+    lonVec = -0.8;
+  } else if (nameLower.includes('odisha') || (lat > 19 && lat < 21.8 && lon > 84.5 && lon < 87.5)) {
+    baseLat = 19.55;
+    baseLon = 86.95;
+    latVec = -0.5;
+    lonVec = 0.85;
+  } else if (nameLower.includes('bengal') || (lat > 21 && lon > 87.5)) {
+    baseLat = 20.80;
+    baseLon = 88.90;
+    latVec = -0.8;
+    lonVec = 0.4;
+  } else if (nameLower.includes('konkan') || (lat > 16.5 && lat <= 20 && lon < 73.5)) {
+    baseLat = 18.10;
+    baseLon = 72.30;
+    latVec = -0.2;
+    lonVec = -0.95;
+  } else if (nameLower.includes('goa') || (lat > 14.8 && lat <= 16.5 && lon < 74.2)) {
+    baseLat = 15.25;
+    baseLon = 73.25;
+    latVec = -0.3;
+    lonVec = -0.9;
+  } else if (nameLower.includes('kanara') || (lat > 12.5 && lat <= 14.8 && lon < 75)) {
+    baseLat = 13.65;
+    baseLon = 73.90;
+    latVec = -0.2;
+    lonVec = -0.95;
+  } else if (nameLower.includes('malabar') || (lat <= 12.5 && lon < 77.2)) {
+    baseLat = 10.00;
+    baseLon = 75.40;
+    latVec = -0.3;
+    lonVec = -0.9;
+  } else if (nameLower.includes('coromandel') || (lat <= 13.5 && lon >= 77.2 && lon <= 80.5)) {
+    baseLat = 10.80;
+    baseLon = 80.30;
+    latVec = -0.2;
+    lonVec = 0.95;
+  } else if (nameLower.includes('andhra') || (lat > 13.5 && lat <= 19 && lon > 80 && lon <= 84.8)) {
+    baseLat = 16.20;
+    baseLon = 82.60;
+    latVec = -0.4;
+    lonVec = 0.9;
+  } else if (nameLower.includes('lakshadweep')) {
+    baseLat = 10.45;
+    baseLon = 71.95;
+    latVec = -0.4;
+    lonVec = -0.9;
+  } else if (nameLower.includes('andaman') || nameLower.includes('port blair')) {
+    baseLat = 11.50;
+    baseLon = 93.35;
+    latVec = -0.3;
+    lonVec = 0.9;
+  }
+
+  const cosLat = Math.cos((baseLat * Math.PI) / 180);
 
   // Helper to project exact offshore coordinate for target distance (in km)
-  const offsetCoord = (targetKm: number, latFraction = -0.3, lonFraction = 0.95) => {
-    const dLat = (latFraction * targetKm) / 111.0;
-    const dLon = (lonFraction * targetKm * lonDir) / (111.0 * Math.max(0.1, cosLat));
+  const offsetCoord = (targetKm: number) => {
+    const dLat = (latVec * targetKm) / 111.0;
+    const dLon = (lonVec * targetKm) / (111.0 * Math.max(0.1, cosLat));
     return {
-      lat: +(lat + dLat).toFixed(4),
-      lon: +(lon + dLon).toFixed(4),
+      lat: +(baseLat + dLat).toFixed(4),
+      lon: +(baseLon + dLon).toFixed(4),
     };
   };
 
@@ -210,5 +317,42 @@ export function generateRealTimeFishingZones(
   };
 
   return [zoneA, zoneB, zoneC, zoneD, zoneE];
+}
+
+/**
+ * Generates location-accurate Potential Fishing Zones across ALL 11 Indian Coastal Sectors
+ * for the Pan-India view (33 distinct PFZs mapped across all Indian coasts & UTs).
+ */
+export function generatePanIndiaFishingZones(
+  conditions?: Partial<MarineConditions>
+): FishingZone[] {
+  const sectors = [
+    { id: 'gujarat', name: 'Gujarat Coast', lat: 21.75, lon: 70.0 },
+    { id: 'konkan', name: 'Konkan Coast', lat: 18.2, lon: 72.9 },
+    { id: 'goa', name: 'Goa Coast', lat: 15.35, lon: 73.8 },
+    { id: 'kanara', name: 'Kanara Coast', lat: 13.8, lon: 74.4 },
+    { id: 'malabar', name: 'Malabar Coast', lat: 10.2, lon: 76.0 },
+    { id: 'coromandel', name: 'Coromandel Coast', lat: 10.8, lon: 79.5 },
+    { id: 'andhra', name: 'Andhra Coast', lat: 16.2, lon: 81.8 },
+    { id: 'odisha', name: 'Odisha Coast', lat: 20.2, lon: 86.2 },
+    { id: 'bengal', name: 'Bengal Coast', lat: 21.8, lon: 88.3 },
+    { id: 'lakshadweep', name: 'Lakshadweep', lat: 10.56, lon: 72.64 },
+    { id: 'andaman', name: 'Andaman Islands', lat: 11.62, lon: 92.72 },
+  ];
+
+  const allPanIndiaZones: FishingZone[] = [];
+  sectors.forEach((sec) => {
+    const sectorZones = generateRealTimeFishingZones(sec.lat, sec.lon, conditions, sec.name);
+    // Take top 3 high-probability zones per sector for a clean, comprehensive Pan-India coverage (33 zones)
+    sectorZones.slice(0, 3).forEach((z, idx) => {
+      allPanIndiaZones.push({
+        ...z,
+        id: `pfz-${sec.id}-${idx}`,
+        sectorId: sec.id,
+      });
+    });
+  });
+
+  return allPanIndiaZones;
 }
 
