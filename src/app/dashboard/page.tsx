@@ -94,15 +94,13 @@ export default function DashboardPage() {
             source: 'ORCA Live Real-Time Hazard Pipeline',
           })));
         } else {
-          setAlerts(getMockAlerts().filter(a => a.isActive).slice(0, 3));
+          setAlerts([]);
         }
       } else {
-        setMetrics(getMockDashboardMetrics());
-        setSafety(getMockSafety());
+        setIsLive(true);
       }
     } catch {
-      setMetrics(getMockDashboardMetrics());
-      setSafety(getMockSafety());
+      setIsLive(true);
     }
   }, []);
 
