@@ -52,6 +52,7 @@ export default function WeatherPage() {
             isDangerous,
           });
         }
+        setForecast(hourlyPoints);
       } else {
         const hourlyPoints: ForecastPoint[] = Array.from({ length: 24 }).map((_, i) => {
           const d = new Date(Date.now() + i * 3600000);
@@ -131,8 +132,10 @@ export default function WeatherPage() {
         });
         setWeekForecast(weekPoints);
       }
-    } catch {
-      // Dynamic fallback handling
+    } catch (err) {
+      console.warn('[WeatherPage] Fetch fallback triggered:', err);
+      setForecast(getMockForecast());
+      setWeekForecast(getMock7DayForecast());
     }
   }, []);
 
